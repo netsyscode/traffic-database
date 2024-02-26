@@ -1,0 +1,6 @@
+.vscode/
+build/
+dest_data/
+output_data/
+input_data/
+source_data/
