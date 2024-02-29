@@ -301,6 +301,7 @@ char* IndexGenerator::outputToStorage(){
     delete[] index_buffer;
 
     //this->clear();
+    //this->startTime = 0;
     return storage_buffer;
 }
 

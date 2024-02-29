@@ -399,11 +399,22 @@ void test_performance(string filename, string storagename, string outputname, u_
         .startTime = sts,
         .endTime = ets,
     };
+    string exp = "(srcip == 47.123.210.92 && dstip == 199.152.10.148) && (srcport == 9339 || dstport == 26927 || dstport == 26928)";
+    //string exp = "(srcip == 47.123.210.92 && dstip == 199.152.10.148)";
+    
+    list<AtomKey> key_list = list<AtomKey>();
+    AtomKey key = {
+        .keyMode = KeyMode::SRCIP,
+        .key = ntohl(index.sourceAddress.s_addr),
+    };
+    key_list.push_back(key);
 
     start = chrono::high_resolution_clock::now();
     //list<u_int32_t> index_list = generator.getPacketOffsetByIndex(index);
     //list<IndexReturn> index_list = generator.getPacketOffsetByIndex(KeyMode::SRCIP,ntohl(index.sourceAddress.s_addr));
-    list<IndexReturn> index_list = generator.getPacketOffsetByIndex(KeyMode::SRCPORT,index.sourcePort);
+    //list<IndexReturn> index_list = generator.getPacketOffsetByIndex(KeyMode::SRCPORT,index.sourcePort);
+    //list<IndexReturn> index_list = querier.getOffsetByIndex(key_list,index.startTime,index.endTime);
+    querier.queryWithExpression(exp,"./output_data/caida_memory.pcap",index.startTime,index.endTime);
     end = chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     cout << "Memory search time: " << duration.count() << " us" << endl;
@@ -412,27 +423,23 @@ void test_performance(string filename, string storagename, string outputname, u_
     // printf("len:%u\n",meta->length);
     // printf("\n");
 
-    querier.outputPacketToNewFile("./output_data/caida_memory.pcap",index_list);
+    //querier.outputPacketToNewFile("./output_data/caida_memory.pcap",index_list);
 
     // printf("packets_length:%lu\n",index_list.size());
 
     start = chrono::high_resolution_clock::now();
     char* buffer = generator.outputToStorage();
     if(storage.writeIndex(buffer,generator.getStartTime(),generator.getEndTime())){
+        generator.clear();
         end = chrono::high_resolution_clock::now();
         duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         cout << "Index storage time: " << duration.count() << " us" << endl;
 
-        // list<AtomKey> key_list = list<AtomKey>();
-        // AtomKey key = {
-        //     .keyMode = KeyMode::DSTPORT,
-        //     .key = index.destinationPort,
-        // };
-        // key_list.push_back(key);
         start = chrono::high_resolution_clock::now();
         // list<IndexReturn> res_list = storage.getPacketOffsetByIndex(KeyMode::DSTPORT,index.destinationPort,index.startTime,index.endTime);
-        list<IndexReturn> res_list = storage.getPacketOffsetByRange(KeyMode::DSTPORT,index.destinationPort,index.destinationPort+10,index.startTime,index.endTime);
-        // list<IndexReturn> res_list = querier.getOffsetByIndex(key_list,index.startTime,index.endTime);
+        //list<IndexReturn> res_list = storage.getPacketOffsetByRange(KeyMode::DSTPORT,index.destinationPort,index.destinationPort+10,index.startTime,index.endTime);
+        //list<IndexReturn> res_list = querier.getOffsetByIndex(key_list,index.startTime,index.endTime);
+        querier.queryWithExpression(exp,"./output_data/caida.pcap",index.startTime,index.endTime);
         end = chrono::high_resolution_clock::now();
         duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
         cout << "Storage search time: " << duration.count() << " us" << endl;
@@ -446,7 +453,7 @@ void test_performance(string filename, string storagename, string outputname, u_
         // }
         // cout<<endl;
         //Querier querier = Querier();
-        querier.outputPacketToNewFile(outputname,res_list);
+        //querier.outputPacketToNewFile(outputname,res_list);
     }
 
     agg.clearFlowList(flow_list);
@@ -454,7 +461,8 @@ void test_performance(string filename, string storagename, string outputname, u_
 }
 
 void test_query(){
-    string exp = "(ip.src == 192.168.1.100 && ip.dst[0:32] == 192.168.1.200) && (tcp.port == 80 || udp.port in {53,54}) && http.request.method == \"GET\" && !(dns.qry.name == \"example.com\" && frame.len > 100)";
+    //string exp = "(ip.src == 192.168.1.100 && ip.dst[0:32] == 192.168.1.200) && (tcp.port == 80 || udp.port in {53,54}) && http.request.method == \"GET\" && !(dns.qry.name == \"example.com\" && frame.len > 100)";
+    string exp = "(srcip == 47.123.210.92 && dstip == 199.152.10.148) && (srcport == 9339 || dstport == 26927 || dstport == 26928)";
     QueryTree tree = QueryTree();
     if(tree.inputExpression(exp)){
         printf("Done.\n");
@@ -466,7 +474,7 @@ int main(){
     //test_skip_list();
     //test_storage();
     //test_main();
-    //test_performance("./source_data/caida.pcap","./dest_data/caida.pcapidx","./output_data/caida.pcap",8000000);
-    test_query();
+    test_performance("./source_data/caida.pcap","./dest_data/caida.pcapidx","./output_data/caida.pcap",8000000);
+    //test_query();
     return 0;
 }

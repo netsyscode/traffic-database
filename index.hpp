@@ -49,7 +49,6 @@ class IndexGenerator{
 
     void intersect(list<u_int32_t>& la, list<u_int32_t>& lb);
     //list<u_int32_t> readPacketOffset(u_int32_t index);
-    void clear();
 public:
     IndexGenerator(u_int32_t buffer_len, string filename){
         this->sourceAddressIndex = new SkipList<u_int32_t,u_int32_t>(ADDRESS_LEVEL);
@@ -92,6 +91,7 @@ public:
     void readStorage(char* storage_buffer);
     u_int64_t getStartTime();
     u_int64_t getEndTime();
+    void clear();
 };
 
 #endif

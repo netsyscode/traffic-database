@@ -179,7 +179,7 @@ bool QueryTree::grammarVerify(list<string> exp_list){
     LastType lastType = LastType::EMPTY;
 
     for(auto s:exp_list){
-        cout << s << endl;
+        // cout << s << endl;
         if(s=="!"){
             if(lastType != LastType::EMPTY && lastType != LastType::CON && lastType != LastType::BRACKET)
                 return false;
@@ -283,15 +283,46 @@ bool QueryTree::grammarVerify(list<string> exp_list){
     return true;
 }
 
-void QueryTree::treeConstruct(list<string> exp_list){
-    root = new QueryTreeNode();
-    root->exp = "";
-    root->children = list<QueryTreeNode*>();
+bool QueryTree::grammarVerifySimply(list<string> exp_list){ //only for (),||,&&,==
+    int exp_status = 0;
+    for(auto s:exp_list){
+        if(isVar(s)){
+            if(exp_status!=0){
+                return false;
+            }
+            exp_status = 1;
+            continue;
+        }
+        if(s=="=="){
+            if(exp_status!=1){
+                return false;
+            }
+            exp_status = 2;
+            continue;
+        }
+        if(isValue(s)){
+            if(exp_status!=2){
+                return false;
+            }
+            exp_status = 0;
+            continue;
+        }
+        if(s=="("||s==")"||s=="||"||s=="&&"){
+            if(exp_status!=0){
+                return false;
+            }
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+// list<string> QueryTree::ExpressionFormat(list<string> exp_list){
 
-    QueryTreeNode* left_child = nullptr;
-    QueryTreeNode* right_child = nullptr;
-    stack<char> bracket_stack = stack<char>();
-    
+// }
+
+void QueryTree::treeConstruct(list<string> exp_list, QueryTree* treeRoot){ //Easy Implement
+    //treeRoot = new QueryTree();
 }
 
 bool QueryTree::inputExpression(string exp){
@@ -308,10 +339,22 @@ bool QueryTree::inputExpression(string exp){
     if(!grammarVerify(exp_list)){
         return false;
     }
+    if(!grammarVerifySimply(exp_list)){
+        return false;
+    }
+    this->expList = exp_list;
     return true;
 }
 
+list<string> QueryTree::getExpList(){
+    return this->expList;
+}
+
+
+
 void Querier::intersect(list<u_int32_t>& la, list<u_int32_t>& lb){
+    la.sort();
+    lb.sort();
     auto ita = la.begin();
     auto itb = lb.begin();
     while (ita != la.end() && itb != lb.end()) {
@@ -325,6 +368,87 @@ void Querier::intersect(list<u_int32_t>& la, list<u_int32_t>& lb){
         }
     }
     la.erase(ita,la.end());
+}
+
+void Querier::join(list<u_int32_t>& la, list<u_int32_t>& lb){
+    la.sort();
+    lb.sort();
+    list<u_int32_t> ret = list<u_int32_t>();
+    auto ita = la.begin();
+    auto itb = lb.begin();
+    while (ita != la.end() && itb != lb.end()) {
+        if (*ita < *itb) {
+            ret.push_back(*ita);
+            ++ita;
+        } else if (*ita > *itb) {
+            ret.push_back(*itb);
+            ++itb;
+        } else {
+            ret.push_back(*ita);
+            ++ita;
+            ++itb;
+        }
+    }
+    while (ita != la.end()){
+        ret.push_back(*ita);
+        ++ita;
+    }
+    while (itb != lb.end()){
+        ret.push_back(*itb);
+        ++itb;
+    }
+    la = ret;
+}
+
+list<IndexReturn> Querier::intersect(list<IndexReturn>& la, list<IndexReturn>& lb){
+    list<IndexReturn> ret = list<IndexReturn>();
+    for(auto a:la){
+        for(auto b:lb){
+            if(a.filename==b.filename){
+                this->intersect(a.packetList,b.packetList);
+                ret.push_back(a);
+            }
+        }
+    }
+    return ret;
+}
+list<IndexReturn> Querier::join(list<IndexReturn>& la, list<IndexReturn>& lb){
+    list<IndexReturn> ret = list<IndexReturn>();
+    for(auto a:la){
+        bool exist = false;
+        for(auto b:lb){
+            if(a.filename==b.filename){
+                // cout<<"join"<<endl;
+                join(b.packetList,a.packetList);
+                exist = true;
+                ret.push_back(b);
+                // for(auto id:b.packetList){
+                //     cout<<id<<" ";
+                // }
+                // cout<<endl;
+                break;
+            }
+        }
+        if(!exist){
+            ret.push_back(a);
+        }
+    }
+    for(auto b:lb){
+        bool exist = false;
+        for(auto a:la){
+            exist = true;
+            break;
+        }
+        if(!exist){
+            ret.push_back(b);
+        }
+    }
+    //ret.insert(ret.end(),lb.begin(),lb.end());
+    // for(auto id:ret.front().packetList){
+    //     cout<<id<<" ";
+    // }
+    // cout<<endl;
+    return ret;
 }
 
 list<IndexReturn> Querier::getOffsetByIndex(list<AtomKey> keyList, u_int64_t startTime, u_int64_t endTime){
@@ -363,6 +487,44 @@ list<IndexReturn> Querier::getOffsetByIndex(list<AtomKey> keyList, u_int64_t sta
     return ret_list;
 }
 
+list<IndexReturn> Querier::getOffsetByIndex(AtomKey key, u_int64_t startTime, u_int64_t endTime){
+    list<IndexReturn> ret_list = list<IndexReturn>();
+    u_int64_t trancateTime = this->generator->getStartTime();
+    //cout<<trancateTime<<" "<<endTime<<endl;
+    if(trancateTime != 0 && trancateTime < endTime){
+        //cout<<"wrong\n";
+        ret_list = this->generator->getPacketOffsetByIndex(key.keyMode,key.key);
+        // for(auto tmp:tmp_list){
+        //     bool has_before = false;
+        //     for(auto ret:ret_list){
+        //         if(ret.filename == tmp.filename){
+        //             this->intersect(ret.packetList,tmp.packetList);
+        //             has_before = true;
+        //         }
+        //     }
+        //     if(!has_before){
+        //         ret_list.push_back(tmp);
+        //     }
+        // }
+    }
+    list<IndexReturn> tmp_list = this->storage->getPacketOffsetByIndex(key.keyMode,key.key,startTime,endTime);
+    // cout << tmp_list.size()<<endl;
+    for(auto tmp:tmp_list){
+        bool has_before = false;
+        for(auto ret:ret_list){
+            if(ret.filename == tmp.filename){
+                this->intersect(ret.packetList,tmp.packetList);
+                has_before = true;
+            }
+        }
+        if(!has_before){
+            ret_list.push_back(tmp);
+        }
+    }
+    //ret_list.insert(ret_list.end(),tmp_list.begin(),tmp_list.end());
+    return ret_list;
+}
+
 void Querier::outputPacketToNewFile(string new_filename, list<IndexReturn> index_list){
     ofstream outputFile(new_filename, ios::binary);
     if (!outputFile.is_open()) {
@@ -390,4 +552,79 @@ void Querier::outputPacketToNewFile(string new_filename, list<IndexReturn> index
         inFile.close();
     }
     outputFile.close();
+}
+
+void Querier::queryWithExpression(string expression, string outputFileName, u_int64_t startTime, u_int64_t endTime){//Only for Easy Implement
+    if(!this->tree.inputExpression(expression)){
+        return;
+    }
+    list<string> exp_list = this->tree.getExpList();
+    stack<list<IndexReturn>> before_lists = stack<list<IndexReturn>>();
+    stack<string> ops = stack<string>();
+    list<IndexReturn> left_list = list<IndexReturn>();
+    list<IndexReturn> right_list = list<IndexReturn>();
+    AtomKey key;
+    int bracket_count = 0;
+    int wait_for_value = 0;
+    string op_now = "||";
+    for(auto s:exp_list){
+        // cout<<s<<endl;
+        if(s=="("){
+            bracket_count++;
+            ops.push(op_now);
+            op_now = "||";
+            before_lists.push(left_list);
+            left_list = list<IndexReturn>();
+            continue;
+        }
+        if(s=="srcip"||s=="dstip"){
+            key.keyMode = s=="srcip"?KeyMode::SRCIP:KeyMode::DSTIP;
+            wait_for_value = 1;
+            continue;
+        }
+        if(s=="srcport"||s=="dstport"){
+            key.keyMode = s=="srcport"?KeyMode::SRCPORT:KeyMode::DSTPORT;
+            wait_for_value = 2;
+            continue;
+        }
+        if(s=="=="){
+            continue;
+        }
+        if(s=="&&" || s=="||"){
+            op_now = s;
+            continue;
+        }
+        if(s==")"){
+            op_now = ops.top();
+            ops.pop();
+            right_list = left_list;
+            left_list = before_lists.top();
+            before_lists.pop();
+            left_list = op_now == "||"?this->join(left_list,right_list):this->intersect(left_list,right_list);
+
+            // for(auto id:left_list.front().packetList){
+            //     cout<<id<<" ";
+            // }
+            // cout<<endl;
+            continue;
+        }
+        if(wait_for_value){
+            if(wait_for_value==2){
+                key.key = stoull(s);
+            }else{
+                struct in_addr tmp;
+                inet_aton(s.c_str(), &tmp);
+                key.key = ntohl(tmp.s_addr);
+            }
+            right_list = this->getOffsetByIndex(key,startTime,endTime);
+            left_list = op_now == "||"?this->join(left_list,right_list):this->intersect(left_list,right_list);
+
+            continue;
+        }
+    }
+    // for(auto id:left_list.front().packetList){
+    //     cout<<id<<" ";
+    // }
+    // cout<<endl;
+    this->outputPacketToNewFile(outputFileName,left_list);
 }
