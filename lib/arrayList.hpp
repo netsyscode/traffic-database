@@ -8,6 +8,7 @@
 template<class T>
 struct ArrayListNode{
     T value;
+    u_int8_t id;
     u_int32_t next;
 };
 
@@ -29,7 +30,7 @@ public:
     }
     ~ArrayList(){
         if(this->threadCount){
-            std::cout << "Array list warnig: it is used by certain thread." <<std::endl;
+            std::cout << "Array list warning: it is used by certain thread." <<std::endl;
         }
         delete[] array;
     }
