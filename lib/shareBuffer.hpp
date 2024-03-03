@@ -20,7 +20,7 @@ public:
         delete[] this->buffer;
     }
     //Non parallelizable
-    u_int32_t writeOneThread(char* data, u_int32_t len){
+    u_int32_t writeOneThread(const char* data, u_int32_t len){
         u_int32_t pos = writePos;
         if(pos + len >= this->maxLength){
             std::cerr << "Share buffer error: wite overflow the buffer!" <<std::endl;
