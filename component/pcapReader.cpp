@@ -58,19 +58,16 @@ u_int8_t PcapReader::calPacketID(PacketMeta& meta){
     meta_turple.srcIP = ip_protocol->ip_source_address;
     meta_turple.dstIP = ip_protocol->ip_destination_address;
 
-    switch (ip_prot){
-    case 6:
+    if(ip_prot == 6){
         tcp_header* tcp_protocol = (tcp_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len + ip_header_length);
         meta_turple.srcPort = tcp_protocol->tcp_source_port;
         meta_turple.dstPort = tcp_protocol->tcp_destination_port;
-        break;
-    case 17:
+    }else if(ip_prot == 17){
         udp_header* udp_protocol = (udp_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len + ip_header_length);
         meta_turple.srcPort = udp_protocol->udp_source_port;
         meta_turple.dstPort = udp_protocol->udp_destination_port;
-        break;
-    default:
-        return 0;  
+    }else{
+        return 0;
     }
 
     std::hash<u_int32_t> hasher_32;

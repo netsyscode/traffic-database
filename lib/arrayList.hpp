@@ -74,7 +74,7 @@ public:
 
         //std::unique_lock<std::shared_mutex> lock(mutex_);
         this->array[pos].next = next;
-        lock.unlock()
+        //lock.unlock()
 
         return true;
     }
@@ -101,7 +101,7 @@ public:
         }
 
         std::shared_lock<std::shared_mutex> lock(mutex_);
-        this->cv.wait(lock, [] { return pos < this->nodeNum; });
+        this->cv.wait(lock, [&pos,this] { return pos < this->nodeNum; });
 
         return this->idArray;
     }

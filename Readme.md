@@ -40,8 +40,9 @@
 ### pcapReader
 * 从指定pcap文件中持续读取pcap格式数据包
 * 作为Trace Catcher的当前替代
+	* 与重构前相比，承担了extractor功能
 * 初始化所需成员
-	* pcap文件的头部字节长度（一般为16）
+	* pcap文件的头部字节长度（一般为24）
 	* 该文件数据链路层头部字节长度（一般为14）
 	* 共享数据结构packet buffer
 	* 共享数据结构packet pointer

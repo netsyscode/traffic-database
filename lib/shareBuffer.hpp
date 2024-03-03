@@ -3,6 +3,11 @@
 #include <iostream>
 #include "header.hpp"
 
+struct ShareBufferData{
+    char* data;
+    u_int32_t len;
+};
+
 // for packet buffer
 class ShareBuffer{
     char* buffer;
@@ -23,7 +28,7 @@ public:
     u_int32_t writeOneThread(const char* data, u_int32_t len){
         u_int32_t pos = writePos;
         if(pos + len >= this->maxLength){
-            std::cerr << "Share buffer error: wite overflow the buffer!" <<std::endl;
+            std::cerr << "Share buffer error: wite overflow the buffer:"<< pos << "+" << len << ">=" << this->maxLength <<"!" <<std::endl;
             return std::numeric_limits<uint32_t>::max();
         }
         writePos += len;
@@ -44,6 +49,16 @@ public:
         char* ret = new char[len+sizeof(data_header)];
         memcpy(ret,this->buffer+pos,len+sizeof(data_header));
         return ret;
+    }
+    u_int32_t getLen(){
+        return this->writePos;
+    }
+    ShareBufferData outputToChar(){
+        ShareBufferData data;
+        data.len = this->writePos;
+        data.data = new char[data.len];
+        memcpy(data.data,this->buffer,data.len);
+        return data;
     }
 };
 
