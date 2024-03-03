@@ -45,7 +45,7 @@ public:
     u_int32_t addNodeOneThread(T value, u_int8_t id){
         if(this->nodeNum >= this->maxLength){
             std::cerr << "Array list error: addNodeOneThread overflow the buffer!" <<std::endl;
-            return this->nodeNum;
+            return std::numeric_limits<uint32_t>::max();
         }
         u_int32_t now_num = this->nodeNum++;
         this->array[now_num].value = value;
