@@ -4,6 +4,8 @@
 
 ![](./doc/fig/thinking.png)
 
+* 重构目标：将原先的组件内功能拆解到数据结构中，组件尽量只需要调用数据结构接口，同时支持并行
+
 ## lib
 ### arrayList.hpp
 * Packet Pointer底层结构
