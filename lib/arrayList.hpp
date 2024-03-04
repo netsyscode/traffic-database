@@ -7,6 +7,12 @@
 #include <vector>
 #include <condition_variable>
 
+struct ThreadReadPointer{
+    u_int32_t id;
+    std::mutex mutex_;
+    std::condition_variable cv_;
+};
+
 template<class T>
 struct ArrayListNode{
     T value;
@@ -15,14 +21,13 @@ struct ArrayListNode{
 
 template<class T>
 class ArrayList{
-    mutable std::shared_mutex mutex_;
     const u_int32_t maxLength;
     const u_int32_t warningLength; //once exceed warningLength, warning = true
     std::atomic_bool warning;
     std::atomic_uint32_t nodeNum; // now number of nodes, only increase
 
-    std::atomic_uint32_t threadCount;
-    std::condition_variable cv;
+    std::atomic_uint32_t threadCount; // read + write thread count
+    std::vector<ThreadReadPointer*> writeThreads;
 
     u_int8_t* idArray;
     ArrayListNode<T>* array;
@@ -53,7 +58,9 @@ public:
         if(now_num >= this->warningLength){
             this->warning = true;
         }
-        this->cv.notify_all();
+        for(auto t:this->writeThreads){
+            t->cv_.notify_one();
+        }
         return now_num;
     }
     //change next of pos, make sure only one thread use it or each thread change in different pos.
@@ -78,11 +85,34 @@ public:
 
         return true;
     }
-    void addThread(){
+    //only controller can modify threads
+    void addWriteThread(){
         this->threadCount++;
     }
-    void ereaseThread(){
+    void ereaseWriteThread(){
         this->threadCount--;
+    }
+    bool addReadThread(ThreadReadPointer* thread){
+        for(auto t:this->writeThreads){
+            if(t->id == thread->id){
+                std::cerr << "Array list error: addReadThread with exist id!" <<std::endl;
+                return false;
+            }
+        }
+        this->writeThreads.push_back(thread);
+        this->threadCount++;
+        return true;
+    }
+    bool ereaseReadThread(ThreadReadPointer* thread){
+        for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
+            if((*(it))->id == thread->id){
+                this->writeThreads.erase(it);
+                this->threadCount--;
+                return true;
+            }
+        }
+        std::cerr << "Array list error: ereaseReadThread with non-exist id!" <<std::endl;
+        return false;
     }
     bool getWarning()const{
         return this->warning;
@@ -94,16 +124,43 @@ public:
         return this->nodeNum*sizeof(ArrayListNode<T>);
     }
     // Parallelizable and read only, get ID from certain pos
-    u_int8_t getID(u_int32_t pos){
+    u_int8_t getID(u_int32_t pos, u_int32_t thread_id){
         if(pos > this->maxLength || pos < 0){
             std::cerr << "Array list error: getID overflow the buffer!" <<std::endl;
             return T();
         }
 
-        std::shared_lock<std::shared_mutex> lock(mutex_);
-        this->cv.wait(lock, [&pos,this] { return pos < this->nodeNum; });
+        ThreadReadPointer* thread = nullptr;
+        for(auto t:this->writeThreads){
+            if(t->id == thread->id){
+                thread = t;
+            }
+        }
+        if(thread == nullptr){
+            std::cerr << "Array list error: getID with non-exist thread id!" <<std::endl;
+            return T();
+        }
 
-        return this->idArray;
+        std::unique_lock<std::mutex> lock(thread->mutex_);
+        thread->cv_.wait(lock, [&pos,this] { return pos < this->nodeNum; });
+
+        return this->idArray[pos];
+    }
+    // Non-parallelizable, get ID from certain pos
+    u_int8_t getIDOneThread(u_int32_t pos){
+        if(pos > this->maxLength || pos < 0){
+            std::cerr << "Array list error: getID overflow the buffer!" <<std::endl;
+            return T();
+        }
+        if(pos > this->nodeNum){
+            std::cerr << "Array list error: getID overflow the node number!" <<std::endl;
+            return T();
+        }
+        if(this->threadCount){
+            std::cerr << "Array list error: outputToChar while it is used by certain thread!" <<std::endl;
+            return T();
+        }
+        return this->idArray[pos];
     }
     // Parallelizable and read only, get value from certain pos, each read thread read on certain id
     T getValue(u_int32_t pos, u_int8_t id){
@@ -135,15 +192,19 @@ public:
         // std::unique_lock<std::shared_mutex> lock(mutex_);
         return this->array[pos].next;
     }
-    char* outputToChar()const{
+    CharData outputToChar()const{
+        CharData data = {
+            .data = nullptr,
+            .len = 0,
+        };
         if(this->threadCount){
             std::cerr << "Array list error: outputToChar while it is used by certain thread!" <<std::endl;
-            return nullptr;
+            return data;
         }
-        u_int32_t len = this->getLength();
-        char* output = new char[len];
-        memcpy(output,this->array,len);
-        return output;
+        data.len = this->getLength();
+        data.data = new char[data.len];
+        memcpy(data.data,this->array,data.len);
+        return data;
     }
 };
 

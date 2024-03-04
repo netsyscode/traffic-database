@@ -2,11 +2,7 @@
 #define SHAREBUFFER_HPP_
 #include <iostream>
 #include "header.hpp"
-
-struct ShareBufferData{
-    char* data;
-    u_int32_t len;
-};
+#include "util.hpp"
 
 // for packet buffer
 class ShareBuffer{
@@ -53,8 +49,8 @@ public:
     u_int32_t getLen(){
         return this->writePos;
     }
-    ShareBufferData outputToChar(){
-        ShareBufferData data;
+    CharData outputToChar(){
+        CharData data;
         data.len = this->writePos;
         data.data = new char[data.len];
         memcpy(data.data,this->buffer,data.len);

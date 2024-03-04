@@ -3,6 +3,27 @@
 const u_int8_t pcap_head[] = {0xd4,0xc3,0xb2,0xa1,0x02,0x00,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
                             0x00,0x00,0x04,0x00,0x65,0x00,0x00,0x00};
 
+// std::hash<u_int32_t> hasher_32;
+// std::hash<u_int16_t> hasher_16;
+
+u_int8_t hasher_32(u_int32_t value){
+    u_int8_t hashValue = 0;
+    for(int i = 0;i<sizeof(u_int32_t)/sizeof(u_int8_t);++i){
+        hashValue ^= value & 0xff;
+        value >>= sizeof(u_int8_t);
+    }
+    return hashValue;
+}
+
+u_int8_t hasher_16(u_int16_t value){
+    u_int8_t hashValue = 0;
+    for(int i = 0;i<sizeof(u_int16_t)/sizeof(u_int8_t);++i){
+        hashValue ^= value & 0xff;
+        value >>= sizeof(u_int8_t);
+    }
+    return hashValue;
+}
+
 struct PacketMetaTurple{
     in_addr srcIP;
     in_addr dstIP;
@@ -59,22 +80,19 @@ u_int8_t PcapReader::calPacketID(PacketMeta& meta){
     meta_turple.dstIP = ip_protocol->ip_destination_address;
 
     if(ip_prot == 6){
-        tcp_header* tcp_protocol = (tcp_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len + ip_header_length);
-        meta_turple.srcPort = tcp_protocol->tcp_source_port;
-        meta_turple.dstPort = tcp_protocol->tcp_destination_port;
+        tcp_header* tcp_protocol = (tcp_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len + ip_header_length * 4);
+        meta_turple.srcPort = htons(tcp_protocol->tcp_source_port);
+        meta_turple.dstPort = htons(tcp_protocol->tcp_destination_port);
     }else if(ip_prot == 17){
-        udp_header* udp_protocol = (udp_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len + ip_header_length);
-        meta_turple.srcPort = udp_protocol->udp_source_port;
-        meta_turple.dstPort = udp_protocol->udp_destination_port;
+        udp_header* udp_protocol = (udp_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len + ip_header_length * 4);
+        meta_turple.srcPort = htons(udp_protocol->udp_source_port);
+        meta_turple.dstPort = htons(udp_protocol->udp_destination_port);
     }else{
         return 0;
     }
 
-    std::hash<u_int32_t> hasher_32;
-    std::hash<u_int16_t> hasher_16;
-    u_int32_t hashValue = hasher_32(ntohl(meta_turple.srcIP.s_addr))^hasher_32(ntohl(meta_turple.dstIP.s_addr))^
+    u_int8_t id = hasher_32(ntohl(meta_turple.srcIP.s_addr))^hasher_32(ntohl(meta_turple.dstIP.s_addr))^
                     hasher_16(meta_turple.srcPort)^hasher_16(meta_turple.dstPort);
-    u_int8_t id = (u_int8_t)(hashValue & 0xff);
     return id;
 }
     

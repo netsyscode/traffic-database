@@ -1,6 +1,7 @@
 #include "../component/pcapReader.hpp"
 #include "../lib/shareBuffer.hpp"
 #include "../lib/arrayList.hpp"
+#include "../lib/util.hpp"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -18,25 +19,37 @@ const u_int32_t eth_header_len = 14;
 const std::string filename = "./data/source/pcap.pcap";
 const std::string out_filename = "./data/output/pcap.pcap";
 
-
-void outputPacketToNewFile(std::string new_filename, char* data, u_int32_t len){
-    std::ofstream outputFile(new_filename, std::ios::binary);
-    if (!outputFile.is_open()) {
-        printf("Fail to Create File!\n");
-        return;
-    }
-    outputFile.write((const char*)pcap_head,pcap_header_len);
-    outputFile.write(data+pcap_header_len,len-pcap_header_len);
-    outputFile.close();
-}
-
 void singleThreadTest(){
     ShareBuffer* packetBuffer = new ShareBuffer(buffer_len,buffer_warn);
     ArrayList<u_int32_t>* packetPointer = new ArrayList<u_int32_t>(packet_num,packet_warn);
     PcapReader* reader = new PcapReader(pcap_header_len,eth_header_len,filename,packetBuffer,packetPointer);
     reader->run();
-    ShareBufferData buffer_data = packetBuffer->outputToChar();
-    outputPacketToNewFile(out_filename,buffer_data.data,buffer_data.len);
+    CharData buffer_data = packetBuffer->outputToChar();
+    CharData pointer_data = packetPointer->outputToChar();
+
+    std::ofstream outputFile(out_filename, std::ios::binary);
+    if (!outputFile.is_open()) {
+        printf("Fail to Create File!\n");
+        return;
+    }
+    outputFile.write((const char*)pcap_head,pcap_header_len);
+
+    ArrayListNode<u_int32_t>* node_list = (ArrayListNode<u_int32_t>*)pointer_data.data;
+    u_int32_t pos = 0;
+    u_int8_t id = packetPointer->getIDOneThread(pos);
+    
+    for(int i = 0;i<pointer_data.len/sizeof(ArrayListNode<u_int32_t>);++i){
+        if(packetPointer->getIDOneThread(i)!=id){
+            continue;
+        }
+        char* tmp = buffer_data.data+node_list[i].value;
+        u_int32_t len =((data_header*)tmp)->caplen+sizeof(data_header);
+        outputFile.write(tmp,((data_header*)tmp)->caplen+sizeof(data_header));
+    }
+
+    //outputFile.write(buffer_data.data+pcap_header_len,len-pcap_header_len);
+    outputFile.close();
+
 }
 
 int main(){

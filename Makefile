@@ -10,10 +10,10 @@ all: pcapReaderTest
 pcapReaderTest: pcapReaderTest.o pcapReader.o
 	$(CC) $(BUILD_PATH)pcapReaderTest.o $(BUILD_PATH)pcapReader.o -o $(BUILD_PATH)pcapReaderTest -lpcap
 
-pcapReaderTest.o: $(TEST_PATH)pcapReaderTest.cpp $(LIB_PATH)shareBuffer.hpp $(LIB_PATH)arrayList.hpp
+pcapReaderTest.o: $(TEST_PATH)pcapReaderTest.cpp
 	$(CC) -c $(TEST_PATH)pcapReaderTest.cpp -o $(BUILD_PATH)pcapReaderTest.o $(COMPILE_OPT)
 
-pcapReader.o: $(COMPONENT_PATH)pcapReader.cpp $(COMPONENT_PATH)pcapReader.hpp $(LIB_PATH)shareBuffer.hpp $(LIB_PATH)arrayList.hpp
+pcapReader.o: $(COMPONENT_PATH)pcapReader.cpp
 	$(CC) -c $(COMPONENT_PATH)pcapReader.cpp -o $(BUILD_PATH)pcapReader.o $(COMPILE_OPT)
 
 # main: test.o extractor.o flow.o index.o storage.o querier.o
