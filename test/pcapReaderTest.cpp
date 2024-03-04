@@ -36,10 +36,10 @@ void singleThreadTest(){
 
     ArrayListNode<u_int32_t>* node_list = (ArrayListNode<u_int32_t>*)pointer_data.data;
     u_int32_t pos = 0;
-    u_int8_t id = packetPointer->getIDOneThread(pos);
+    u_int8_t id = packetPointer->getIDOneThread(pos).data;
     
     for(int i = 0;i<pointer_data.len/sizeof(ArrayListNode<u_int32_t>);++i){
-        if(packetPointer->getIDOneThread(i)!=id){
+        if(packetPointer->getIDOneThread(i).data!=id){
             continue;
         }
         char* tmp = buffer_data.data+node_list[i].value;

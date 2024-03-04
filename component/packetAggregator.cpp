@@ -67,6 +67,13 @@ u_int32_t PacketAggregator::addPacketToMap(FlowMetadata meta, u_int32_t offset){
     return last;
 }
 
+bool PacketAggregator::writeNextToPacketPointer(u_int32_t pos, u_int32_t next){
+    if(next == std::numeric_limits<uint32_t>::max()){
+        return true;
+    }
+    return this->packetPointer->changeNextMultiThread(pos,next);
+}
+
 void PacketAggregator::setThreadID(u_int32_t threadID){
     this->threadID = threadID;
 }
@@ -98,10 +105,13 @@ void PacketAggregator::run(){
         if(packet == nullptr){
             break;
         }
-        
+
         FlowMetadata meta = this->parsePacket(packet);
         
         u_int32_t last = this->addPacketToMap(meta,offset);
+        if(this->writeNextToPacketPointer(this->readPos - 1,last)){
+            break;
+        }
     }
     std::cout << "Packet aggregator log: thread " << this->threadID << "quit." << std::endl;
 }

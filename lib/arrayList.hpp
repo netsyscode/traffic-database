@@ -60,6 +60,7 @@ public:
         }
         u_int32_t now_num = this->nodeNum++;
         this->array[now_num].value = value;
+        this->array[now_num].next = std::numeric_limits<uint32_t>::max();
         this->idArray[now_num] = id;
         if(now_num >= this->warningLength){
             this->warning = true;
@@ -84,11 +85,7 @@ public:
             std::cerr << "Array list error: changeNext overflow the buffer!" <<std::endl;
             return false;
         }
-
-        //std::unique_lock<std::shared_mutex> lock(mutex_);
         this->array[pos].next = next;
-        //lock.unlock()
-
         return true;
     }
     //only controller can modify threads
@@ -135,7 +132,7 @@ public:
         IDData data = {
             .data = 0,
             .err = 0,
-        }
+        };
         if(pos > this->maxLength || pos < 0){
             std::cerr << "Array list error: getID overflow the buffer!" <<std::endl;
             data.err = 1;
@@ -163,14 +160,15 @@ public:
             return data;
         }
 
-        return this->idArray[pos];
+        data.data = this->idArray[pos];
+        return data;
     }
     // Non-parallelizable, get ID from certain pos
     IDData getIDOneThread(u_int32_t pos){
         IDData data = {
             .data = 0,
             .err = 0,
-        }
+        };
         if(pos > this->maxLength || pos < 0){
             std::cerr << "Array list error: getID overflow the buffer!" <<std::endl;
             data.err = 1;
@@ -186,7 +184,9 @@ public:
             data.err = 3;
             return data;
         }
-        return this->idArray[pos];
+        
+        data.data = this->idArray[pos];
+        return data;
     }
     // Parallelizable and read only, get value from certain pos, each read thread read on certain id
     T getValue(u_int32_t pos, u_int8_t id){
@@ -234,7 +234,7 @@ public:
     }
     void asynchronousStop(u_int32_t threadID){
         for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
-            if((*(it))->id == thread->id){
+            if((*(it))->id == threadID){
                 (*(it))->stop_ = true;
                 (*(it))->cv_.notify_one();
                 return;
