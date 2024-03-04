@@ -104,6 +104,7 @@ void PcapReader::run(){
     if(!this->openFile()){
         return;
     }
+    this->stop = false;
     //align
     this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
     while(true){
@@ -123,6 +124,14 @@ void PcapReader::run(){
             std::cerr << "Pcap reader error: packet pointer overflow!" << std::endl;
             break;
         }
+        if(this->stop){
+            std::cout << "Pcap reader log: asynchronous stop." << std::endl;
+            break;
+        }
     }
     std::cout << "Pcap reader log: thread quit." << std::endl;
+}
+
+void PcapReader::asynchronousStop(){
+    this->stop = true;
 }

@@ -11,6 +11,12 @@ struct ThreadReadPointer{
     u_int32_t id;
     std::mutex mutex_;
     std::condition_variable cv_;
+    std::atomic_bool stop_;
+};
+
+struct IDData{
+    u_int8_t data;
+    u_int8_t err;
 };
 
 template<class T>
@@ -99,6 +105,7 @@ public:
                 return false;
             }
         }
+        thread->stop_ = false;
         this->writeThreads.push_back(thread);
         this->threadCount++;
         return true;
@@ -124,10 +131,15 @@ public:
         return this->nodeNum*sizeof(ArrayListNode<T>);
     }
     // Parallelizable and read only, get ID from certain pos
-    u_int8_t getID(u_int32_t pos, u_int32_t thread_id){
+    IDData getID(u_int32_t pos, u_int32_t thread_id){
+        IDData data = {
+            .data = 0,
+            .err = 0,
+        }
         if(pos > this->maxLength || pos < 0){
             std::cerr << "Array list error: getID overflow the buffer!" <<std::endl;
-            return T();
+            data.err = 1;
+            return data;
         }
 
         ThreadReadPointer* thread = nullptr;
@@ -138,27 +150,41 @@ public:
         }
         if(thread == nullptr){
             std::cerr << "Array list error: getID with non-exist thread id!" <<std::endl;
-            return T();
+            data.err = 2;
+            return data;
         }
 
         std::unique_lock<std::mutex> lock(thread->mutex_);
-        thread->cv_.wait(lock, [&pos,this] { return pos < this->nodeNum; });
+        thread->cv_.wait(lock, [&pos,this,thread] { return pos < this->nodeNum || thread->stop_; });
+        
+        if(thread->stop_){
+            std::cout << "Array list log: thread" << thread_id << "stop." <<std::endl;
+            data.err = 3;
+            return data;
+        }
 
         return this->idArray[pos];
     }
     // Non-parallelizable, get ID from certain pos
-    u_int8_t getIDOneThread(u_int32_t pos){
+    IDData getIDOneThread(u_int32_t pos){
+        IDData data = {
+            .data = 0,
+            .err = 0,
+        }
         if(pos > this->maxLength || pos < 0){
             std::cerr << "Array list error: getID overflow the buffer!" <<std::endl;
-            return T();
+            data.err = 1;
+            return data;
         }
         if(pos > this->nodeNum){
             std::cerr << "Array list error: getID overflow the node number!" <<std::endl;
-            return T();
+            data.err = 2;
+            return data;
         }
         if(this->threadCount){
             std::cerr << "Array list error: outputToChar while it is used by certain thread!" <<std::endl;
-            return T();
+            data.err = 3;
+            return data;
         }
         return this->idArray[pos];
     }
@@ -205,6 +231,16 @@ public:
         data.data = new char[data.len];
         memcpy(data.data,this->array,data.len);
         return data;
+    }
+    void asynchronousStop(u_int32_t threadID){
+        for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
+            if((*(it))->id == thread->id){
+                (*(it))->stop_ = true;
+                (*(it))->cv_.notify_one();
+                return;
+            }
+        }
+        std::cerr << "Array list error: ereaseReadThread with non-exist id!" <<std::endl;
     }
 };
 

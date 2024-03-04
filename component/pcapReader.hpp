@@ -28,6 +28,8 @@ class PcapReader{
     std::ifstream file;
     u_int32_t fileLen;
 
+    std::atomic_bool stop;
+
     //opne file
     bool openFile();
     //read packet of offset from file;
@@ -42,9 +44,11 @@ public:
     PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, ShareBuffer* buffer, ArrayList<u_int32_t>* packetPointer):
     pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),filename(filename),packetBuffer(buffer),packetPointer(packetPointer){
         this->offset = pcap_header_len;
+        this->stop = true;
     }
     ~PcapReader()=default;
     void run();
+    void asynchronousStop();
 };
 
 #endif

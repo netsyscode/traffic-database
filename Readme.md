@@ -46,4 +46,12 @@
 	* 该文件数据链路层头部字节长度（一般为14）
 	* 共享数据结构packet buffer
 	* 共享数据结构packet pointer
-* 完成，待测试
+* 完成及进行单线程串行测试，待多线程测试
+
+### packetAggregator
+* 从packet pointer和packet buffer中读取数据，将相同IP/端口聚合，并填写packet pointer的next字段
+* 初始化所需成员
+	* 数据链路层头部字节长度（与pcapReader一致，一般为14）
+	* 共享数据结构packet buffer
+	* 共享数据结构packet pointer
+* 完成读取，待测试
