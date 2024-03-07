@@ -62,7 +62,16 @@ void MultiThreadController::run(){
         return;
     }
     this->threadsRun();
+
     //for test
     std::this_thread::sleep_for(std::chrono::seconds(1));
+
     std::cout << "Controller log: run quit." << std::endl;
+}
+const OutputData MultiThreadController::outputForTest(){
+    const OutputData data = {
+        .packetBuffer = this->packetBuffer,
+        .packetPointer = this->packetPointer,
+    };
+    return data;
 }

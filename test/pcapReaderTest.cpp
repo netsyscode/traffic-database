@@ -50,6 +50,13 @@ void singleThreadTest(){
     //outputFile.write(buffer_data.data+pcap_header_len,len-pcap_header_len);
     outputFile.close();
 
+    delete packetBuffer;
+    delete packetPointer;
+    delete reader;
+}
+
+void multitest(){
+    
 }
 
 int main(){

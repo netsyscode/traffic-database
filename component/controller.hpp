@@ -19,6 +19,11 @@ struct InitData{
     u_int32_t threadCount;
 };
 
+struct OutputData{
+    const ShareBuffer* packetBuffer;
+    const ArrayList<u_int32_t>* packetPointer;
+};
+
 class MultiThreadController{
     //memory
     ShareBuffer* packetBuffer;
@@ -87,6 +92,8 @@ public:
     }
     void init(InitData init_data);
     void run();
+    // just output shared memory for test, the pointers in OutputData should NOT be modified outside Controller!
+    const OutputData outputForTest();
 };
 
 #endif
