@@ -8,19 +8,22 @@ u_int32_t PacketAggregator::readFromPacketPointer(){
     IDData id_data;
     while(true){
         id_data = this->packetPointer->getID(this->readPos,this->threadID);
-        if(id_data.err){
-            return std::numeric_limits<uint32_t>::max();
-        }
-        this->readPos++;
-        if(this->IDSet.find(id_data.data) != this->IDSet.end()){
-            break;
-        }
         if(this->stop){
             std::cout << "Packet aggregator log: asynchronous stop." << std::endl;
             return std::numeric_limits<uint32_t>::max();
         }
+        if(id_data.err){
+            return std::numeric_limits<uint32_t>::max();
+        }
+        this->readPos++;
+        if(this->IDSet.find(id_data.data) == this->IDSet.end()){
+            break;
+        }
+        // if(id_data.data == 0){
+        //     std::cout << this->threadID << std::endl;
+        // }
     }
-    return this->packetPointer->getValue(readPos - 1,id_data.data);
+    return this->packetPointer->getValue(this->readPos - 1,id_data.data);
 }
 
 char* PacketAggregator::readFromPacketBuffer(u_int32_t offset){

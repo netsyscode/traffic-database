@@ -59,13 +59,14 @@ public:
             std::cerr << "Array list error: addNodeOneThread overflow the buffer!" <<std::endl;
             return std::numeric_limits<uint32_t>::max();
         }
-        u_int32_t now_num = this->nodeNum++;
+        u_int32_t now_num = this->nodeNum;
+        this->idArray[now_num] = id;
         this->array[now_num].value = value;
         this->array[now_num].next = std::numeric_limits<uint32_t>::max();
-        this->idArray[now_num] = id;
         if(now_num >= this->warningLength){
             this->warning = true;
         }
+        this->nodeNum++;
         for(auto t:this->readThreads){
             t->cv_.notify_one();
         }
@@ -141,6 +142,11 @@ public:
             return data;
         }
 
+        // if(pos < this->nodeNum){
+        //     data.data = this->idArray[pos];
+        //     return data;
+        // }
+
         ThreadReadPointer* thread = nullptr;
         for(auto t:this->readThreads){
             if(t->id == thread_id){
@@ -162,7 +168,6 @@ public:
             data.err = 3;
             return data;
         }
-
         data.data = this->idArray[pos];
         return data;
     }
@@ -202,7 +207,8 @@ public:
             return T();
         }
         if(id != this->idArray[pos]){
-            std::cerr << "Array list error: getValue on wrong ID!" <<std::endl;
+            std::cerr << "Array list error: getValue on wrong ID: "<<(int)id << " - " << (int)(this->idArray[pos]) << "!"<<std::endl;
+            std::cerr << pos <<std::endl;
             return T();
         }
         // std::unique_lock<std::shared_mutex> lock(mutex_);
