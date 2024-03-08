@@ -34,7 +34,7 @@ class ArrayList{
     std::atomic_uint32_t nodeNum; // now number of nodes, only increase
 
     std::atomic_uint32_t threadCount; // read + write thread count
-    std::vector<ThreadReadPointer*> writeThreads;
+    std::vector<ThreadReadPointer*> readThreads;
 
     u_int8_t* idArray;
     ArrayListNode<T>* array;
@@ -66,7 +66,7 @@ public:
         if(now_num >= this->warningLength){
             this->warning = true;
         }
-        for(auto t:this->writeThreads){
+        for(auto t:this->readThreads){
             t->cv_.notify_one();
         }
         return now_num;
@@ -97,21 +97,21 @@ public:
         this->threadCount--;
     }
     bool addReadThread(ThreadReadPointer* thread){
-        for(auto t:this->writeThreads){
+        for(auto t:this->readThreads){
             if(t->id == thread->id){
                 std::cerr << "Array list error: addReadThread with exist id!" <<std::endl;
                 return false;
             }
         }
         thread->stop_ = false;
-        this->writeThreads.push_back(thread);
+        this->readThreads.push_back(thread);
         this->threadCount++;
         return true;
     }
     bool ereaseReadThread(ThreadReadPointer* thread){
-        for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
+        for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
-                this->writeThreads.erase(it);
+                this->readThreads.erase(it);
                 this->threadCount--;
                 return true;
             }
@@ -134,6 +134,7 @@ public:
             .data = 0,
             .err = 0,
         };
+        
         if(pos > this->maxLength || pos < 0){
             std::cerr << "Array list error: getID overflow the buffer!" <<std::endl;
             data.err = 1;
@@ -141,9 +142,10 @@ public:
         }
 
         ThreadReadPointer* thread = nullptr;
-        for(auto t:this->writeThreads){
-            if(t->id == thread->id){
+        for(auto t:this->readThreads){
+            if(t->id == thread_id){
                 thread = t;
+                break;
             }
         }
         if(thread == nullptr){
@@ -156,7 +158,7 @@ public:
         thread->cv_.wait(lock, [&pos,this,thread] { return pos < this->nodeNum || thread->stop_; });
         
         if(thread->stop_){
-            std::cout << "Array list log: thread" << thread_id << "stop." <<std::endl;
+            std::cout << "Array list log: thread " << thread_id << " stop." <<std::endl;
             data.err = 3;
             return data;
         }
@@ -171,17 +173,17 @@ public:
             .err = 0,
         };
         if(pos > this->maxLength || pos < 0){
-            std::cerr << "Array list error: getID overflow the buffer!" <<std::endl;
+            std::cerr << "Array list error: getIDOneThread overflow the buffer!" <<std::endl;
             data.err = 1;
             return data;
         }
         if(pos > this->nodeNum){
-            std::cerr << "Array list error: getID overflow the node number!" <<std::endl;
+            std::cerr << "Array list error: getIDOneThread overflow the node number!" <<std::endl;
             data.err = 2;
             return data;
         }
         if(this->threadCount){
-            std::cerr << "Array list error: outputToChar while it is used by certain thread!" <<std::endl;
+            std::cerr << "Array list error: getIDOneThread while it is used by certain thread!" <<std::endl;
             data.err = 3;
             return data;
         }
@@ -219,6 +221,7 @@ public:
         // std::unique_lock<std::shared_mutex> lock(mutex_);
         return this->array[pos].next;
     }
+    //output with copy
     CharData outputToChar()const{
         CharData data = {
             .data = nullptr,
@@ -234,7 +237,7 @@ public:
         return data;
     }
     void asynchronousStop(u_int32_t threadID){
-        for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
+        for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == threadID){
                 (*(it))->stop_ = true;
                 (*(it))->cv_.notify_one();

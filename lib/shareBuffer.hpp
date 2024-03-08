@@ -49,6 +49,7 @@ public:
     u_int32_t getLen(){
         return this->writePos;
     }
+    // output with copy
     CharData outputToChar(){
         CharData data;
         data.len = this->writePos;

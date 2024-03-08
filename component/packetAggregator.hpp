@@ -52,7 +52,7 @@ class PacketAggregator{
     FlowMetadata parsePacket(char* packet);
     //return last packet, max for first
     u_int32_t addPacketToMap(FlowMetadata meta, u_int32_t offset);
-    bool writeNextToPacketPointer(u_int32_t pos, u_int32_t next);
+    bool writeNextToPacketPointer(u_int32_t last, u_int32_t now);
 public:
     PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer):eth_header_len(eth_header_len){
         this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
@@ -63,7 +63,7 @@ public:
         this->readPos = 0;
         this->stop = true;
     }
-    ~PacketAggregator()=default;
+    ~PacketAggregator(){}
     void setThreadID(u_int32_t threadID);
     void addID(u_int8_t id);
     void ereaseID(u_int8_t id);

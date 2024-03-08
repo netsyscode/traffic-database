@@ -7,7 +7,6 @@ u_int32_t PacketAggregator::readFromPacketPointer(){
     }
     IDData id_data;
     while(true){
-        
         id_data = this->packetPointer->getID(this->readPos,this->threadID);
         if(id_data.err){
             return std::numeric_limits<uint32_t>::max();
@@ -52,26 +51,26 @@ FlowMetadata PacketAggregator::parsePacket(char* packet){
     return meta;
 }
 
-u_int32_t PacketAggregator::addPacketToMap(FlowMetadata meta, u_int32_t offset){
+u_int32_t PacketAggregator::addPacketToMap(FlowMetadata meta, u_int32_t pos){
     u_int32_t last = std::numeric_limits<uint32_t>::max();
     auto it = this->aggMap.find(meta);
     if(it == this->aggMap.end()){
         Flow flow;
-        flow.head = offset;
-        flow.tail = offset;
+        flow.head = pos;
+        flow.tail = pos;
         this->aggMap.insert(std::make_pair(meta,flow));
     }else{
         last = it->second.tail;
-        it->second.tail = offset;
+        it->second.tail = pos;
     }
     return last;
 }
 
-bool PacketAggregator::writeNextToPacketPointer(u_int32_t pos, u_int32_t next){
-    if(next == std::numeric_limits<uint32_t>::max()){
+bool PacketAggregator::writeNextToPacketPointer(u_int32_t last, u_int32_t now){
+    if(last == std::numeric_limits<uint32_t>::max()){
         return true;
     }
-    return this->packetPointer->changeNextMultiThread(pos,next);
+    return this->packetPointer->changeNextMultiThread(last,now);
 }
 
 void PacketAggregator::setThreadID(u_int32_t threadID){
@@ -91,12 +90,14 @@ void PacketAggregator::run(){
         std::cerr << "Packet aggregator error: run without threadID!" << std::endl;
         return;
     }
+    std::cout << "Packet aggregator log: thread " << this->threadID << " run." << std::endl;
     this->stop = false;
     while (true){
         if(this->stop){
             break;
         }
         u_int32_t offset = this->readFromPacketPointer();
+        // std::cout << "offset:" << offset << std::endl;
         if(offset == std::numeric_limits<uint32_t>::max()){
             break;
         }
@@ -105,15 +106,16 @@ void PacketAggregator::run(){
         if(packet == nullptr){
             break;
         }
-
+        // std::cout << "get packet."<< std::endl;
         FlowMetadata meta = this->parsePacket(packet);
         
-        u_int32_t last = this->addPacketToMap(meta,offset);
-        if(this->writeNextToPacketPointer(this->readPos - 1,last)){
+        u_int32_t last = this->addPacketToMap(meta,this->readPos - 1);
+        // std::cout << this->readPos - 1 << " " << last << std::endl;
+        if(!this->writeNextToPacketPointer(last,this->readPos - 1)){
             break;
         }
     }
-    std::cout << "Packet aggregator log: thread " << this->threadID << "quit." << std::endl;
+    std::cout << "Packet aggregator log: thread " << this->threadID << " quit." << std::endl;
 }
 
 void PacketAggregator::asynchronousStop(){

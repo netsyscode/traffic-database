@@ -104,6 +104,7 @@ void PcapReader::run(){
     if(!this->openFile()){
         return;
     }
+    std::cout << "Pcap reader log: thread run." << std::endl;
     this->stop = false;
     //align
     this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);

@@ -49,6 +49,7 @@ class MultiThreadController{
     void popPacketAggregatorRunning();
 
     void threadsStop();
+    void threadsClear();
 public:
     MultiThreadController(){
         this->packetBuffer = nullptr;
@@ -59,7 +60,6 @@ public:
         this->packetAggregatorThreads = std::vector<std::thread*>();
     }
     ~MultiThreadController(){
-
         if(this->traceCatcherThread!=nullptr){
             this->traceCatcher->asynchronousStop();
             this->traceCatcherThread->join();
@@ -67,6 +67,7 @@ public:
         }
         for(int i=0;i<this->packetAggregatorThreads.size();++i){
             this->packetAggregators[i]->asynchronousStop();
+            this->packetPointer->asynchronousStop(this->threadReadPointers[i]->id);
             this->packetAggregatorThreads[i]->join();
             delete this->packetAggregatorThreads[i];
         }
@@ -76,15 +77,17 @@ public:
             this->packetPointer->ereaseReadThread(t);
             delete t;
         }
-        this->packetAggregators.clear();
-        this->packetPointer->ereaseWriteThread();
-        if(this->traceCatcher!=nullptr){
-            delete this->traceCatcher;
-        }
+        this->threadReadPointers.clear();
         for(auto p:this->packetAggregators){
             delete p;
         }
         this->packetAggregators.clear();
+
+        if(this->traceCatcher!=nullptr){
+            this->packetPointer->ereaseWriteThread();
+            delete this->traceCatcher;
+            this->traceCatcher = nullptr;
+        }
 
         if(this->packetBuffer!=nullptr){
             delete this->packetBuffer;

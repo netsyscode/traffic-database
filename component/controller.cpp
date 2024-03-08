@@ -14,7 +14,7 @@ void MultiThreadController::makeTraceCatcher(u_int32_t pcap_header_len, u_int32_
 void MultiThreadController::pushPacketAggregatorInit(u_int32_t eth_header_len){
     PacketAggregator* aggregator = new PacketAggregator(eth_header_len, this->packetBuffer, this->packetPointer);
     ThreadReadPointer* read_pointer = new ThreadReadPointer{(u_int32_t)(this->threadReadPointers.size()), std::mutex(), std::condition_variable(), std::atomic_bool(false)};
-    if(this->packetPointer->addReadThread(read_pointer)){
+    if(!this->packetPointer->addReadThread(read_pointer)){
         return;
     }
     aggregator->setThreadID(read_pointer->id);
@@ -50,10 +50,32 @@ void MultiThreadController::threadsStop(){
     if(this->traceCatcherThread!=nullptr){
         this->traceCatcher->asynchronousStop();
         this->traceCatcherThread->join();
+        delete this->traceCatcherThread;
+        this->traceCatcherThread = nullptr;
     }
     for(int i=0;i<this->packetAggregatorThreads.size();++i){
         this->packetAggregators[i]->asynchronousStop();
+        this->packetPointer->asynchronousStop(this->threadReadPointers[i]->id);
         this->packetAggregatorThreads[i]->join();
+        delete this->packetAggregatorThreads[i];
+    }
+    this->packetAggregatorThreads.clear();
+}
+void MultiThreadController::threadsClear(){
+    for(auto t:this->threadReadPointers){
+        this->packetPointer->ereaseReadThread(t);
+        delete t;
+    }
+    this->threadReadPointers.clear();
+    for(auto p:this->packetAggregators){
+        delete p;
+    }
+    this->packetAggregators.clear();
+    // this->packetAggregators.clear();
+    if(this->traceCatcher!=nullptr){
+        this->packetPointer->ereaseWriteThread();
+        delete this->traceCatcher;
+        this->traceCatcher = nullptr;
     }
 }
 
@@ -72,12 +94,14 @@ void MultiThreadController::run(){
         std::cerr << "Controller error: run without init!" << std::endl;
         return;
     }
+    std::cout << "Controller log: run." << std::endl;
     this->threadsRun();
 
     //for test
     std::this_thread::sleep_for(std::chrono::seconds(1));
     this->threadsStop();
-    
+    this->threadsClear();
+
     std::cout << "Controller log: run quit." << std::endl;
 }
 const OutputData MultiThreadController::outputForTest(){

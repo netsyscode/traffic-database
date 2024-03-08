@@ -14,7 +14,7 @@ SRCS = $(addprefix $(TEST_PATH), $(TEST_SRCS)) $(addprefix $(COMPONENT_PATH), $(
 # COMPONENT_OBJS = $(COMPONENT_SRCS:.cpp=.o)
 OBJS = $(addprefix $(BUILD_PATH), $(SRCS:.cpp=.o))
 
-all: $(TARGET)
+all: clean $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(BUILD_PATH)$(TARGET) -lpcap

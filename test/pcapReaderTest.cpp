@@ -77,6 +77,8 @@ void multitest(){
     CharData buffer_data = packetBuffer->outputToChar();
     CharData pointer_data = packetPointer->outputToChar();
 
+    delete controller;
+
     std::ofstream outputFile(out_filename, std::ios::binary);
     if (!outputFile.is_open()) {
         printf("Fail to Create File!\n");
@@ -86,22 +88,35 @@ void multitest(){
 
     ArrayListNode<u_int32_t>* node_list = (ArrayListNode<u_int32_t>*)pointer_data.data;
     u_int32_t pos = 0;
-    u_int8_t id = packetPointer->getIDOneThread(pos).data;
-    
-    for(int i = 0;i<pointer_data.len/sizeof(ArrayListNode<u_int32_t>);++i){
-        if(packetPointer->getIDOneThread(i).data!=id){
-            continue;
+    u_int32_t next = 0;
+
+    // u_int8_t id = packetPointer->getIDOneThread(pos).data;
+
+    while(true){
+        if(next == std::numeric_limits<uint32_t>::max()){
+            break;
         }
-        char* tmp = buffer_data.data+node_list[i].value;
+        pos = next;
+        char* tmp = buffer_data.data + node_list[pos].value;
         u_int32_t len =((data_header*)tmp)->caplen+sizeof(data_header);
         outputFile.write(tmp,((data_header*)tmp)->caplen+sizeof(data_header));
+        next = node_list[pos].next;
     }
+    
+    // for(int i = 0;i<pointer_data.len/sizeof(ArrayListNode<u_int32_t>);++i){
+    //     if(packetPointer->getIDOneThread(i).data!=id){
+    //         continue;
+    //     }
+    //     char* tmp = buffer_data.data+node_list[i].value;
+    //     u_int32_t len =((data_header*)tmp)->caplen+sizeof(data_header);
+    //     outputFile.write(tmp,((data_header*)tmp)->caplen+sizeof(data_header));
+    // }
 
     //outputFile.write(buffer_data.data+pcap_header_len,len-pcap_header_len);
     outputFile.close();
-    delete controller;
 }
 
 int main(){
-    singleThreadTest();
+    // singleThreadTest();
+    multitest();
 }
