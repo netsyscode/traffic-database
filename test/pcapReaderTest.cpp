@@ -66,7 +66,7 @@ void multitest(){
         .pcap_header_len = pcap_header_len,
         .eth_header_len = eth_header_len,
         .filename = filename,
-        .threadCount = 1,
+        .threadCount = 4,
     };
     controller->init(init_data);
     controller->run();
