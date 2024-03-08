@@ -20,8 +20,8 @@ struct InitData{
 };
 
 struct OutputData{
-    const ShareBuffer* packetBuffer;
-    const ArrayList<u_int32_t>* packetPointer;
+    ShareBuffer* packetBuffer;
+    ArrayList<u_int32_t>* packetPointer;
 };
 
 class MultiThreadController{
@@ -47,8 +47,10 @@ class MultiThreadController{
 
     void pushPacketAggregatorRunning(u_int32_t eth_header_len);
     void popPacketAggregatorRunning();
+
+    void threadsStop();
 public:
-    MultiThreadController(u_int32_t buffer_len,u_int32_t packet_num, u_int32_t buffer_warn, u_int32_t packet_warn, u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename){
+    MultiThreadController(){
         this->packetBuffer = nullptr;
         this->packetPointer = nullptr;
         this->traceCatcher = nullptr;
@@ -60,6 +62,7 @@ public:
 
         if(this->traceCatcherThread!=nullptr){
             this->traceCatcher->asynchronousStop();
+            this->traceCatcherThread->join();
             delete this->traceCatcherThread;
         }
         for(int i=0;i<this->packetAggregatorThreads.size();++i){

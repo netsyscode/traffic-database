@@ -46,6 +46,17 @@ void MultiThreadController::threadsRun(){
     }
 }
 
+void MultiThreadController::threadsStop(){
+    if(this->traceCatcherThread!=nullptr){
+        this->traceCatcher->asynchronousStop();
+        this->traceCatcherThread->join();
+    }
+    for(int i=0;i<this->packetAggregatorThreads.size();++i){
+        this->packetAggregators[i]->asynchronousStop();
+        this->packetAggregatorThreads[i]->join();
+    }
+}
+
 void MultiThreadController::init(InitData init_data){
     this->makePacketBuffer(init_data.buffer_len,init_data.buffer_warn);
     this->makePacketPointer(init_data.packet_num,init_data.packet_warn);
@@ -65,7 +76,8 @@ void MultiThreadController::run(){
 
     //for test
     std::this_thread::sleep_for(std::chrono::seconds(1));
-
+    this->threadsStop();
+    
     std::cout << "Controller log: run quit." << std::endl;
 }
 const OutputData MultiThreadController::outputForTest(){

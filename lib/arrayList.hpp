@@ -6,6 +6,7 @@
 #include <atomic>
 #include <vector>
 #include <condition_variable>
+#include "util.hpp"
 
 struct ThreadReadPointer{
     u_int32_t id;
