@@ -8,13 +8,6 @@
 #include <condition_variable>
 #include "util.hpp"
 
-struct ThreadReadPointer{
-    u_int32_t id;
-    std::mutex mutex_;
-    std::condition_variable cv_;
-    std::atomic_bool stop_;
-};
-
 struct IDData{
     u_int8_t data;
     u_int8_t err;
@@ -230,18 +223,14 @@ public:
         return this->array[pos].next;
     }
     //output with copy
-    CharData outputToChar()const{
-        CharData data = {
-            .data = nullptr,
-            .len = 0,
-        };
+    std::string outputToChar()const{
+        std::string data = std::string();
         if(this->threadCount){
             std::cerr << "Array list error: outputToChar while it is used by certain thread!" <<std::endl;
             return data;
         }
-        data.len = this->getLength();
-        data.data = new char[data.len];
-        memcpy(data.data,this->array,data.len);
+        u_int32_t len = this->getLength();
+        data = std::string((char*)this->array, len);
         return data;
     }
     void asynchronousStop(u_int32_t threadID){

@@ -26,8 +26,10 @@ struct ip_header{
     u_int8_t ip_ttl;            /*生存时间Time To Live*/
     u_int8_t ip_protocol;        /*协议类型（TCP或者UDP协议）*/
     u_int16_t ip_checksum;  /*首部检验和*/
-    struct in_addr  ip_source_address; /*源IP*/
-    struct in_addr  ip_destination_address; /*目的IP*/
+    // struct in_addr  ip_source_address; /*源IP*/
+    // struct in_addr  ip_destination_address; /*目的IP*/
+    u_int32_t ip_source_address;
+    u_int32_t ip_destination_address;
  };
 
 struct tcp_header

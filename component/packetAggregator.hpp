@@ -3,24 +3,23 @@
 #include "../lib/shareBuffer.hpp"
 #include "../lib/arrayList.hpp"
 #include "../lib/ringBuffer.hpp"
+#include "../lib/util.hpp"
 #include <unordered_map>
 #include <unordered_set>
 
 struct FlowMetadata{
-    struct in_addr sourceAddress;
-    struct in_addr destinationAddress;
+    std::string sourceAddress;
+    std::string destinationAddress;
     u_int16_t sourcePort;
     u_int16_t destinationPort;
     struct hash {
         size_t operator()(const FlowMetadata& f) const {
-            // 通过将 x 和 y 进行哈希运算得到哈希值
-            // 这只是一个简单的示例，您可以根据自己的需求编写更复杂的哈希函数
             return std::hash<u_int16_t>()(f.sourcePort) ^ std::hash<u_int16_t>()(f.destinationPort) ^
-                   std::hash<u_int32_t>()(ntohl(f.sourceAddress.s_addr)) ^ std::hash<u_int32_t>()(ntohl(f.destinationAddress.s_addr));
+                    std::hash<std::string>()(f.sourceAddress) ^ std::hash<std::string>()(f.destinationAddress);
         }
     };
     bool operator==(const FlowMetadata& f) const {
-        return ntohl(sourceAddress.s_addr) == ntohl(f.sourceAddress.s_addr) && ntohl(destinationAddress.s_addr) == ntohl(f.destinationAddress.s_addr) &&
+        return sourceAddress == f.sourceAddress && destinationAddress == f.destinationAddress && 
                 sourcePort == f.sourcePort && destinationPort == f.destinationPort;
     }
 };
@@ -42,8 +41,8 @@ class PacketAggregator{
     ShareBuffer* packetBuffer;
     // read and write to next
     ArrayList<u_int32_t>* packetPointer;
-    // write only, use void because each has diffrent type
-    
+    // write only, default should be srcip(4B), dstip(4B), srcport(2B), dstport(2B)
+    // std::vector<RingBuffer*>* flowIndexBuffers;
 
     // thread member
     u_int32_t readPos;
@@ -51,17 +50,20 @@ class PacketAggregator{
     std::atomic_bool stop;
 
     u_int32_t readFromPacketPointer();
-    char* readFromPacketBuffer(u_int32_t offset);
-    FlowMetadata parsePacket(char* packet);
+    std::string readFromPacketBuffer(u_int32_t offset);
+    FlowMetadata parsePacket(const char* packet);
     //return last packet, max for first
-    u_int32_t addPacketToMap(FlowMetadata meta, u_int32_t offset);
+    u_int32_t addPacketToMap(FlowMetadata meta, u_int32_t pos);
     bool writeNextToPacketPointer(u_int32_t last, u_int32_t now);
+    // CopyCharData* getDefaultFlowIndex(char* packet);
+    // bool writeFlowIndexToIndexBuffer(FlowMetadata meta, u_int32_t pos);
 public:
     PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer):eth_header_len(eth_header_len){
         this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
         this->IDSet = std::unordered_set<u_int8_t>();
         this->packetBuffer = packetBuffer;
         this->packetPointer = packetPointer;
+        // this->flowIndexBuffers = flowIndexBuffers;
         this->threadID = std::numeric_limits<uint32_t>::max();
         this->readPos = 0;
         this->stop = true;

@@ -26,17 +26,19 @@ u_int32_t PacketAggregator::readFromPacketPointer(){
     return this->packetPointer->getValue(this->readPos - 1,id_data.data);
 }
 
-char* PacketAggregator::readFromPacketBuffer(u_int32_t offset){
+std::string PacketAggregator::readFromPacketBuffer(u_int32_t offset){
     return this->packetBuffer->readPcap(offset);
 }
 
-FlowMetadata PacketAggregator::parsePacket(char* packet){
+FlowMetadata PacketAggregator::parsePacket(const char* packet){
     FlowMetadata meta;
     ip_header* ip_protocol = (ip_header*)(packet + sizeof(struct data_header) + this->eth_header_len);
     int ip_header_length = ip_protocol->ip_header_length;
     int ip_prot = ip_protocol->ip_protocol;
-    meta.sourceAddress = ip_protocol->ip_source_address;
-    meta.destinationAddress = ip_protocol->ip_destination_address;
+    u_int32_t srcip = htonl(ip_protocol->ip_source_address);
+    u_int32_t dstip = htonl(ip_protocol->ip_destination_address);
+    meta.sourceAddress= std::string((char*)&srcip,4);
+    meta.destinationAddress= std::string((char*)&dstip,4);
 
     if(ip_prot == 6){
         tcp_header* tcp_protocol = (tcp_header*)(packet + sizeof(struct data_header) + this->eth_header_len + ip_header_length * 4);
@@ -76,6 +78,8 @@ bool PacketAggregator::writeNextToPacketPointer(u_int32_t last, u_int32_t now){
     return this->packetPointer->changeNextMultiThread(last,now);
 }
 
+
+
 void PacketAggregator::setThreadID(u_int32_t threadID){
     this->threadID = threadID;
 }
@@ -105,12 +109,12 @@ void PacketAggregator::run(){
             break;
         }
 
-        char* packet = this->readFromPacketBuffer(offset);
-        if(packet == nullptr){
+        std::string packet = this->readFromPacketBuffer(offset);
+        if(packet.size() == 0){
             break;
         }
         // std::cout << "get packet."<< std::endl;
-        FlowMetadata meta = this->parsePacket(packet);
+        FlowMetadata meta = this->parsePacket(packet.c_str());
         
         u_int32_t last = this->addPacketToMap(meta,this->readPos - 1);
         // std::cout << this->readPos - 1 << " " << last << std::endl;

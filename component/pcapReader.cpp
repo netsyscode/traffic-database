@@ -25,8 +25,8 @@ u_int8_t hasher_16(u_int16_t value){
 }
 
 struct PacketMetaTurple{
-    in_addr srcIP;
-    in_addr dstIP;
+    u_int32_t srcIP;
+    u_int32_t dstIP;
     u_int16_t srcPort;
     u_int16_t dstPort;
 };
@@ -76,8 +76,8 @@ u_int8_t PcapReader::calPacketID(PacketMeta& meta){
     ip_header* ip_protocol = (ip_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len);
     int ip_header_length = ip_protocol->ip_header_length;
     int ip_prot = ip_protocol->ip_protocol;
-    meta_turple.srcIP = ip_protocol->ip_source_address;
-    meta_turple.dstIP = ip_protocol->ip_destination_address;
+    meta_turple.srcIP = htonl(ip_protocol->ip_source_address);
+    meta_turple.dstIP = htonl(ip_protocol->ip_destination_address);
 
     if(ip_prot == 6){
         tcp_header* tcp_protocol = (tcp_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len + ip_header_length * 4);
@@ -91,7 +91,7 @@ u_int8_t PcapReader::calPacketID(PacketMeta& meta){
         return 0;
     }
 
-    u_int8_t id = hasher_32(ntohl(meta_turple.srcIP.s_addr))^hasher_32(ntohl(meta_turple.dstIP.s_addr))^
+    u_int8_t id = hasher_32(meta_turple.srcIP)^hasher_32(meta_turple.dstIP)^
                     hasher_16(meta_turple.srcPort)^hasher_16(meta_turple.dstPort);
     return id;
 }
