@@ -59,7 +59,8 @@ public:
             std::cerr << "Array list error: addNodeOneThread overflow the buffer!" <<std::endl;
             return std::numeric_limits<uint32_t>::max();
         }
-        u_int32_t now_num = this->nodeNum;
+
+        u_int32_t now_num = this->nodeNum; // nodeNum is a boundary variable, it can only change after writing end
         this->idArray[now_num] = id;
         this->array[now_num].value = value;
         this->array[now_num].next = std::numeric_limits<uint32_t>::max();
@@ -67,6 +68,7 @@ public:
             this->warning = true;
         }
         this->nodeNum++;
+
         for(auto t:this->readThreads){
             t->cv_.notify_one();
         }
@@ -142,10 +144,10 @@ public:
             return data;
         }
 
-        // if(pos < this->nodeNum){
-        //     data.data = this->idArray[pos];
-        //     return data;
-        // }
+        if(pos < this->nodeNum){
+            data.data = this->idArray[pos];
+            return data;
+        }
 
         ThreadReadPointer* thread = nullptr;
         for(auto t:this->readThreads){

@@ -20,8 +20,9 @@
 * 包括pcap头、ip头、udp头、tcp头
 
 ### ringBuffer.hpp
-* 暂时无作用，原本试图用于Packet Buffer
-* 未测试
+* 用于在暂存index的键值（index buffer，见./doc/fig/input.png）
+* 支持多线程竞争写入与读出
+* 待测试
 
 ### shareBuffer.hpp
 * Packet Buffer底层结构，核心为char数组
