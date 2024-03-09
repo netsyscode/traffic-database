@@ -125,21 +125,23 @@ public:
         }
         return true;
     }
-    bool get(u_int32_t thread_id, void* data_addr, u_int32_t len){
-        if(len!= this->dataLen_){
-            std::cerr << "Ring Buffer error: get with error len!" <<std::endl;
-            return false;
-        }
+    std::string get(u_int32_t thread_id){
+        // if(len!= this->dataLen_){
+        //     std::cerr << "Ring Buffer error: get with error len!" <<std::endl;
+        //     return false;
+        // }
+        std::string data = std::string();
         u_int32_t pos = this->readPos_++; // notice readPos is an automic variable
         this->readPos_ = this->readPos_ % this->capacity_;
         pos %= this->capacity_;
         if(this->signalBuffer_[pos]){//writed
-            memcpy(data_addr, this->buffer_ + pos*this->dataLen_, this->dataLen_);
+            data = std::string(this->buffer_ + pos*this->dataLen_, this->dataLen_);
+            // memcpy(data_addr, this->buffer_ + pos*this->dataLen_, this->dataLen_);
             this->signalBuffer_[pos] = false;
             for(auto t:this->writeThreads){
                 t->cv_.notify_one();
             }
-            return true;
+            return data;
         }
 
         ThreadReadPointer* thread = nullptr;
@@ -151,22 +153,23 @@ public:
         }
         if(thread == nullptr){
             std::cerr << "Ring Buffer error: getID with non-exist thread id!" <<std::endl;
-            return false;
+            return data;
         }
 
         std::unique_lock<std::mutex> lock(thread->mutex_);
         thread->cv_.wait(lock, [this,thread,&pos]{return this->signalBuffer_[pos] || thread->stop_;});
         if(thread->stop_){
             std::cout << "Ring Buffer log: thread " << thread_id << " stop." <<std::endl;
-            return false;
+            return data;
         }
 
-        memcpy(data_addr, this->buffer_ + pos*this->dataLen_, this->dataLen_);
+        data = std::string(this->buffer_ + pos*this->dataLen_, this->dataLen_);
+        // memcpy(data_addr, this->buffer_ + pos*this->dataLen_, this->dataLen_);
         this->signalBuffer_[pos] = false;
         for(auto t:this->readThreads){
             t->cv_.notify_one();
         }
-        return true;
+        return data;
     } 
 };
 

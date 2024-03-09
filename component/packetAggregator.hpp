@@ -6,6 +6,7 @@
 #include "../lib/util.hpp"
 #include <unordered_map>
 #include <unordered_set>
+#define FLOW_META_NUM 4
 
 struct FlowMetadata{
     std::string sourceAddress;
@@ -42,7 +43,7 @@ class PacketAggregator{
     // read and write to next
     ArrayList<u_int32_t>* packetPointer;
     // write only, default should be srcip(4B), dstip(4B), srcport(2B), dstport(2B)
-    // std::vector<RingBuffer*>* flowIndexBuffers;
+    std::vector<RingBuffer*>* flowMetaIndexBuffers;
 
     // thread member
     u_int32_t readPos;
@@ -55,15 +56,17 @@ class PacketAggregator{
     //return last packet, max for first
     u_int32_t addPacketToMap(FlowMetadata meta, u_int32_t pos);
     bool writeNextToPacketPointer(u_int32_t last, u_int32_t now);
-    // CopyCharData* getDefaultFlowIndex(char* packet);
-    // bool writeFlowIndexToIndexBuffer(FlowMetadata meta, u_int32_t pos);
+    bool writeFlowMetaIndexToIndexBuffer(FlowMetadata meta, u_int32_t pos);
 public:
-    PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer):eth_header_len(eth_header_len){
+    PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers):eth_header_len(eth_header_len){
         this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
         this->IDSet = std::unordered_set<u_int8_t>();
         this->packetBuffer = packetBuffer;
         this->packetPointer = packetPointer;
-        // this->flowIndexBuffers = flowIndexBuffers;
+        this->flowMetaIndexBuffers = flowMetaIndexBuffers;
+        if(this->flowMetaIndexBuffers->size()!=FLOW_META_NUM){
+            std::cout << "Packet aggregator warning: flow meta number not equal." <<std::endl;
+        }
         this->threadID = std::numeric_limits<uint32_t>::max();
         this->readPos = 0;
         this->stop = true;

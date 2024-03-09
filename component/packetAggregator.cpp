@@ -78,7 +78,30 @@ bool PacketAggregator::writeNextToPacketPointer(u_int32_t last, u_int32_t now){
     return this->packetPointer->changeNextMultiThread(last,now);
 }
 
-
+bool PacketAggregator::writeFlowMetaIndexToIndexBuffer(FlowMetadata meta, u_int32_t pos){
+    if(this->flowMetaIndexBuffers->size()!=FLOW_META_NUM){
+        std::cout << "Packet aggregator error: writeFlowMetaIndexToIndexBuffer when flow meta number not equal." <<std::endl;
+        return false;
+    }
+    for(int i = 0; i<FLOW_META_NUM; ++i){
+        switch (i){
+        case 0:
+            (*this->flowMetaIndexBuffers)[i]->put(meta.sourceAddress.c_str(),this->threadID,meta.sourceAddress.size());
+            break;
+        case 1:
+            (*this->flowMetaIndexBuffers)[i]->put(meta.destinationAddress.c_str(),this->threadID,meta.destinationAddress.size());
+            break;
+        case 2:
+            (*this->flowMetaIndexBuffers)[i]->put(&meta.sourcePort,this->threadID,sizeof(meta.sourcePort));
+            break;
+        case 3:
+            (*this->flowMetaIndexBuffers)[i]->put(&meta.destinationPort,this->threadID,sizeof(meta.destinationPort));
+            break;
+        default:
+            break;
+        }
+    }
+}
 
 void PacketAggregator::setThreadID(u_int32_t threadID){
     this->threadID = threadID;
