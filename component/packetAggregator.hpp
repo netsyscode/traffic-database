@@ -2,6 +2,7 @@
 #define PACKETAGGREGATOR_HPP_
 #include "../lib/shareBuffer.hpp"
 #include "../lib/arrayList.hpp"
+#include "../lib/ringBuffer.hpp"
 #include <unordered_map>
 #include <unordered_set>
 
@@ -41,6 +42,8 @@ class PacketAggregator{
     ShareBuffer* packetBuffer;
     // read and write to next
     ArrayList<u_int32_t>* packetPointer;
+    // write only, use void because each has diffrent type
+    
 
     // thread member
     u_int32_t readPos;

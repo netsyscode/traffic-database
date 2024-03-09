@@ -13,37 +13,32 @@ struct RingBufferThreadPointer{
     std::atomic_bool stop_;
 };
 
-template <class T>
+// template <class T>
 struct RingBufferData{
-    T data;
+    char* data;
     u_int8_t err;
 };
 
-template <class T>
+// template <class T>
 class RingBuffer{
-    T* buffer_;
+    char* buffer_;
     bool* signalBuffer_; // record if writed
     const u_int32_t capacity_;
-    // std::atomic_uint32_t size_;
+    const u_int32_t dataLen_; // length of each data
+
     std::atomic_uint32_t readPos_;
     std::atomic_uint32_t writePos_;
-    
-    // std::condition_variable notEmpty_;
-    // std::condition_variable notFull_;
 
     std::vector<RingBufferThreadPointer*> readThreads;
     std::vector<RingBufferThreadPointer*> writeThreads;
-
-    // std::atomic_uint32_t writeThreadCount;
-    // std::atomic_uint32_t readThreadCount;
 public:
-    RingBuffer(u_int32_t capacity) : capacity_(capacity){
-        this->buffer_ = new T[capacity];
+    RingBuffer(u_int32_t capacity, u_int32_t dataLen) : capacity_(capacity),dataLen_(dataLen){
+        this->buffer_ = new char[capacity*dataLen];
         this->signalBuffer_ = new bool[capacity];
         this->readPos_ = 0;
         this->writePos_ = 0;
-        this->writeThreadCount = 0;
-        this->readThreadCount = 0;
+        this->readThreads = std::vector<RingBufferThreadPointer*>();
+        this->writeThreads = std::vector<RingBufferThreadPointer*>();
     }
     ~RingBuffer(){
         if(this->writeThreads.size() || this->readThreads.size()){
@@ -62,7 +57,7 @@ public:
         this->writeThreads.push_back(thread);
         return true;
     }
-    void ereaseWriteThread(){
+    bool ereaseWriteThread(RingBufferThreadPointer* thread){
         for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->writeThreads.erase(it);
@@ -72,7 +67,7 @@ public:
         std::cerr << "Ring Buffer error: ereaseWriteThread with non-exist id!" <<std::endl;
         return false;
     }
-    void addReadThread(){
+    bool addReadThread(RingBufferThreadPointer* thread){
         for(auto t:this->readThreads){
             if(t->id == thread->id){
                 std::cerr << "Ring Buffer error: addReadThread with exist id!" <<std::endl;
@@ -83,7 +78,7 @@ public:
         this->readThreads.push_back(thread);
         return true;
     }
-    void ereaseReadThread(){
+    bool ereaseReadThread(RingBufferThreadPointer* thread){
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->readThreads.erase(it);
@@ -93,12 +88,12 @@ public:
         std::cerr << "Ring Buffer error: ereaseReadThread with non-exist id!" <<std::endl;
         return false;
     }
-    void put(T data, u_int32_t thread_id){
+    void put(const char* data, u_int32_t thread_id){
         u_int32_t pos = this->writePos_++;// notice writePos is an automic variable
-        this->writePos_ %= this->capacity_;
+        this->writePos_ = this->writePos_ % this->capacity_;
         pos %= this->capacity_;
         if(!this->signalBuffer_[pos]){//not writed
-            this->buffer_[pos] = data;
+            memcpy(this->buffer_ + pos*this->dataLen_, data, this->dataLen_);
             this->signalBuffer_[pos] = true;
             for(auto t:this->readThreads){
                 t->cv_.notify_one();
@@ -119,28 +114,30 @@ public:
         }
 
         std::unique_lock<std::mutex> lock(thread->mutex_);
-        thread->cv_.wait(lock, [this,thread]{return !(this->signalBuffer_[pos]) || thread->stop_});
+        thread->cv_.wait(lock, [this,thread,&pos]{return !(this->signalBuffer_[pos]) || thread->stop_;});
         if(thread->stop_){
             std::cout << "Ring Buffer log: thread " << thread_id << " stop." <<std::endl;
             return;
         }
-        this->buffer_[pos] = data;
+        memcpy(this->buffer_ + pos*this->dataLen_, data, this->dataLen_);
         this->signalBuffer_[pos] = true;
         for(auto t:this->readThreads){
             t->cv_.notify_one();
         }
         return;
     }
-    RingBufferData<T> get(u_int32_t thread_id){
-        RingBufferData<T> data = {
-            .data = T(),
+    RingBufferData get(u_int32_t thread_id){
+        RingBufferData data = {
+            .data = nullptr,
             .err = 0,
         };
         u_int32_t pos = this->readPos_++; // notice readPos is an automic variable
-        this->readPos_ %= this->capacity_;
+        this->readPos_ = this->readPos_ % this->capacity_;
         pos %= this->capacity_;
         if(this->signalBuffer_[pos]){//writed
-            data.data = this->buffer_[pos];
+            // data.data = this->buffer_[pos];
+            data.data = new char[this->dataLen_];
+            memcpy(data.data, this->buffer_ + pos*this->dataLen_, this->dataLen_);
             this->signalBuffer_[pos] = false;
             for(auto t:this->writeThreads){
                 t->cv_.notify_one();
@@ -162,13 +159,14 @@ public:
         }
 
         std::unique_lock<std::mutex> lock(thread->mutex_);
-        thread->cv_.wait(lock, [this,thread]{return this->signalBuffer_[pos] || thread->stop_});
+        thread->cv_.wait(lock, [this,thread,&pos]{return this->signalBuffer_[pos] || thread->stop_;});
         if(thread->stop_){
             std::cout << "Ring Buffer log: thread " << thread_id << " stop." <<std::endl;
             data.err = 2;
             return data;
         }
-        data.data = this->buffer_[pos];
+        data.data = new char[this->dataLen_];
+        memcpy(data.data, this->buffer_ + pos*this->dataLen_, this->dataLen_);
         this->signalBuffer_[pos] = false;
         for(auto t:this->readThreads){
             t->cv_.notify_one();
