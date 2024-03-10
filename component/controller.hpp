@@ -5,6 +5,7 @@
 #include <vector>
 #include "../lib/arrayList.hpp"
 #include "../lib/shareBuffer.hpp"
+#include "../lib/ringBuffer.hpp"
 #include "pcapReader.hpp"
 #include "packetAggregator.hpp"
 
@@ -16,6 +17,7 @@ struct InitData{
     u_int32_t pcap_header_len;
     u_int32_t eth_header_len;
     std::string filename;
+    u_int32_t flow_capacity;
     u_int32_t threadCount;
 };
 
@@ -28,6 +30,7 @@ class MultiThreadController{
     //memory
     ShareBuffer* packetBuffer;
     ArrayList<u_int32_t>* packetPointer;
+    std::vector<RingBuffer*>* flowMetaIndexBuffers;
 
     //component
     PcapReader* traceCatcher;
@@ -40,6 +43,7 @@ class MultiThreadController{
 
     void makePacketBuffer(u_int32_t maxLength, u_int32_t warningLength);
     void makePacketPointer(u_int32_t maxLength, u_int32_t warningLength);
+    void makeFlowMetaIndexBuffers(u_int32_t capacity, std::vector<u_int32_t> ele_lens);
     void makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename);
     void pushPacketAggregatorInit(u_int32_t eth_header_len);
     void allocateID();
@@ -54,6 +58,7 @@ public:
     MultiThreadController(){
         this->packetBuffer = nullptr;
         this->packetPointer = nullptr;
+        this->flowMetaIndexBuffers = nullptr;
         this->traceCatcher = nullptr;
         this->packetAggregators = std::vector<PacketAggregator*>();
         this->traceCatcherThread = nullptr;
@@ -68,6 +73,9 @@ public:
         for(int i=0;i<this->packetAggregatorThreads.size();++i){
             this->packetAggregators[i]->asynchronousStop();
             this->packetPointer->asynchronousStop(this->threadReadPointers[i]->id);
+            for(auto rb:*(this->flowMetaIndexBuffers)){
+                rb->asynchronousStop(this->threadReadPointers[i]->id);
+            }
             this->packetAggregatorThreads[i]->join();
             delete this->packetAggregatorThreads[i];
         }
@@ -75,6 +83,9 @@ public:
 
         for(auto t:this->threadReadPointers){
             this->packetPointer->ereaseReadThread(t);
+            for(auto rb:*(this->flowMetaIndexBuffers)){
+                rb->ereaseWriteThread(t);
+            }
             delete t;
         }
         this->threadReadPointers.clear();
@@ -94,6 +105,13 @@ public:
         }
         if(this->packetPointer!=nullptr){
             delete this->packetPointer;
+        }
+        if(this->flowMetaIndexBuffers!=nullptr){
+            for(auto rb:*(this->flowMetaIndexBuffers)){
+                delete rb;
+            }
+            this->flowMetaIndexBuffers->clear();
+            delete this->flowMetaIndexBuffers;
         }
     }
     void init(InitData init_data);

@@ -241,7 +241,7 @@ public:
                 return;
             }
         }
-        std::cerr << "Array list error: ereaseReadThread with non-exist id!" <<std::endl;
+        std::cerr << "Array list error: asynchronousStop with non-exist id!" <<std::endl;
     }
 };
 

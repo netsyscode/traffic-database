@@ -171,6 +171,39 @@ public:
         }
         return data;
     } 
+    //output with copy
+    std::string OutputToChar(){
+        std::string data = std::string();
+        if(this->readThreads.size() || this->readThreads.size()){
+            std::cerr << "Ring buffer error: outputToChar while it is used by certain thread!" <<std::endl;
+            return data;
+        }
+        u_int32_t len = (this->writePos_ + this->capacity_ - this->readPos_) % this->capacity_ ;
+        if(this->writePos_ >= this->readPos_){
+            data = std::string(this->buffer_ + this->readPos_, len);
+        }else{
+            data = std::string(this->buffer_ + this->readPos_, this->capacity_ - this->readPos_) +
+                    std::string(this->buffer_, this->writePos_);
+        }
+        return data;
+    }
+    void asynchronousStop(u_int32_t threadID){
+        for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
+            if((*(it))->id == threadID){
+                (*(it))->stop_ = true;
+                (*(it))->cv_.notify_one();
+                return;
+            }
+        }
+        for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
+            if((*(it))->id == threadID){
+                (*(it))->stop_ = true;
+                (*(it))->cv_.notify_one();
+                return;
+            }
+        }
+        std::cerr << "Ring buffer error: asynchronousStop with non-exist id!" <<std::endl;
+    }
 };
 
 #endif

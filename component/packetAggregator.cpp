@@ -84,23 +84,41 @@ bool PacketAggregator::writeFlowMetaIndexToIndexBuffer(FlowMetadata meta, u_int3
         return false;
     }
     for(int i = 0; i<FLOW_META_NUM; ++i){
+        char* input;
         switch (i){
         case 0:
-            (*this->flowMetaIndexBuffers)[i]->put(meta.sourceAddress.c_str(),this->threadID,meta.sourceAddress.size());
+            input = new char[meta.sourceAddress.size()+sizeof(pos)];
+            memcpy(input,meta.sourceAddress.c_str(),meta.sourceAddress.size());
+            memcpy(input+meta.sourceAddress.size(),&pos,sizeof(pos));
+            (*this->flowMetaIndexBuffers)[i]->put(input,this->threadID,meta.sourceAddress.size()+sizeof(pos));
+            delete[] input;
             break;
         case 1:
-            (*this->flowMetaIndexBuffers)[i]->put(meta.destinationAddress.c_str(),this->threadID,meta.destinationAddress.size());
+            input = new char[meta.destinationAddress.size()+sizeof(pos)];
+            memcpy(input,meta.destinationAddress.c_str(),meta.destinationAddress.size());
+            memcpy(input+meta.destinationAddress.size(),&pos,sizeof(pos));
+            (*this->flowMetaIndexBuffers)[i]->put(input,this->threadID,meta.destinationAddress.size()+sizeof(pos));
+            delete[] input;
             break;
         case 2:
-            (*this->flowMetaIndexBuffers)[i]->put(&meta.sourcePort,this->threadID,sizeof(meta.sourcePort));
+            input = new char[sizeof(meta.sourcePort)+sizeof(pos)];
+            memcpy(input,&meta.sourcePort,sizeof(meta.sourcePort));
+            memcpy(input+sizeof(meta.sourcePort),&pos,sizeof(pos));
+            (*this->flowMetaIndexBuffers)[i]->put(input,this->threadID,sizeof(meta.sourcePort)+sizeof(pos));
+            delete[] input;
             break;
         case 3:
-            (*this->flowMetaIndexBuffers)[i]->put(&meta.destinationPort,this->threadID,sizeof(meta.destinationPort));
+            input = new char[sizeof(meta.destinationPort)+sizeof(pos)];
+            memcpy(input,&meta.destinationPort,sizeof(meta.destinationPort));
+            memcpy(input+sizeof(meta.destinationPort),&pos,sizeof(pos));
+            (*this->flowMetaIndexBuffers)[i]->put(input,this->threadID,sizeof(meta.destinationPort)+sizeof(pos));
+            delete[] input;
             break;
         default:
             break;
         }
     }
+    return true;
 }
 
 void PacketAggregator::setThreadID(u_int32_t threadID){
@@ -143,6 +161,12 @@ void PacketAggregator::run(){
         // std::cout << this->readPos - 1 << " " << last << std::endl;
         if(!this->writeNextToPacketPointer(last,this->readPos - 1)){
             break;
+        }
+
+        if(last == std::numeric_limits<uint32_t>::max()){ //new flow
+            if(!this->writeFlowMetaIndexToIndexBuffer(meta,this->readPos - 1)){
+                break;
+            }
         }
     }
     std::cout << "Packet aggregator log: thread " << this->threadID << " quit." << std::endl;

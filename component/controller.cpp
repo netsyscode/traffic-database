@@ -1,5 +1,6 @@
 #include "controller.hpp"
 #define IDSIZE 256
+#define FLOW_META_NUM 4
 
 void MultiThreadController::makePacketBuffer(u_int32_t maxLength, u_int32_t warningLength){
     this->packetBuffer = new ShareBuffer(maxLength,warningLength);
@@ -7,12 +8,19 @@ void MultiThreadController::makePacketBuffer(u_int32_t maxLength, u_int32_t warn
 void MultiThreadController::makePacketPointer(u_int32_t maxLength, u_int32_t warningLength){
     this->packetPointer = new ArrayList<uint32_t>(maxLength,warningLength);
 }
+void MultiThreadController::makeFlowMetaIndexBuffers(u_int32_t capacity, std::vector<u_int32_t> ele_lens){
+    this->flowMetaIndexBuffers = new std::vector<RingBuffer*>();
+    for(auto len:ele_lens){
+        RingBuffer* ring_buffer = new RingBuffer(capacity, len);
+        this->flowMetaIndexBuffers->push_back(ring_buffer);
+    }
+}
 void MultiThreadController::makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename){
     this->traceCatcher = new PcapReader(pcap_header_len,eth_header_len,filename,this->packetBuffer,this->packetPointer);
     this->packetPointer->addWriteThread();
 }
 void MultiThreadController::pushPacketAggregatorInit(u_int32_t eth_header_len){
-    PacketAggregator* aggregator = new PacketAggregator(eth_header_len, this->packetBuffer, this->packetPointer);
+    PacketAggregator* aggregator = new PacketAggregator(eth_header_len, this->packetBuffer, this->packetPointer, this->flowMetaIndexBuffers);
     ThreadReadPointer* read_pointer = new ThreadReadPointer{(u_int32_t)(this->threadReadPointers.size()), std::mutex(), std::condition_variable(), std::atomic_bool(false)};
     if(!this->packetPointer->addReadThread(read_pointer)){
         return;
@@ -20,6 +28,11 @@ void MultiThreadController::pushPacketAggregatorInit(u_int32_t eth_header_len){
     aggregator->setThreadID(read_pointer->id);
     this->packetAggregators.push_back(aggregator);
     this->threadReadPointers.push_back(read_pointer);
+    for(auto rb:*(this->flowMetaIndexBuffers)){
+        if(!rb->addWriteThread(read_pointer)){
+            return;
+        }
+    }
 };
 void MultiThreadController::allocateID(){
     u_int32_t tmp = 0;
@@ -56,6 +69,9 @@ void MultiThreadController::threadsStop(){
     for(int i=0;i<this->packetAggregatorThreads.size();++i){
         this->packetAggregators[i]->asynchronousStop();
         this->packetPointer->asynchronousStop(this->threadReadPointers[i]->id);
+        for(auto rb:*(this->flowMetaIndexBuffers)){
+            rb->asynchronousStop(this->threadReadPointers[i]->id);
+        }
         this->packetAggregatorThreads[i]->join();
         delete this->packetAggregatorThreads[i];
     }
@@ -64,6 +80,9 @@ void MultiThreadController::threadsStop(){
 void MultiThreadController::threadsClear(){
     for(auto t:this->threadReadPointers){
         this->packetPointer->ereaseReadThread(t);
+        for(auto rb:*(this->flowMetaIndexBuffers)){
+            rb->ereaseWriteThread(t);
+        }
         delete t;
     }
     this->threadReadPointers.clear();
@@ -82,6 +101,10 @@ void MultiThreadController::threadsClear(){
 void MultiThreadController::init(InitData init_data){
     this->makePacketBuffer(init_data.buffer_len,init_data.buffer_warn);
     this->makePacketPointer(init_data.packet_num,init_data.packet_warn);
+
+    std::vector<u_int32_t> ele_lens = {4 + sizeof(u_int32_t), 4 + sizeof(u_int32_t), 2 + sizeof(u_int32_t), 2 + sizeof(u_int32_t)};
+    this->makeFlowMetaIndexBuffers(init_data.flow_capacity,ele_lens);
+
     this->makeTraceCatcher(init_data.pcap_header_len,init_data.eth_header_len,init_data.filename);
     for(int i=0;i<init_data.threadCount;++i){
         this->pushPacketAggregatorInit(init_data.eth_header_len);
