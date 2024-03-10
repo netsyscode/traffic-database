@@ -17,6 +17,7 @@ const u_int32_t buffer_warn = 3*1024*1024;
 const u_int32_t packet_warn = 8000;
 const u_int32_t pcap_header_len = 24;
 const u_int32_t eth_header_len = 14;
+const u_int32_t flow_capacity = 5e3;
 const std::string filename = "./data/source/pcap.pcap";
 const std::string out_filename = "./data/output/pcap_multithread.pcap";
 
@@ -66,6 +67,7 @@ void multitest(){
         .pcap_header_len = pcap_header_len,
         .eth_header_len = eth_header_len,
         .filename = filename,
+        .flow_capacity = flow_capacity,
         .threadCount = 4,
     };
     controller->init(init_data);
@@ -74,9 +76,14 @@ void multitest(){
     OutputData data = controller->outputForTest();
     ShareBuffer* packetBuffer = data.packetBuffer;
     ArrayList<u_int32_t>* packetPointer = data.packetPointer;
+    std::vector<RingBuffer*>* flowMetaIndexBuffers = data.flowMetaIndexBuffers;
     std::string buffer_data = packetBuffer->outputToChar();
     std::string pointer_data = packetPointer->outputToChar();
-
+    std::vector<std::string> index_datas;
+    for(auto rb:*flowMetaIndexBuffers){
+        index_datas.push_back(rb->outputToChar());
+    }
+    
     delete controller;
 
     std::ofstream outputFile(out_filename, std::ios::binary);
@@ -101,6 +108,10 @@ void multitest(){
         next = node_list[pos].next;
     }
     outputFile.close();
+
+    for(auto s:index_datas){
+        std::cout<<s.size()<<std::endl;
+    }
 }
 
 int main(){

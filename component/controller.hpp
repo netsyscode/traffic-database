@@ -24,6 +24,7 @@ struct InitData{
 struct OutputData{
     ShareBuffer* packetBuffer;
     ArrayList<u_int32_t>* packetPointer;
+    std::vector<RingBuffer*>* flowMetaIndexBuffers;
 };
 
 class MultiThreadController{

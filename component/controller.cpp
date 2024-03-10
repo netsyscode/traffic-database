@@ -131,6 +131,7 @@ const OutputData MultiThreadController::outputForTest(){
     const OutputData data = {
         .packetBuffer = this->packetBuffer,
         .packetPointer = this->packetPointer,
+        .flowMetaIndexBuffers = this->flowMetaIndexBuffers,
     };
     return data;
 }

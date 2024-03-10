@@ -22,7 +22,10 @@
 ### ringBuffer.hpp
 * 用于在暂存index的键值（index buffer，见./doc/fig/input.png）
 * 支持多线程竞争写入与读出
-* 待测试
+* 为支持多线程快速写入与读出，使用原子操作改变writePos和readPos，不取模
+	* 使用std::atomic_uint64_t，最大支持16EB的总数据量
+	* 对于数据库而言仍需要（截断时）刷新
+* 写入已测试，读出待测试
 
 ### shareBuffer.hpp
 * Packet Buffer底层结构，核心为char数组
