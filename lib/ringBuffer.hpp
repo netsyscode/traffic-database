@@ -23,16 +23,16 @@ class RingBuffer{
     std::atomic_uint64_t readPos_;
     std::atomic_uint64_t writePos_;
 
-    std::vector<ThreadReadPointer*> readThreads;
-    std::vector<ThreadReadPointer*> writeThreads;
+    std::vector<ThreadPointer*> readThreads;
+    std::vector<ThreadPointer*> writeThreads;
 public:
     RingBuffer(u_int32_t capacity, u_int32_t dataLen) : capacity_(capacity),dataLen_(dataLen){
         this->buffer_ = new char[capacity*dataLen];
         this->signalBuffer_ = new bool[capacity]();
         this->readPos_ = 0;
         this->writePos_ = 0;
-        this->readThreads = std::vector<ThreadReadPointer*>();
-        this->writeThreads = std::vector<ThreadReadPointer*>();
+        this->readThreads = std::vector<ThreadPointer*>();
+        this->writeThreads = std::vector<ThreadPointer*>();
     }
     ~RingBuffer(){
         if(this->writeThreads.size() || this->readThreads.size()){
@@ -40,7 +40,7 @@ public:
         }
         delete[] buffer_;
     }
-    bool addWriteThread(ThreadReadPointer* thread){
+    bool addWriteThread(ThreadPointer* thread){
         for(auto t:this->writeThreads){
             if(t->id == thread->id){
                 std::cerr << "Ring Buffer error: addWriteThread with exist id!" <<std::endl;
@@ -51,7 +51,7 @@ public:
         this->writeThreads.push_back(thread);
         return true;
     }
-    bool ereaseWriteThread(ThreadReadPointer* thread){
+    bool ereaseWriteThread(ThreadPointer* thread){
         for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->writeThreads.erase(it);
@@ -61,7 +61,7 @@ public:
         std::cerr << "Ring Buffer error: ereaseWriteThread with non-exist id!" <<std::endl;
         return false;
     }
-    bool addReadThread(ThreadReadPointer* thread){
+    bool addReadThread(ThreadPointer* thread){
         for(auto t:this->readThreads){
             if(t->id == thread->id){
                 std::cerr << "Ring Buffer error: addReadThread with exist id!" <<std::endl;
@@ -72,7 +72,7 @@ public:
         this->readThreads.push_back(thread);
         return true;
     }
-    bool ereaseReadThread(ThreadReadPointer* thread){
+    bool ereaseReadThread(ThreadPointer* thread){
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->readThreads.erase(it);
@@ -102,7 +102,7 @@ public:
             return true;
         }
         
-        ThreadReadPointer* thread = nullptr;
+        ThreadPointer* thread = nullptr;
         for(auto t:this->writeThreads){
             if(t->id == thread_id){
                 thread = t;
@@ -118,10 +118,11 @@ public:
         // thread->cv_.wait(lock, [this,thread,&pos]{return !(this->signalBuffer_[pos]) || thread->stop_;});
         // thread should not stop while putting elements
         thread->cv_.wait(lock, [this,thread,&pos]{return !(this->signalBuffer_[pos]);});
-        if(thread->stop_){
-            std::cout << "Ring Buffer log: write thread " << thread_id << " stop." <<std::endl;
-            return false;
-        }
+        // if(thread->stop_){
+        //     std::cout << "Ring Buffer log: write thread " << thread_id << " stop." <<std::endl;
+        //     return false;
+        // }
+        std::cout << pos <<std::endl;
         memcpy(this->buffer_ + pos*this->dataLen_, data, this->dataLen_);
         this->signalBuffer_[pos] = true;
         for(auto t:this->readThreads){
@@ -132,10 +133,6 @@ public:
         // return false;
     }
     std::string get(u_int32_t thread_id){
-        // if(len!= this->dataLen_){
-        //     std::cerr << "Ring Buffer error: get with error len!" <<std::endl;
-        //     return false;
-        // }
         std::string data = std::string();
         u_int64_t pos = this->readPos_++; // notice readPos is an automic variable
         // this->readPos_ = this->readPos_ % this->capacity_;
@@ -150,8 +147,8 @@ public:
             return data;
         }
 
-        ThreadReadPointer* thread = nullptr;
-        for(auto t:this->writeThreads){
+        ThreadPointer* thread = nullptr;
+        for(auto t:this->readThreads){
             if(t->id == thread_id){
                 thread = t;
                 break;
@@ -166,33 +163,33 @@ public:
         thread->cv_.wait(lock, [this,thread,&pos]{return this->signalBuffer_[pos] || thread->stop_;});
         if(thread->stop_){
             std::cout << "Ring Buffer log: thread " << thread_id << " stop." <<std::endl;
-            return data;
+            return std::string();
         }
 
         data = std::string(this->buffer_ + pos*this->dataLen_, this->dataLen_);
-        // memcpy(data_addr, this->buffer_ + pos*this->dataLen_, this->dataLen_);
         this->signalBuffer_[pos] = false;
         for(auto t:this->readThreads){
             t->cv_.notify_one();
         }
         return data;
     } 
-    //output with copy
-    std::string outputToChar(){
-        std::string data = std::string();
-        if(this->readThreads.size() || this->readThreads.size()){
-            std::cerr << "Ring buffer error: outputToChar while it is used by certain thread!" <<std::endl;
-            return data;
-        }
-        u_int32_t len = (this->writePos_ + this->capacity_ - this->readPos_) % this->capacity_ ;
-        if(this->writePos_ >= this->readPos_){
-            data = std::string(this->buffer_ + this->readPos_, len);
-        }else{
-            data = std::string(this->buffer_ + this->readPos_, this->capacity_ - this->readPos_) +
-                    std::string(this->buffer_, this->writePos_);
-        }
-        return data;
-    }
+    // this function is used for phased test, and it should not be used if there is more than 1 read thread.
+    // std::string outputToChar(){
+    //     std::string data = std::string();
+    //     if(this->readThreads.size() || this->readThreads.size()){
+    //         std::cerr << "Ring buffer error: outputToChar while it is used by certain thread!" <<std::endl;
+    //         return data;
+    //     }
+    //     std::cout << this->writePos_ << " " << this->readPos_ << std::endl;
+    //     u_int32_t len = (this->writePos_ + this->capacity_ - this->readPos_) % this->capacity_ ;
+    //     if(this->writePos_ >= this->readPos_){
+    //         data = std::string(this->buffer_ + this->readPos_, len);
+    //     }else{
+    //         data = std::string(this->buffer_ + this->readPos_, this->capacity_ - this->readPos_) +
+    //                 std::string(this->buffer_, this->writePos_);
+    //     }
+    //     return data;
+    // }
     void asynchronousStop(u_int32_t threadID){
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == threadID){
@@ -201,14 +198,15 @@ public:
                 return;
             }
         }
-        for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
-            if((*(it))->id == threadID){
-                (*(it))->stop_ = true;
-                (*(it))->cv_.notify_one();
-                return;
-            }
-        }
         std::cerr << "Ring buffer error: asynchronousStop with non-exist id!" <<std::endl;
+    }
+    // readPos - writePos, just for test
+    int getPosDiff()const{
+        if(this->readThreads.size() || this->readThreads.size()){
+            std::cerr << "Ring buffer error: outputToChar while it is used by certain thread!" <<std::endl;
+            return -1;
+        }
+        return (int)this->readPos_ - (int)this->writePos_;
     }
 };
 

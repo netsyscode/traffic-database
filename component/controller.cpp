@@ -13,6 +13,8 @@ void MultiThreadController::makeFlowMetaIndexBuffers(u_int32_t capacity, std::ve
     for(auto len:ele_lens){
         RingBuffer* ring_buffer = new RingBuffer(capacity, len);
         this->flowMetaIndexBuffers->push_back(ring_buffer);
+        this->flowMetaIndexGenerators.push_back(std::vector<IndexGenerator*>());
+        this->flowMetaIndexGeneratorPointers.push_back(std::vector<ThreadPointer*>());
     }
 }
 void MultiThreadController::makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename){
@@ -21,19 +23,33 @@ void MultiThreadController::makeTraceCatcher(u_int32_t pcap_header_len, u_int32_
 }
 void MultiThreadController::pushPacketAggregatorInit(u_int32_t eth_header_len){
     PacketAggregator* aggregator = new PacketAggregator(eth_header_len, this->packetBuffer, this->packetPointer, this->flowMetaIndexBuffers);
-    ThreadReadPointer* read_pointer = new ThreadReadPointer{(u_int32_t)(this->threadReadPointers.size()), std::mutex(), std::condition_variable(), std::atomic_bool(false)};
+    ThreadPointer* read_pointer = new ThreadPointer{(u_int32_t)(this->packetAggregatorPointers.size()), std::mutex(), std::condition_variable(), std::atomic_bool(false)};
     if(!this->packetPointer->addReadThread(read_pointer)){
         return;
     }
-    aggregator->setThreadID(read_pointer->id);
-    this->packetAggregators.push_back(aggregator);
-    this->threadReadPointers.push_back(read_pointer);
     for(auto rb:*(this->flowMetaIndexBuffers)){
         if(!rb->addWriteThread(read_pointer)){
             return;
         }
     }
+    aggregator->setThreadID(read_pointer->id);
+    this->packetAggregators.push_back(aggregator);
+    this->packetAggregatorPointers.push_back(read_pointer);
 };
+void MultiThreadController::pushFlowMetaIndexGeneratorInit(){
+    for(int i=0;i<this->flowMetaIndexBuffers->size();++i){
+        IndexGenerator* generator = new IndexGenerator((*(this->flowMetaIndexBuffers))[i]);
+        ThreadPointer* write_pointer = new ThreadPointer{
+            (u_int32_t)(this->flowMetaIndexGeneratorPointers[i].size()*this->flowMetaIndexBuffers->size() + i), 
+            std::mutex(), std::condition_variable(), std::atomic_bool(false)};
+        if(!(*(this->flowMetaIndexBuffers))[i]->addReadThread(write_pointer)){
+            return;
+        }
+        generator->setThreadID(write_pointer->id);
+        this->flowMetaIndexGenerators[i].push_back(generator);
+        this->flowMetaIndexGeneratorPointers[i].push_back(write_pointer);
+    }
+}
 void MultiThreadController::allocateID(){
     u_int32_t tmp = 0;
     u_int32_t threadCount = this->packetAggregators.size();
@@ -53,9 +69,18 @@ void MultiThreadController::allocateID(){
 }
 void MultiThreadController::threadsRun(){
     this->traceCatcherThread = new std::thread(&PcapReader::run,this->traceCatcher);
+
     for(auto agg:this->packetAggregators){
         std::thread* t = new std::thread(&PacketAggregator::run,agg);
         this->packetAggregatorThreads.push_back(t);
+    }
+
+    for(int i=0; i<this->flowMetaIndexGenerators.size();++i){
+        this->flowMetaIndexGeneratorThreads.push_back(std::vector<std::thread*>());
+        for(auto ger:this->flowMetaIndexGenerators[i]){
+            std::thread* t = new std::thread(&IndexGenerator::run,ger);
+            this->flowMetaIndexGeneratorThreads[i].push_back(t);
+        }
     }
 }
 
@@ -66,31 +91,61 @@ void MultiThreadController::threadsStop(){
         delete this->traceCatcherThread;
         this->traceCatcherThread = nullptr;
     }
+
     for(int i=0;i<this->packetAggregatorThreads.size();++i){
+        // std::cout << "Controller log: thread " << this->packetAggregatorPointers[i]->id << " should stop." <<std::endl;
         this->packetAggregators[i]->asynchronousStop();
-        this->packetPointer->asynchronousStop(this->threadReadPointers[i]->id);
-        for(auto rb:*(this->flowMetaIndexBuffers)){
-            rb->asynchronousStop(this->threadReadPointers[i]->id);
-        }
+        this->packetPointer->asynchronousStop(this->packetAggregatorPointers[i]->id);
+        // for(auto rb:*(this->flowMetaIndexBuffers)){
+        //     rb->asynchronousStop(this->packetAggregatorPointers[i]->id);
+        // }
         this->packetAggregatorThreads[i]->join();
         delete this->packetAggregatorThreads[i];
     }
     this->packetAggregatorThreads.clear();
+
+    for(int i=0;i<this->flowMetaIndexGeneratorThreads.size();++i){
+        for(int j=0;j<this->flowMetaIndexGeneratorThreads[i].size();++j){
+            // std::cout << "Controller log: read thread " << this->flowMetaIndexGeneratorPointers[i][j]->id << " should stop." <<std::endl;
+            this->flowMetaIndexGenerators[i][j]->asynchronousStop();
+            (*(this->flowMetaIndexBuffers))[i]->asynchronousStop(this->flowMetaIndexGeneratorPointers[i][j]->id);
+            this->flowMetaIndexGeneratorThreads[i][j]->join();
+            delete this->flowMetaIndexGeneratorThreads[i][j];
+        }
+        this->flowMetaIndexGeneratorThreads[i].clear();
+    }
+    this->flowMetaIndexGeneratorThreads.clear();
 }
 void MultiThreadController::threadsClear(){
-    for(auto t:this->threadReadPointers){
+    for(int i=0;i<this->flowMetaIndexGeneratorPointers.size();++i){
+        for(auto p:this->flowMetaIndexGeneratorPointers[i]){
+            (*(this->flowMetaIndexBuffers))[i]->ereaseReadThread(p);
+            delete p;
+        }
+        this->flowMetaIndexGeneratorPointers[i].clear();
+    }
+    this->flowMetaIndexGeneratorPointers.clear();
+    for(int i=0;i<this->flowMetaIndexGenerators.size();++i){
+        for(auto p:this->flowMetaIndexGenerators[i]){
+            delete p;
+        }
+        this->flowMetaIndexGenerators[i].clear();
+    }
+    this->flowMetaIndexGenerators.clear();
+
+    for(auto t:this->packetAggregatorPointers){
         this->packetPointer->ereaseReadThread(t);
         for(auto rb:*(this->flowMetaIndexBuffers)){
             rb->ereaseWriteThread(t);
         }
         delete t;
     }
-    this->threadReadPointers.clear();
+    this->packetAggregatorPointers.clear();
     for(auto p:this->packetAggregators){
         delete p;
     }
     this->packetAggregators.clear();
-    // this->packetAggregators.clear();
+    
     if(this->traceCatcher!=nullptr){
         this->packetPointer->ereaseWriteThread();
         delete this->traceCatcher;
@@ -99,6 +154,9 @@ void MultiThreadController::threadsClear(){
 }
 
 void MultiThreadController::init(InitData init_data){
+    // if(this->packetAggregatorsMaxCount > init_data.packetAggregatorThreadCount){
+    //     std::cerr << "Controller error: init with too many packetAggregators!" << std::endl;
+    // }
     this->makePacketBuffer(init_data.buffer_len,init_data.buffer_warn);
     this->makePacketPointer(init_data.packet_num,init_data.packet_warn);
 
@@ -106,10 +164,13 @@ void MultiThreadController::init(InitData init_data){
     this->makeFlowMetaIndexBuffers(init_data.flow_capacity,ele_lens);
 
     this->makeTraceCatcher(init_data.pcap_header_len,init_data.eth_header_len,init_data.filename);
-    for(int i=0;i<init_data.threadCount;++i){
+    for(int i=0;i<init_data.packetAggregatorThreadCount;++i){
         this->pushPacketAggregatorInit(init_data.eth_header_len);
     }
     this->allocateID();
+    for(int i=0;i<init_data.flowMetaIndexGeneratorThreadCountEach;++i){
+        this->pushFlowMetaIndexGeneratorInit();
+    }
     std::cout << "Controller log: init." << std::endl;
 }
 void MultiThreadController::run(){

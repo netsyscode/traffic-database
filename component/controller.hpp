@@ -8,6 +8,7 @@
 #include "../lib/ringBuffer.hpp"
 #include "pcapReader.hpp"
 #include "packetAggregator.hpp"
+#include "indexGenerator.hpp"
 
 struct InitData{
     u_int32_t buffer_len;
@@ -18,7 +19,8 @@ struct InitData{
     u_int32_t eth_header_len;
     std::string filename;
     u_int32_t flow_capacity;
-    u_int32_t threadCount;
+    u_int32_t packetAggregatorThreadCount;
+    u_int32_t flowMetaIndexGeneratorThreadCountEach;
 };
 
 struct OutputData{
@@ -28,6 +30,9 @@ struct OutputData{
 };
 
 class MultiThreadController{
+    // const u_int32_t packetAggregatorsMaxCount = 32;
+    // const u_int32_t flowMetaIndexGeneratorsMaxCount = 128;
+
     //memory
     ShareBuffer* packetBuffer;
     ArrayList<u_int32_t>* packetPointer;
@@ -36,17 +41,21 @@ class MultiThreadController{
     //component
     PcapReader* traceCatcher;
     std::vector<PacketAggregator*> packetAggregators;
-    std::vector<ThreadReadPointer*> threadReadPointers;
+    std::vector<ThreadPointer*> packetAggregatorPointers;
+    std::vector<std::vector<IndexGenerator*>> flowMetaIndexGenerators;
+    std::vector<std::vector<ThreadPointer*>> flowMetaIndexGeneratorPointers;
 
     //thread
     std::thread* traceCatcherThread;
     std::vector<std::thread*> packetAggregatorThreads;
+    std::vector<std::vector<std::thread*>> flowMetaIndexGeneratorThreads;
 
     void makePacketBuffer(u_int32_t maxLength, u_int32_t warningLength);
     void makePacketPointer(u_int32_t maxLength, u_int32_t warningLength);
     void makeFlowMetaIndexBuffers(u_int32_t capacity, std::vector<u_int32_t> ele_lens);
     void makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename);
     void pushPacketAggregatorInit(u_int32_t eth_header_len);
+    void pushFlowMetaIndexGeneratorInit();
     void allocateID();
     void threadsRun();
 
@@ -60,36 +69,72 @@ public:
         this->packetBuffer = nullptr;
         this->packetPointer = nullptr;
         this->flowMetaIndexBuffers = nullptr;
+
         this->traceCatcher = nullptr;
         this->packetAggregators = std::vector<PacketAggregator*>();
+        this->packetAggregatorPointers = std::vector<ThreadPointer*>();
+        this->flowMetaIndexGenerators = std::vector<std::vector<IndexGenerator*>>();
+        this->flowMetaIndexGeneratorPointers = std::vector<std::vector<ThreadPointer*>>();
+
         this->traceCatcherThread = nullptr;
         this->packetAggregatorThreads = std::vector<std::thread*>();
+        this->flowMetaIndexGeneratorThreads = std::vector<std::vector<std::thread*>>();
     }
     ~MultiThreadController(){
+        //thread
         if(this->traceCatcherThread!=nullptr){
             this->traceCatcher->asynchronousStop();
             this->traceCatcherThread->join();
             delete this->traceCatcherThread;
         }
+
         for(int i=0;i<this->packetAggregatorThreads.size();++i){
             this->packetAggregators[i]->asynchronousStop();
-            this->packetPointer->asynchronousStop(this->threadReadPointers[i]->id);
-            for(auto rb:*(this->flowMetaIndexBuffers)){
-                rb->asynchronousStop(this->threadReadPointers[i]->id);
-            }
+            this->packetPointer->asynchronousStop(this->packetAggregatorPointers[i]->id);
+            // for(auto rb:*(this->flowMetaIndexBuffers)){
+            //     rb->asynchronousStop(this->packetAggregatorPointers[i]->id);
+            // }
             this->packetAggregatorThreads[i]->join();
             delete this->packetAggregatorThreads[i];
         }
         this->packetAggregatorThreads.clear();
 
-        for(auto t:this->threadReadPointers){
+        for(int i=0;i<this->flowMetaIndexGeneratorThreads.size();++i){
+            for(int j=0;j<this->flowMetaIndexGeneratorThreads[i].size();++j){
+                this->flowMetaIndexGenerators[i][j]->asynchronousStop();
+                (*(this->flowMetaIndexBuffers))[i]->asynchronousStop(this->flowMetaIndexGeneratorPointers[i][j]->id);
+                this->flowMetaIndexGeneratorThreads[i][j]->join();
+                delete this->flowMetaIndexGeneratorThreads[i][j];
+            }
+            this->flowMetaIndexGeneratorThreads[i].clear();
+        }
+        this->flowMetaIndexGeneratorThreads.clear();
+
+        //component
+        for(int i=0;i<this->flowMetaIndexGeneratorPointers.size();++i){
+            for(auto p:this->flowMetaIndexGeneratorPointers[i]){
+                (*(this->flowMetaIndexBuffers))[i]->ereaseReadThread(p);
+                delete p;
+            }
+            this->flowMetaIndexGeneratorPointers[i].clear();
+        }
+        this->flowMetaIndexGeneratorPointers.clear();
+        for(int i=0;i<this->flowMetaIndexGenerators.size();++i){
+            for(auto p:this->flowMetaIndexGenerators[i]){
+                delete p;
+            }
+            this->flowMetaIndexGenerators[i].clear();
+        }
+        this->flowMetaIndexGenerators.clear();
+
+        for(auto t:this->packetAggregatorPointers){
             this->packetPointer->ereaseReadThread(t);
             for(auto rb:*(this->flowMetaIndexBuffers)){
                 rb->ereaseWriteThread(t);
             }
             delete t;
         }
-        this->threadReadPointers.clear();
+        this->packetAggregatorPointers.clear();
         for(auto p:this->packetAggregators){
             delete p;
         }
@@ -101,12 +146,15 @@ public:
             this->traceCatcher = nullptr;
         }
 
+        //memory
         if(this->packetBuffer!=nullptr){
             delete this->packetBuffer;
         }
+
         if(this->packetPointer!=nullptr){
             delete this->packetPointer;
         }
+
         if(this->flowMetaIndexBuffers!=nullptr){
             for(auto rb:*(this->flowMetaIndexBuffers)){
                 delete rb;

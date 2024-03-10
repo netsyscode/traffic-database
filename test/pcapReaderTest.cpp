@@ -68,7 +68,8 @@ void multitest(){
         .eth_header_len = eth_header_len,
         .filename = filename,
         .flow_capacity = flow_capacity,
-        .threadCount = 4,
+        .packetAggregatorThreadCount = 4,
+        .flowMetaIndexGeneratorThreadCountEach = 2,
     };
     controller->init(init_data);
     controller->run();
@@ -79,9 +80,9 @@ void multitest(){
     std::vector<RingBuffer*>* flowMetaIndexBuffers = data.flowMetaIndexBuffers;
     std::string buffer_data = packetBuffer->outputToChar();
     std::string pointer_data = packetPointer->outputToChar();
-    std::vector<std::string> index_datas;
+    std::vector<int> index_datas;
     for(auto rb:*flowMetaIndexBuffers){
-        index_datas.push_back(rb->outputToChar());
+        index_datas.push_back(rb->getPosDiff());
     }
     
     delete controller;
@@ -109,8 +110,8 @@ void multitest(){
     }
     outputFile.close();
 
-    for(auto s:index_datas){
-        std::cout<<s.size()<<std::endl;
+    for(auto i:index_datas){
+        std::cout<< "Ring buffer diff " << i << " with thread count each " << init_data.flowMetaIndexGeneratorThreadCountEach <<std::endl;
     }
 }
 

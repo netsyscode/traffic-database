@@ -25,7 +25,7 @@
 * 为支持多线程快速写入与读出，使用原子操作改变writePos和readPos，不取模
 	* 使用std::atomic_uint64_t，最大支持16EB的总数据量
 	* 对于数据库而言仍需要（截断时）刷新
-* 写入已测试，读出待测试
+* 完成测试
 
 ### shareBuffer.hpp
 * Packet Buffer底层结构，核心为char数组
@@ -34,6 +34,11 @@
 	* pcap格式
 	* todo：rte_mbuf格式（DPDK）
 * 完成测试
+
+### skipList.hpp
+* index cache底层结构
+* 多线程写入（index generator），多线程只读（querier）
+* 待实现
 
 ## component
 ### controller
@@ -53,9 +58,18 @@
 * 完成测试
 
 ### packetAggregator
-* 从packet pointer和packet buffer中读取数据，将相同IP/端口聚合，并填写packet pointer的next字段
+* 从packet pointer和packet buffer中读取数据，将相同IP/端口聚合，并填写packet pointer的next字段，将索引值放入index buffer
 * 初始化所需成员
 	* 数据链路层头部字节长度（与pcapReader一致，一般为14）
 	* 共享数据结构packet buffer
 	* 共享数据结构packet pointer
+	* 共享数据结构index buffer
 * 完成测试
+
+### indexGenerator
+* 从index buffer中读取数据，存入index cache
+* 初始化所需成员
+	* 共享数据结构index buffer
+	* 共享数据结构index cache
+* 每一个index generator只会属于一个index buffer
+* 完成读测试，写功能待实现

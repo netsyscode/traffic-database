@@ -27,7 +27,7 @@ class ArrayList{
     std::atomic_uint32_t nodeNum; // now number of nodes, only increase
 
     std::atomic_uint32_t threadCount; // read + write thread count
-    std::vector<ThreadReadPointer*> readThreads;
+    std::vector<ThreadPointer*> readThreads;
 
     u_int8_t* idArray;
     ArrayListNode<T>* array;
@@ -92,7 +92,7 @@ public:
     void ereaseWriteThread(){
         this->threadCount--;
     }
-    bool addReadThread(ThreadReadPointer* thread){
+    bool addReadThread(ThreadPointer* thread){
         for(auto t:this->readThreads){
             if(t->id == thread->id){
                 std::cerr << "Array list error: addReadThread with exist id!" <<std::endl;
@@ -104,7 +104,7 @@ public:
         this->threadCount++;
         return true;
     }
-    bool ereaseReadThread(ThreadReadPointer* thread){
+    bool ereaseReadThread(ThreadPointer* thread){
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->readThreads.erase(it);
@@ -142,7 +142,7 @@ public:
             return data;
         }
 
-        ThreadReadPointer* thread = nullptr;
+        ThreadPointer* thread = nullptr;
         for(auto t:this->readThreads){
             if(t->id == thread_id){
                 thread = t;

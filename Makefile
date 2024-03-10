@@ -8,7 +8,7 @@ INC = -I$(LIB_PATH)
 
 TARGET = pcapReaderTest
 TEST_SRCS = pcapReaderTest.cpp
-COMPONENT_SRCS = packetAggregator.cpp pcapReader.cpp controller.cpp
+COMPONENT_SRCS = packetAggregator.cpp pcapReader.cpp indexGenerator.cpp controller.cpp
 SRCS = $(addprefix $(TEST_PATH), $(TEST_SRCS)) $(addprefix $(COMPONENT_PATH), $(COMPONENT_SRCS))
 # TEST_OBJS = $(TEST_SRCS:.cpp=.o)
 # COMPONENT_OBJS = $(COMPONENT_SRCS:.cpp=.o)
