@@ -27,7 +27,7 @@ struct OutputData{
     ShareBuffer* packetBuffer;
     ArrayList<u_int32_t>* packetPointer;
     std::vector<RingBuffer*>* flowMetaIndexBuffers;
-    std::vector<void*> flowMetaIndexCaches;
+    std::vector<SkipList*> flowMetaIndexCaches;
     std::vector<u_int32_t> flowMetaEleLens;
 };
 
@@ -40,7 +40,7 @@ class MultiThreadController{
     ShareBuffer* packetBuffer;
     ArrayList<u_int32_t>* packetPointer;
     std::vector<RingBuffer*>* flowMetaIndexBuffers;
-    std::vector<void*> flowMetaIndexCaches; // SkipList*
+    std::vector<SkipList*> flowMetaIndexCaches; // SkipList*
 
     //component
     PcapReader* traceCatcher;
@@ -76,7 +76,7 @@ public:
         this->packetBuffer = nullptr;
         this->packetPointer = nullptr;
         this->flowMetaIndexBuffers = nullptr;
-        this->flowMetaIndexCaches = std::vector<void*>();
+        this->flowMetaIndexCaches = std::vector<SkipList*>();
 
         this->traceCatcher = nullptr;
         this->packetAggregators = std::vector<PacketAggregator*>();
@@ -108,19 +108,7 @@ public:
             if(this->flowMetaIndexCaches[i]==nullptr){
                 continue;
             }
-            if(this->flowMetaEleLens[i] == 1){
-                SkipList<u_int8_t,u_int32_t>* p = (SkipList<u_int8_t,u_int32_t>*)this->flowMetaIndexCaches[i];
-                delete p;
-            }else if(this->flowMetaEleLens[i] == 2){
-                SkipList<u_int16_t,u_int32_t>* p = (SkipList<u_int16_t,u_int32_t>*)this->flowMetaIndexCaches[i];
-                delete p;
-            }else if(this->flowMetaEleLens[i] == 4){
-                SkipList<u_int32_t,u_int32_t>* p = (SkipList<u_int32_t,u_int32_t>*)this->flowMetaIndexCaches[i];
-                delete p;
-            }else if(this->flowMetaEleLens[i] == 8){
-                SkipList<u_int64_t,u_int32_t>* p = (SkipList<u_int64_t,u_int32_t>*)this->flowMetaIndexCaches[i];
-                delete p;
-            }
+            delete this->flowMetaIndexCaches[i];
         }
 
         if(this->flowMetaIndexBuffers!=nullptr){
@@ -130,7 +118,6 @@ public:
             this->flowMetaIndexBuffers->clear();
             delete this->flowMetaIndexBuffers;
         }
-        
     }
     void init(InitData init_data);
     void run();

@@ -20,23 +20,7 @@ void MultiThreadController::makeFlowMetaIndexBuffers(u_int32_t capacity, const s
 bool MultiThreadController::makeFlowMetaIndexCaches(const std::vector<u_int32_t>& ele_lens){
     bool ret = true;
     for(auto len:ele_lens){
-        void* cache = nullptr;
-        if(len == 1){
-            SkipList<u_int8_t,u_int32_t>* p = new SkipList<u_int8_t,u_int32_t>(len * 8);
-            cache = (void*)p;
-        }else if(len == 2){
-            SkipList<u_int16_t,u_int32_t>* p = new SkipList<u_int16_t,u_int32_t>(len * 8);
-            cache = (void*)p;
-        }else if(len == 4){
-            SkipList<u_int32_t,u_int32_t>* p = new SkipList<u_int32_t,u_int32_t>(len * 8);
-            cache = (void*)p;
-        }else if(len == 8){
-            SkipList<u_int64_t,u_int32_t>* p = new SkipList<u_int64_t,u_int32_t>(len * 8);
-            cache = (void*)p;
-        }else{
-            std::cerr << "Controller error: makeFlowMetaIndexCaches with undifined ele_len!" << std::endl;
-            ret = false;
-        }
+        SkipList* cache = new SkipList(len*8,len,sizeof(u_int32_t));
         this->flowMetaIndexCaches.push_back(cache);
     }
     return ret;
@@ -120,9 +104,7 @@ void MultiThreadController::threadsStop(){
         // std::cout << "Controller log: thread " << this->packetAggregatorPointers[i]->id << " should stop." <<std::endl;
         this->packetAggregators[i]->asynchronousStop();
         this->packetPointer->asynchronousStop(this->packetAggregatorPointers[i]->id);
-        // for(auto rb:*(this->flowMetaIndexBuffers)){
-        //     rb->asynchronousStop(this->packetAggregatorPointers[i]->id);
-        // }
+        
         this->packetAggregatorThreads[i]->join();
         delete this->packetAggregatorThreads[i];
     }

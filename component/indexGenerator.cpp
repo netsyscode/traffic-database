@@ -18,36 +18,11 @@ Index IndexGenerator::readIndexFromBuffer(){
     return index;
 }
 void IndexGenerator::putIndexToCache(const Index& index){
-    // if(this->threadID){
-    //     return;
-    // }
     if(index.key.size()!=this->keyLen){
         std::cerr << "Index generator error: putIndexToCache with error key length!" << std::endl;
         return;
     }
-    if(index.key.size()==1){
-        SkipList<u_int8_t,u_int32_t>* cache = (SkipList<u_int8_t,u_int32_t>*)(this->indexCache);
-        u_int8_t key;
-        memcpy(&key,&index.key[0],index.key.size());
-        cache->insert(key,index.value);
-    }else if(index.key.size()==2){
-        SkipList<u_int16_t,u_int32_t>* cache = (SkipList<u_int16_t,u_int32_t>*)(this->indexCache);
-        u_int16_t key;
-        memcpy(&key,&index.key[0],index.key.size());
-        cache->insert(key,index.value);
-    }else if(index.key.size()==4){
-        SkipList<u_int32_t,u_int32_t>* cache = (SkipList<u_int32_t,u_int32_t>*)(this->indexCache);
-        u_int32_t key;
-        memcpy(&key,&index.key[0],index.key.size());
-        cache->insert(key,index.value);
-    }else if(index.key.size()==8){
-        SkipList<u_int64_t,u_int32_t>* cache = (SkipList<u_int64_t,u_int32_t>*)(this->indexCache);
-        u_int64_t key;
-        memcpy(&key,&index.key[0],index.key.size());
-        cache->insert(key,index.value);
-    }else{
-        std::cerr << "Index generator error: putIndexToCache with undifined key length" << index.key.size() << "!" << std::endl;
-    }
+    this->indexCache->insert(index.key,index.value);
 }
 
 void IndexGenerator::setThreadID(u_int32_t threadID){

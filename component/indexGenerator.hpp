@@ -11,7 +11,7 @@ class IndexGenerator{
 
     // shared memory
     RingBuffer* buffer;
-    void* indexCache; // skipList, static cast when use
+    SkipList* indexCache; // skipList, static cast when use
 
     // thread member
     u_int32_t threadID;
@@ -20,7 +20,7 @@ class IndexGenerator{
     Index readIndexFromBuffer();
     void putIndexToCache(const Index& index);
 public:
-    IndexGenerator(RingBuffer* buffer, void* indexCache, u_int32_t keyLen):keyLen(keyLen){
+    IndexGenerator(RingBuffer* buffer, SkipList* indexCache, u_int32_t keyLen):keyLen(keyLen){
         this->buffer = buffer;
         this->indexCache = indexCache;
         this->threadID = std::numeric_limits<uint32_t>::max();
