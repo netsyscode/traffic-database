@@ -8,14 +8,38 @@ void MultiThreadController::makePacketBuffer(u_int32_t maxLength, u_int32_t warn
 void MultiThreadController::makePacketPointer(u_int32_t maxLength, u_int32_t warningLength){
     this->packetPointer = new ArrayList<uint32_t>(maxLength,warningLength);
 }
-void MultiThreadController::makeFlowMetaIndexBuffers(u_int32_t capacity, std::vector<u_int32_t> ele_lens){
+void MultiThreadController::makeFlowMetaIndexBuffers(u_int32_t capacity, const std::vector<u_int32_t>& ele_lens){
     this->flowMetaIndexBuffers = new std::vector<RingBuffer*>();
     for(auto len:ele_lens){
-        RingBuffer* ring_buffer = new RingBuffer(capacity, len);
+        RingBuffer* ring_buffer = new RingBuffer(capacity, len+sizeof(u_int32_t));
         this->flowMetaIndexBuffers->push_back(ring_buffer);
         this->flowMetaIndexGenerators.push_back(std::vector<IndexGenerator*>());
         this->flowMetaIndexGeneratorPointers.push_back(std::vector<ThreadPointer*>());
     }
+}
+bool MultiThreadController::makeFlowMetaIndexCaches(const std::vector<u_int32_t>& ele_lens){
+    bool ret = true;
+    for(auto len:ele_lens){
+        void* cache = nullptr;
+        if(len == 1){
+            SkipList<u_int8_t,u_int32_t>* p = new SkipList<u_int8_t,u_int32_t>(len * 8);
+            cache = (void*)p;
+        }else if(len == 2){
+            SkipList<u_int16_t,u_int32_t>* p = new SkipList<u_int16_t,u_int32_t>(len * 8);
+            cache = (void*)p;
+        }else if(len == 4){
+            SkipList<u_int32_t,u_int32_t>* p = new SkipList<u_int32_t,u_int32_t>(len * 8);
+            cache = (void*)p;
+        }else if(len == 8){
+            SkipList<u_int64_t,u_int32_t>* p = new SkipList<u_int64_t,u_int32_t>(len * 8);
+            cache = (void*)p;
+        }else{
+            std::cerr << "Controller error: makeFlowMetaIndexCaches with undifined ele_len!" << std::endl;
+            ret = false;
+        }
+        this->flowMetaIndexCaches.push_back(cache);
+    }
+    return ret;
 }
 void MultiThreadController::makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename){
     this->traceCatcher = new PcapReader(pcap_header_len,eth_header_len,filename,this->packetBuffer,this->packetPointer);
@@ -38,7 +62,7 @@ void MultiThreadController::pushPacketAggregatorInit(u_int32_t eth_header_len){
 };
 void MultiThreadController::pushFlowMetaIndexGeneratorInit(){
     for(int i=0;i<this->flowMetaIndexBuffers->size();++i){
-        IndexGenerator* generator = new IndexGenerator((*(this->flowMetaIndexBuffers))[i]);
+        IndexGenerator* generator = new IndexGenerator((*(this->flowMetaIndexBuffers))[i],this->flowMetaIndexCaches[i],this->flowMetaEleLens[i]);
         ThreadPointer* write_pointer = new ThreadPointer{
             (u_int32_t)(this->flowMetaIndexGeneratorPointers[i].size()*this->flowMetaIndexBuffers->size() + i), 
             std::mutex(), std::condition_variable(), std::atomic_bool(false)};
@@ -160,8 +184,10 @@ void MultiThreadController::init(InitData init_data){
     this->makePacketBuffer(init_data.buffer_len,init_data.buffer_warn);
     this->makePacketPointer(init_data.packet_num,init_data.packet_warn);
 
-    std::vector<u_int32_t> ele_lens = {4 + sizeof(u_int32_t), 4 + sizeof(u_int32_t), 2 + sizeof(u_int32_t), 2 + sizeof(u_int32_t)};
-    this->makeFlowMetaIndexBuffers(init_data.flow_capacity,ele_lens);
+    this->makeFlowMetaIndexBuffers(init_data.flow_capacity,this->flowMetaEleLens);
+    if(!this->makeFlowMetaIndexCaches(this->flowMetaEleLens)){
+        return;
+    }
 
     this->makeTraceCatcher(init_data.pcap_header_len,init_data.eth_header_len,init_data.filename);
     for(int i=0;i<init_data.packetAggregatorThreadCount;++i){
@@ -193,6 +219,8 @@ const OutputData MultiThreadController::outputForTest(){
         .packetBuffer = this->packetBuffer,
         .packetPointer = this->packetPointer,
         .flowMetaIndexBuffers = this->flowMetaIndexBuffers,
+        .flowMetaIndexCaches = this->flowMetaIndexCaches,
+        .flowMetaEleLens = this->flowMetaEleLens,
     };
     return data;
 }

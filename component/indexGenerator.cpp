@@ -17,6 +17,38 @@ Index IndexGenerator::readIndexFromBuffer(){
     memcpy(&index.value, &data[data.size()-sizeof(index.value)],sizeof(index.value));
     return index;
 }
+void IndexGenerator::putIndexToCache(const Index& index){
+    // if(this->threadID){
+    //     return;
+    // }
+    if(index.key.size()!=this->keyLen){
+        std::cerr << "Index generator error: putIndexToCache with error key length!" << std::endl;
+        return;
+    }
+    if(index.key.size()==1){
+        SkipList<u_int8_t,u_int32_t>* cache = (SkipList<u_int8_t,u_int32_t>*)(this->indexCache);
+        u_int8_t key;
+        memcpy(&key,&index.key[0],index.key.size());
+        cache->insert(key,index.value);
+    }else if(index.key.size()==2){
+        SkipList<u_int16_t,u_int32_t>* cache = (SkipList<u_int16_t,u_int32_t>*)(this->indexCache);
+        u_int16_t key;
+        memcpy(&key,&index.key[0],index.key.size());
+        cache->insert(key,index.value);
+    }else if(index.key.size()==4){
+        SkipList<u_int32_t,u_int32_t>* cache = (SkipList<u_int32_t,u_int32_t>*)(this->indexCache);
+        u_int32_t key;
+        memcpy(&key,&index.key[0],index.key.size());
+        cache->insert(key,index.value);
+    }else if(index.key.size()==8){
+        SkipList<u_int64_t,u_int32_t>* cache = (SkipList<u_int64_t,u_int32_t>*)(this->indexCache);
+        u_int64_t key;
+        memcpy(&key,&index.key[0],index.key.size());
+        cache->insert(key,index.value);
+    }else{
+        std::cerr << "Index generator error: putIndexToCache with undifined key length" << index.key.size() << "!" << std::endl;
+    }
+}
 
 void IndexGenerator::setThreadID(u_int32_t threadID){
     this->threadID = threadID;
@@ -29,7 +61,7 @@ void IndexGenerator::run(){
     std::cout << "Index generator log: thread " << this->threadID << " run." << std::endl;
     this->stop = false;
 
-    u_int32_t count = 0; // just for test
+    // u_int32_t count = 0; // just for test
     while (true){
         if(this->stop){
             break;
@@ -38,9 +70,11 @@ void IndexGenerator::run(){
         if(data.key.size()==0){
             break;
         }
-        count++;
+        this->putIndexToCache(data);
+
+        // count++;// just for test
     }
-    std::cout << "Index generator log: thread " << this->threadID << " count " << count << std::endl; //just for test
+    // std::cout << "Index generator log: thread " << this->threadID << " count " << count << std::endl; //just for test
     std::cout << "Index generator log: thread " << this->threadID << " quit." << std::endl;
 }
 void IndexGenerator::asynchronousStop(){

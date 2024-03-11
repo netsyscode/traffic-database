@@ -7,6 +7,7 @@
 #include <ctime>
 #include <atomic>
 #include <mutex>
+#include <algorithm>
 
 template <class KeyType, class ValueType>
 class SkipListNode{
@@ -16,10 +17,9 @@ public:
     std::vector<SkipListNode*> next;
     std::mutex mutex;
 
-    SkipListNode(KeyType key, ValueType val, int level) : next(level, nullptr) {
+    SkipListNode(KeyType key, ValueType val, int level) : next(level, nullptr), mutex(std::mutex()) {
         this->key = key;
         this->value = val;
-        this->mutex = std::mutex()
     }
     ~SkipListNode(){
         this->next.clear();
@@ -41,15 +41,16 @@ class SkipList{
 
     u_int32_t randomLevel(){
         u_int32_t lvl = 1;
-        while (rand() % 2 == 0 && lvl < maxLevel)
+        while (rand() % 2 == 0 && lvl < maxLevel){
             lvl++;
+        }
         return lvl;
     }
 public:
     SkipList(int maxLvl) : maxLevel(maxLvl), level(0), nodeNum(0), keyLen(sizeof(KeyType)), valueLen(sizeof(ValueType)) {
         this->head = new SkipListNode<KeyType, ValueType>(KeyType(), ValueType(), this->maxLevel);
         this->writeThreadCount = 0;
-        this->readThreadCount = 0
+        this->readThreadCount = 0;
         //srand(static_cast<int>(time(nullptr)));
     }
     ~SkipList(){
@@ -84,15 +85,17 @@ public:
         SkipListNode<KeyType, ValueType>* curr = this->head;
         std::vector<SkipListNode<KeyType, ValueType>*> update(maxLevel, nullptr);
         u_int32_t nowLevel = this->level;
-        for (int i = std::max(newLevel - 1, nowLevel - 1); i >= 0; i--) {
-            while (curr->next[i] != nullptr && curr->next[i]->key <= key)
+        for (int i = newLevel > nowLevel ? newLevel - 1 : nowLevel - 1; i >= 0; i--) {
+            while (curr->next[i] != nullptr && curr->next[i]->key <= key){
                 curr = curr->next[i];
+            }
             update[i] = curr;
         }
 
         // insert
         for(int i=0; i<newLevel; ++i){
             while(true){
+                // std::cout << "Skip list log: level " << i << std::endl;
                 update[i]->mutex.lock();
                 if(update[i]->next[i] != nullptr && update[i]->next[i]->key < key){// there may be new node inserted.
                     update[i]->mutex.unlock();
@@ -108,13 +111,17 @@ public:
         }
 
         this->nodeNum++;
-        while (this->level < newLevel) {// CAS update level
-            if (this->level.compare_exchange_strong(this->level, newLevel)) {
+
+        u_int32_t curLevel = this->level.load();
+        while (curLevel < newLevel) {// CAS update level
+            if (this->level.compare_exchange_strong(curLevel, newLevel)) {
                 break;
+            }else{
+                curLevel = this->level.load();
             }
         }
     }
-    list<ValueType> findByKey(KeyType key){
+    std::list<ValueType> findByKey(KeyType key){
         SkipListNode<KeyType, ValueType>* curr = this->head;
         std::list<ValueType> res = std::list<ValueType>();
         SkipListNode<KeyType,ValueType>* beginNode = nullptr;
@@ -135,7 +142,7 @@ public:
         }
         return res;
     }
-    list<ValueType> findByRange(KeyType begin, KeyType end){
+    std::list<ValueType> findByRange(KeyType begin, KeyType end){
         SkipListNode<KeyType, ValueType>* curr = this->head;
         std::list<ValueType> res = std::list<ValueType>();
         SkipListNode<KeyType,ValueType>* beginNode = nullptr;
@@ -166,7 +173,7 @@ public:
         }
         
         u_int64_t buffer_len = this->nodeNum * (this->keyLen + this->valueLen);
-        std::string data = std::string(0,buffer_len);
+        std::string data = std::string(buffer_len,0);
         u_int64_t offset = 0;
         for(auto node = head->next[0]; node!=nullptr; node = node->next[0]){
             memcpy(&(data[offset]),&(node->key),this->keyLen);

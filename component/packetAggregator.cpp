@@ -16,7 +16,7 @@ u_int32_t PacketAggregator::readFromPacketPointer(){
             return std::numeric_limits<uint32_t>::max();
         }
         this->readPos++;
-        if(this->IDSet.find(id_data.data) == this->IDSet.end()){
+        if(this->IDSet.find(id_data.data) != this->IDSet.end()){
             break;
         }
         // if(id_data.data == 0){
@@ -140,6 +140,7 @@ void PacketAggregator::run(){
     }
     std::cout << "Packet aggregator log: thread " << this->threadID << " run." << std::endl;
     this->stop = false;
+    
     while (true){
         if(this->stop){
             break;

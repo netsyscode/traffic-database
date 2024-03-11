@@ -40,7 +40,7 @@
 * 多线程写入（index generator），多线程只读（querier）
 	* 每一个节点拥有自己的锁，在对节点进行修改前，需要获取节点的锁
 * 传入前，需要将数据转化为定长格式
-* 待测试
+* 写入完成测试，查询待测试
 
 ## component
 ### controller
@@ -74,4 +74,4 @@
 	* 共享数据结构index buffer
 	* 共享数据结构index cache
 * 每一个index generator只会属于一个index buffer
-* 完成读测试，写功能待实现
+* 完成测试

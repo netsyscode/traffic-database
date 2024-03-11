@@ -84,6 +84,16 @@ void multitest(){
     for(auto rb:*flowMetaIndexBuffers){
         index_datas.push_back(rb->getPosDiff());
     }
+    std::vector<std::string> cache_datas;
+    for(int i=0;i<data.flowMetaEleLens.size();++i){
+        if(data.flowMetaEleLens[i]==2){
+            SkipList<u_int16_t,u_int32_t>* cache = (SkipList<u_int16_t,u_int32_t>*)data.flowMetaIndexCaches[i];
+            cache_datas.push_back(cache->outputToChar());
+        }else if(data.flowMetaEleLens[i]==4){
+            SkipList<u_int32_t,u_int32_t>* cache = (SkipList<u_int32_t,u_int32_t>*)data.flowMetaIndexCaches[i];
+            cache_datas.push_back(cache->outputToChar());
+        }
+    }
     
     delete controller;
 
@@ -112,6 +122,24 @@ void multitest(){
 
     for(auto i:index_datas){
         std::cout<< "Ring buffer diff " << i << " with thread count each " << init_data.flowMetaIndexGeneratorThreadCountEach <<std::endl;
+    }
+
+    for(auto s:cache_datas){
+        std::cout<< "Index cache size " << s.size() <<std::endl;
+    }
+
+    u_int32_t offset = 0;
+    while (offset < cache_datas[3].size()){
+        u_int16_t dport;
+        u_int32_t value;
+        memcpy(&dport,&(cache_datas[3][offset]),sizeof(dport));
+        offset += sizeof(dport);
+        memcpy(&value,&(cache_datas[3][offset]),sizeof(value));
+        offset += sizeof(value);
+        
+        if(dport==9999){
+            std::cout<< "Dstport " << dport << " with value " << value <<std::endl;
+        }
     }
 }
 
