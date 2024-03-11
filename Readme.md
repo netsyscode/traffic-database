@@ -38,7 +38,9 @@
 ### skipList.hpp
 * index cache底层结构
 * 多线程写入（index generator），多线程只读（querier）
-* 待实现
+	* 每一个节点拥有自己的锁，在对节点进行修改前，需要获取节点的锁
+* 传入前，需要将数据转化为定长格式
+* 待测试
 
 ## component
 ### controller

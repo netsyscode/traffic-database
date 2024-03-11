@@ -3,6 +3,7 @@
 #include <iostream>
 #include "../lib/ringBuffer.hpp"
 #include "../lib/util.hpp"
+#include "../lib/skipList.hpp"
 
 class IndexGenerator{
     // shared memory
