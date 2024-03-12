@@ -93,7 +93,18 @@ void MultiThreadController::threadsRun(){
     }
 }
 
+void MultiThreadController::queryThreadRun(){
+    this->querier = new Querier(this->packetBuffer,this->packetPointer,this->flowMetaIndexCaches,this->pcapHeader);
+    this->queryThread = new std::thread(&Querier::run,this->querier);
+}
+
 void MultiThreadController::threadsStop(){
+    std::cout << "Controller log: threadsStop." <<std::endl;
+    if(this->queryThread!=nullptr){// queryThread must stop when threadsStop
+        delete this->queryThread;
+        this->queryThread = nullptr;
+    }
+
     if(this->traceCatcherThread!=nullptr){
         this->traceCatcher->asynchronousStop();
         this->traceCatcherThread->join();
@@ -164,6 +175,7 @@ void MultiThreadController::init(InitData init_data){
     // if(this->packetAggregatorsMaxCount > init_data.packetAggregatorThreadCount){
     //     std::cerr << "Controller error: init with too many packetAggregators!" << std::endl;
     // }
+    this->pcapHeader = init_data.pcap_header;
     this->makePacketBuffer(init_data.buffer_len,init_data.buffer_warn);
     this->makePacketPointer(init_data.packet_num,init_data.packet_warn);
 
@@ -172,7 +184,7 @@ void MultiThreadController::init(InitData init_data){
         return;
     }
 
-    this->makeTraceCatcher(init_data.pcap_header_len,init_data.eth_header_len,init_data.filename);
+    this->makeTraceCatcher(init_data.pcap_header.size(),init_data.eth_header_len,init_data.filename);
     for(int i=0;i<init_data.packetAggregatorThreadCount;++i){
         this->pushPacketAggregatorInit(init_data.eth_header_len);
     }
@@ -191,7 +203,10 @@ void MultiThreadController::run(){
     this->threadsRun();
 
     //for test
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::microseconds(500));
+    this->queryThreadRun();
+    this->queryThread->join();
+    
     this->threadsStop();
     this->threadsClear();
 

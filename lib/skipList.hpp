@@ -285,7 +285,7 @@ public:
         std::vector<void*> update(maxLevel, nullptr);
         u_int32_t nowLevel = this->level;
         for (int i = nowLevel > newLevel ? nowLevel - 1: newLevel -1; i >= 0; i--) {
-            while (this->getNext(curr,i) != nullptr && this->compareNodeKey(this->getNext(curr,i),key)<=0){
+            while (this->getNext(curr,i) != nullptr && this->compareNodeKey(this->getNext(curr,i),key)<0){
                 curr = this->getNext(curr,i);
             }
             update[i] = curr;

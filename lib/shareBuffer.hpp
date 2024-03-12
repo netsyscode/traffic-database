@@ -42,7 +42,7 @@ public:
             return data;
         }
         data_header* pcap_header = (data_header*)(this->buffer+pos);
-        u_int32_t len = pcap_header->caplen;
+        u_int32_t len = pcap_header->caplen + sizeof(data_header);
         data = std::string(this->buffer+pos,len);
         return data;
     }

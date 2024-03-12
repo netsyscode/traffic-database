@@ -9,18 +9,20 @@
 #include "pcapReader.hpp"
 #include "packetAggregator.hpp"
 #include "indexGenerator.hpp"
+#include "querier.hpp"
 
 struct InitData{
     u_int32_t buffer_len;
     u_int32_t packet_num;
     u_int32_t buffer_warn;
     u_int32_t packet_warn;
-    u_int32_t pcap_header_len;
+    // u_int32_t pcap_header_len;
     u_int32_t eth_header_len;
     std::string filename;
     u_int32_t flow_capacity;
     u_int32_t packetAggregatorThreadCount;
     u_int32_t flowMetaIndexGeneratorThreadCountEach;
+    std::string pcap_header;
 };
 
 struct OutputData{
@@ -32,9 +34,8 @@ struct OutputData{
 };
 
 class MultiThreadController{
-    // const u_int32_t packetAggregatorsMaxCount = 32;
-    // const u_int32_t flowMetaIndexGeneratorsMaxCount = 128;
     const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2};
+    std::string pcapHeader;
 
     //memory
     ShareBuffer* packetBuffer;
@@ -48,11 +49,13 @@ class MultiThreadController{
     std::vector<ThreadPointer*> packetAggregatorPointers;
     std::vector<std::vector<IndexGenerator*>> flowMetaIndexGenerators;
     std::vector<std::vector<ThreadPointer*>> flowMetaIndexGeneratorPointers;
+    Querier* querier;
 
     //thread
     std::thread* traceCatcherThread;
     std::vector<std::thread*> packetAggregatorThreads;
     std::vector<std::vector<std::thread*>> flowMetaIndexGeneratorThreads;
+    std::thread* queryThread;
 
     void makePacketBuffer(u_int32_t maxLength, u_int32_t warningLength);
     void makePacketPointer(u_int32_t maxLength, u_int32_t warningLength);
@@ -66,6 +69,9 @@ class MultiThreadController{
 
     void threadsRun();
 
+    // run as a new thread
+    void queryThreadRun();
+
     void pushPacketAggregatorRunning(u_int32_t eth_header_len);
     void popPacketAggregatorRunning();
 
@@ -73,6 +79,8 @@ class MultiThreadController{
     void threadsClear();
 public:
     MultiThreadController(){
+        this->pcapHeader = std::string();
+
         this->packetBuffer = nullptr;
         this->packetPointer = nullptr;
         this->flowMetaIndexBuffers = nullptr;
@@ -84,10 +92,12 @@ public:
         this->packetAggregatorPointers = std::vector<ThreadPointer*>();
         this->flowMetaIndexGenerators = std::vector<std::vector<IndexGenerator*>>();
         this->flowMetaIndexGeneratorPointers = std::vector<std::vector<ThreadPointer*>>();
+        this->querier = nullptr;
 
         this->traceCatcherThread = nullptr;
         this->packetAggregatorThreads = std::vector<std::thread*>();
         this->flowMetaIndexGeneratorThreads = std::vector<std::vector<std::thread*>>();
+        this->queryThread = nullptr;
     }
     ~MultiThreadController(){
         //thread

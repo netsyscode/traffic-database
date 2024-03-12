@@ -209,6 +209,18 @@ public:
         // std::unique_lock<std::shared_mutex> lock(mutex_);
         return this->array[pos].value;
     }
+    // read only, for querier
+    T getValueReadOnly(u_int32_t pos)const{
+        if(pos > this->maxLength || pos < 0){
+            std::cerr << "Array list error: getValue overflow the buffer!" <<std::endl;
+            return T();
+        }
+        if(pos >= this->nodeNum){
+            std::cerr << "Array list error: getValue overflow the node count!" <<std::endl;
+            return T();
+        }
+        return this->array[pos].value;
+    }
     // Parallelizable
     u_int32_t getNext(u_int32_t pos){
         if(pos > this->maxLength || pos < 0){

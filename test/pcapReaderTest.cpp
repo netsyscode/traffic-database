@@ -64,12 +64,12 @@ void multitest(){
         .buffer_warn = buffer_warn,
         .packet_num = packet_num,
         .packet_warn = packet_warn,
-        .pcap_header_len = pcap_header_len,
         .eth_header_len = eth_header_len,
         .filename = filename,
         .flow_capacity = flow_capacity,
         .packetAggregatorThreadCount = 4,
         .flowMetaIndexGeneratorThreadCountEach = 2,
+        .pcap_header = std::string((char*)pcap_head,pcap_header_len),
     };
     controller->init(init_data);
     controller->run();
