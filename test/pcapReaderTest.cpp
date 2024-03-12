@@ -123,17 +123,15 @@ void multitest(){
     }
 
     u_int32_t offset = 0;
-    while (offset < cache_datas[3].size()){
+    while (offset < cache_datas[2].size()){
         u_int16_t dport;
         u_int32_t value;
-        memcpy(&dport,&(cache_datas[3][offset]),sizeof(dport));
+        memcpy(&dport,&(cache_datas[2][offset]),sizeof(dport));
         offset += sizeof(dport);
-        memcpy(&value,&(cache_datas[3][offset]),sizeof(value));
+        memcpy(&value,&(cache_datas[2][offset]),sizeof(value));
         offset += sizeof(value);
         
-        if(dport==9999){
-            std::cout<< "Dstport " << dport << " with value " << value <<std::endl;
-        }
+        std::cout<< "Srcport " << dport << " with value " << value <<std::endl;
     }
 }
 

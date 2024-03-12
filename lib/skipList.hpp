@@ -146,40 +146,40 @@ class SkipList{
         if(this->keyLen == 1){
             u_int8_t* real_key= (u_int8_t*)&(key[0]);
             SkipListNode<u_int8_t,u_int32_t>* p = (SkipListNode<u_int8_t,u_int32_t>*)node;
-            if(*real_key < p->value){
+            if(p->key < *real_key){
                 return -1;
             }
-            if(*real_key > p->value){
+            if(p->key > *real_key){
                 return 1;
             }
             return 0;
         }else if(this->keyLen == 2){
             u_int16_t* real_key= (u_int16_t*)&(key[0]);
             SkipListNode<u_int16_t,u_int32_t>* p = (SkipListNode<u_int16_t,u_int32_t>*)node;
-            if(*real_key < p->value){
+            if(p->key < *real_key){
                 return -1;
             }
-            if(*real_key > p->value){
+            if(p->key > *real_key){
                 return 1;
             }
             return 0;
         }else if(this->keyLen == 4){
             u_int32_t* real_key= (u_int32_t*)&(key[0]);
             SkipListNode<u_int32_t,u_int32_t>* p = (SkipListNode<u_int32_t,u_int32_t>*)node;
-            if(*real_key < p->value){
+            if(p->key < *real_key){
                 return -1;
             }
-            if(*real_key > p->value){
+            if(p->key > *real_key){
                 return 1;
             }
             return 0;
         }else if(this->keyLen == 8){
             u_int64_t* real_key= (u_int64_t*)&(key[0]);
             SkipListNode<u_int64_t,u_int32_t>* p = (SkipListNode<u_int64_t,u_int32_t>*)node;
-            if(*real_key < p->value){
+            if(p->key < *real_key){
                 return -1;
             }
-            if(*real_key > p->value){
+            if(p->key > *real_key){
                 return 1;
             }
             return 0;
@@ -284,7 +284,7 @@ public:
         void* curr = this->head;
         std::vector<void*> update(maxLevel, nullptr);
         u_int32_t nowLevel = this->level;
-        for (int i = newLevel > nowLevel ? newLevel - 1 : nowLevel - 1; i >= 0; i--) {
+        for (int i = nowLevel > newLevel ? nowLevel - 1: newLevel -1; i >= 0; i--) {
             while (this->getNext(curr,i) != nullptr && this->compareNodeKey(this->getNext(curr,i),key)<=0){
                 curr = this->getNext(curr,i);
             }
