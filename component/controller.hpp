@@ -27,7 +27,7 @@ struct OutputData{
     ShareBuffer* packetBuffer;
     ArrayList<u_int32_t>* packetPointer;
     std::vector<RingBuffer*>* flowMetaIndexBuffers;
-    std::vector<SkipList*> flowMetaIndexCaches;
+    std::vector<SkipList*>* flowMetaIndexCaches;
     std::vector<u_int32_t> flowMetaEleLens;
 };
 
@@ -40,7 +40,7 @@ class MultiThreadController{
     ShareBuffer* packetBuffer;
     ArrayList<u_int32_t>* packetPointer;
     std::vector<RingBuffer*>* flowMetaIndexBuffers;
-    std::vector<SkipList*> flowMetaIndexCaches; // SkipList*
+    std::vector<SkipList*>* flowMetaIndexCaches; // SkipList*
 
     //component
     PcapReader* traceCatcher;
@@ -76,7 +76,8 @@ public:
         this->packetBuffer = nullptr;
         this->packetPointer = nullptr;
         this->flowMetaIndexBuffers = nullptr;
-        this->flowMetaIndexCaches = std::vector<SkipList*>();
+        this->flowMetaIndexCaches = nullptr;
+        // this->flowMetaIndexCaches = std::vector<SkipList*>();
 
         this->traceCatcher = nullptr;
         this->packetAggregators = std::vector<PacketAggregator*>();
@@ -104,11 +105,15 @@ public:
             delete this->packetPointer;
         }
 
-        for(int i=0;i<this->flowMetaIndexCaches.size();++i){
-            if(this->flowMetaIndexCaches[i]==nullptr){
-                continue;
+        if(this->flowMetaIndexCaches!=nullptr){
+            for(auto ic:*(this->flowMetaIndexCaches)){
+                if(ic==nullptr){
+                    continue;
+                }
+                delete ic;
             }
-            delete this->flowMetaIndexCaches[i];
+            this->flowMetaIndexCaches->clear();
+            delete this->flowMetaIndexCaches;
         }
 
         if(this->flowMetaIndexBuffers!=nullptr){

@@ -85,15 +85,8 @@ void multitest(){
         index_datas.push_back(rb->getPosDiff());
     }
     std::vector<std::string> cache_datas;
-    for(int i=0;i<data.flowMetaEleLens.size();++i){
-        // if(data.flowMetaEleLens[i]==2){
-        //     SkipList<u_int16_t,u_int32_t>* cache = (SkipList<u_int16_t,u_int32_t>*)data.flowMetaIndexCaches[i];
-        //     cache_datas.push_back(cache->outputToChar());
-        // }else if(data.flowMetaEleLens[i]==4){
-        //     SkipList<u_int32_t,u_int32_t>* cache = (SkipList<u_int32_t,u_int32_t>*)data.flowMetaIndexCaches[i];
-        //     cache_datas.push_back(cache->outputToChar());
-        // }
-        cache_datas.push_back(data.flowMetaIndexCaches[i]->outputToChar());
+    for(auto ic:*data.flowMetaIndexCaches){
+        cache_datas.push_back(ic->outputToChar());
     }
     
     delete controller;

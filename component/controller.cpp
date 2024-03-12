@@ -19,9 +19,10 @@ void MultiThreadController::makeFlowMetaIndexBuffers(u_int32_t capacity, const s
 }
 bool MultiThreadController::makeFlowMetaIndexCaches(const std::vector<u_int32_t>& ele_lens){
     bool ret = true;
+    this->flowMetaIndexCaches = new std::vector<SkipList*>();
     for(auto len:ele_lens){
         SkipList* cache = new SkipList(len*8,len,sizeof(u_int32_t));
-        this->flowMetaIndexCaches.push_back(cache);
+        this->flowMetaIndexCaches->push_back(cache);
     }
     return ret;
 }
@@ -46,7 +47,7 @@ void MultiThreadController::pushPacketAggregatorInit(u_int32_t eth_header_len){
 };
 void MultiThreadController::pushFlowMetaIndexGeneratorInit(){
     for(int i=0;i<this->flowMetaIndexBuffers->size();++i){
-        IndexGenerator* generator = new IndexGenerator((*(this->flowMetaIndexBuffers))[i],this->flowMetaIndexCaches[i],this->flowMetaEleLens[i]);
+        IndexGenerator* generator = new IndexGenerator((*(this->flowMetaIndexBuffers))[i],(*(this->flowMetaIndexCaches))[i],this->flowMetaEleLens[i]);
         ThreadPointer* write_pointer = new ThreadPointer{
             (u_int32_t)(this->flowMetaIndexGeneratorPointers[i].size()*this->flowMetaIndexBuffers->size() + i), 
             std::mutex(), std::condition_variable(), std::atomic_bool(false)};
