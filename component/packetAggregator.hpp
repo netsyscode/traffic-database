@@ -45,10 +45,20 @@ class PacketAggregator{
     // write only, default should be srcip(4B), dstip(4B), srcport(2B), dstport(2B)
     std::vector<RingBuffer*>* flowMetaIndexBuffers;
 
+    ShareBuffer* newPacketBuffer;
+    ArrayList<u_int32_t>* newPacketPointer;
+    std::vector<RingBuffer*>* newFlowMetaIndexBuffers; 
+
+    //for old flows, util "next" of oldPacketPointers are filled
+    std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash> oldAggMap;
+    ArrayList<u_int32_t>* oldPacketPointer;
+
     // thread member
     u_int32_t readPos;
     u_int32_t threadID;
+
     std::atomic_bool stop;
+    std::atomic_bool pause;
 
     u_int32_t readFromPacketPointer();
     std::string readFromPacketBuffer(u_int32_t offset);
@@ -57,6 +67,8 @@ class PacketAggregator{
     u_int32_t addPacketToMap(FlowMetadata meta, u_int32_t pos);
     bool writeNextToPacketPointer(u_int32_t last, u_int32_t now);
     bool writeFlowMetaIndexToIndexBuffer(FlowMetadata meta, u_int32_t pos);
+
+    void trancate();
 public:
     PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers):eth_header_len(eth_header_len){
         this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
@@ -77,6 +89,7 @@ public:
     void ereaseID(u_int8_t id);
     void run();
     void asynchronousStop();
+    void asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers);
 };
 
 #endif

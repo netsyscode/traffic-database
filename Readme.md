@@ -47,7 +47,17 @@
 ### controller
 * 组件控制器
 * 生成其余组件，调整可并行部分线程数量
-* 可生成trace catch与packet aggregator，已测试，其余功能待完成
+* 可生成索引建立线程，已测试，其余功能待完成
+* 截断操作设计：
+	* (i)触发：packet buffer或packet pointer使用大小超过警告
+	* (ii)申请新共享内存
+	* (iii)通过线程asynchronousPause接口替换旧内存
+	* (iv)线程内部操作
+		* trace catcher：直接替换，旧内存交由controller管理
+		* packet aggregator：packet buffer与index buffer直接替换（因为当前只考虑流索引，不需要考虑截断问题），packet pointer保留直至next被填满
+		* index generater：读出所有index buffer内容后，直接替换（因为当前只考虑流索引，不需要考虑截断问题）
+	* (v)线程旧内存替换后，修改pause变量
+	* (vi)将旧内存整理后交给存储系统
 
 ### pcapReader
 * 从指定pcap文件中持续读取pcap格式数据包

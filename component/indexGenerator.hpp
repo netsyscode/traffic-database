@@ -11,14 +11,24 @@ class IndexGenerator{
 
     // shared memory
     RingBuffer* buffer;
-    SkipList* indexCache; // skipList, static cast when use
+    SkipList* indexCache;
 
     // thread member
     u_int32_t threadID;
     std::atomic_bool stop;
+    std::atomic_bool pause;
+
+    RingBuffer* newBuffer;
+    SkipList* newIndexCache;
+
+    // for old flows, but for flow index, NO need to be considered
+    // RingBuffer* oldBuffer;
+    // SkipList* oldIndexCache;
 
     Index readIndexFromBuffer();
     void putIndexToCache(const Index& index);
+
+    void trancate();
 public:
     IndexGenerator(RingBuffer* buffer, SkipList* indexCache, u_int32_t keyLen):keyLen(keyLen){
         this->buffer = buffer;
@@ -30,6 +40,7 @@ public:
     void setThreadID(u_int32_t threadID);
     void run();
     void asynchronousStop();
+    void asynchronousPause(RingBuffer* newBuffer, SkipList* newIndexCache);
 };
 
 #endif

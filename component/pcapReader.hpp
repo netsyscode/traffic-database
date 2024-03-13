@@ -21,14 +21,19 @@ class PcapReader{
 
     std::string filename;
     u_int32_t offset;
+    std::ifstream file;
+    u_int32_t fileLen;
+
     // write only
     ShareBuffer* packetBuffer;
     // write only
     ArrayList<u_int32_t>* packetPointer;
-    std::ifstream file;
-    u_int32_t fileLen;
+
+    ShareBuffer* newPacketBuffer;
+    ArrayList<u_int32_t>* newpacketPointer;
 
     std::atomic_bool stop;
+    std::atomic_bool pause;
 
     //opne file
     bool openFile();
@@ -40,6 +45,8 @@ class PcapReader{
     u_int8_t calPacketID(PacketMeta& meta);
     //write data to packet pointer
     u_int32_t writePacketToPacketPointer(u_int32_t _offset, u_int8_t id);
+
+    void trancate();
 public:
     PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, ShareBuffer* buffer, ArrayList<u_int32_t>* packetPointer):
     pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),filename(filename),packetBuffer(buffer),packetPointer(packetPointer){
@@ -47,8 +54,10 @@ public:
         this->stop = true;
     }
     ~PcapReader()=default;
+    
     void run();
     void asynchronousStop();
+    void asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newpacketPointer);
 };
 
 #endif
