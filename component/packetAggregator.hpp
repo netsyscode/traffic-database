@@ -63,14 +63,17 @@ class PacketAggregator{
     u_int32_t readFromPacketPointer();
     std::string readFromPacketBuffer(u_int32_t offset);
     FlowMetadata parsePacket(const char* packet);
-    //return last packet, max for first
-    u_int32_t addPacketToMap(FlowMetadata meta, u_int32_t pos);
+    //return <last packet(max for first packet), is_in_old_packet_pointer>
+    std::pair<u_int32_t,bool> addPacketToMap(FlowMetadata meta, u_int32_t pos);
+    bool writeNextToOldPacketPointer(u_int32_t last, u_int32_t now);
     bool writeNextToPacketPointer(u_int32_t last, u_int32_t now);
     bool writeFlowMetaIndexToIndexBuffer(FlowMetadata meta, u_int32_t pos);
 
-    void trancate();
+    void truncate();
 public:
     PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers):eth_header_len(eth_header_len){
+        this->oldAggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
+        this->oldPacketPointer = nullptr;
         this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
         this->IDSet = std::unordered_set<u_int8_t>();
         this->packetBuffer = packetBuffer;
@@ -82,6 +85,7 @@ public:
         this->threadID = std::numeric_limits<uint32_t>::max();
         this->readPos = 0;
         this->stop = true;
+        this->pause = false;
     }
     ~PacketAggregator(){}
     void setThreadID(u_int32_t threadID);

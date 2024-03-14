@@ -12,6 +12,10 @@ u_int32_t PacketAggregator::readFromPacketPointer(){
             std::cout << "Packet aggregator log: asynchronous stop." << std::endl;
             return std::numeric_limits<uint32_t>::max();
         }
+        if(id_data.err == 4 && this->pause){ // pause
+            std::cout << "Packet aggregator log: asynchronous pause." << std::endl;
+            return std::numeric_limits<uint32_t>::max();
+        }
         if(id_data.err){
             return std::numeric_limits<uint32_t>::max();
         }
@@ -56,9 +60,21 @@ FlowMetadata PacketAggregator::parsePacket(const char* packet){
     return meta;
 }
 
-u_int32_t PacketAggregator::addPacketToMap(FlowMetadata meta, u_int32_t pos){
+std::pair<u_int32_t,bool> PacketAggregator::addPacketToMap(FlowMetadata meta, u_int32_t pos){
     u_int32_t last = std::numeric_limits<uint32_t>::max();
-    auto it = this->aggMap.find(meta);
+    auto it = this->oldAggMap.find(meta);
+    if(it != this->oldAggMap.end()){
+        last = it->second.tail;
+        it->second.tail = pos;
+        Flow flow;
+        flow.head = pos;
+        flow.tail = pos;
+        this->aggMap.insert(std::make_pair(meta,flow));
+        this->oldAggMap.erase(it);
+        return std::make_pair(last,true);
+    }
+
+    it = this->aggMap.find(meta);
     if(it == this->aggMap.end()){
         Flow flow;
         flow.head = pos;
@@ -68,9 +84,17 @@ u_int32_t PacketAggregator::addPacketToMap(FlowMetadata meta, u_int32_t pos){
         last = it->second.tail;
         it->second.tail = pos;
     }
-    return last;
+    return std::make_pair(last,false);
 }
-
+bool PacketAggregator::writeNextToOldPacketPointer(u_int32_t last, u_int32_t now){
+    if(this->oldPacketPointer == nullptr){
+        std::cerr << "Packet aggregator error: writeNextToOldPacketPointer in nullptr!" << std::endl;
+    }
+    if(last == std::numeric_limits<u_int32_t>::max()){
+        return true;
+    }
+    return this->oldPacketPointer->changeNextMultiThread(last, now + this->oldPacketPointer->getNodeNum());
+}
 bool PacketAggregator::writeNextToPacketPointer(u_int32_t last, u_int32_t now){
     if(last == std::numeric_limits<uint32_t>::max()){
         return true;
@@ -121,6 +145,29 @@ bool PacketAggregator::writeFlowMetaIndexToIndexBuffer(FlowMetadata meta, u_int3
     return true;
 }
 
+void PacketAggregator::truncate(){
+    if(this->newPacketBuffer == nullptr || this->newPacketPointer == nullptr || this->flowMetaIndexBuffers == nullptr){
+        std::cerr <<"Packet aggregator error: trancate without new memory!" << std::endl;
+        this->pause = false;
+        return;
+    }
+    this->oldPacketPointer = this->packetPointer;
+    this->oldAggMap = this->aggMap;
+
+    this->packetBuffer = this->newPacketBuffer;
+    this->packetPointer = this->packetPointer;
+    this->flowMetaIndexBuffers = this->flowMetaIndexBuffers;
+    this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
+
+    this->newPacketBuffer = nullptr;
+    this->newPacketPointer = nullptr;
+    this->newFlowMetaIndexBuffers = nullptr;
+    
+    this->readPos = 0;
+
+    this->pause = false;
+}
+
 void PacketAggregator::setThreadID(u_int32_t threadID){
     this->threadID = threadID;
 }
@@ -140,6 +187,7 @@ void PacketAggregator::run(){
     }
     std::cout << "Packet aggregator log: thread " << this->threadID << " run." << std::endl;
     this->stop = false;
+    this->pause = false;
     
     while (true){
         if(this->stop){
@@ -148,7 +196,13 @@ void PacketAggregator::run(){
         u_int32_t offset = this->readFromPacketPointer();
         // std::cout << "offset:" << offset << std::endl;
         if(offset == std::numeric_limits<uint32_t>::max()){
-            break;
+            if(this->stop){
+                break;
+            }
+            if(this->pause){
+                this->truncate();
+                continue;
+            }
         }
 
         std::string packet = this->readFromPacketBuffer(offset);
@@ -157,14 +211,19 @@ void PacketAggregator::run(){
         }
         // std::cout << "get packet."<< std::endl;
         FlowMetadata meta = this->parsePacket(packet.c_str());
-        
-        u_int32_t last = this->addPacketToMap(meta,this->readPos - 1);
-        // std::cout << this->readPos - 1 << " " << last << std::endl;
-        if(!this->writeNextToPacketPointer(last,this->readPos - 1)){
-            break;
+
+        auto last_ret = this->addPacketToMap(meta,this->readPos - 1);
+        if(last_ret.second){
+            if(this->writeNextToOldPacketPointer(last_ret.first,this->readPos - 1)){
+                break;
+            }
+        }else{
+            if(!this->writeNextToPacketPointer(last_ret.first,this->readPos - 1)){
+                break;
+            }
         }
 
-        if(last == std::numeric_limits<uint32_t>::max()){ //new flow
+        if(last_ret.first == std::numeric_limits<uint32_t>::max()){ //new flow
             if(!this->writeFlowMetaIndexToIndexBuffer(meta,this->readPos - 1)){
                 break;
             }
@@ -175,4 +234,10 @@ void PacketAggregator::run(){
 
 void PacketAggregator::asynchronousStop(){
     this->stop = true;
+}
+void PacketAggregator::asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers){
+    this->newPacketBuffer = newPacketBuffer;
+    this->newPacketPointer = newPacketPointer;
+    this->newFlowMetaIndexBuffers = newFlowMetaIndexBuffers;
+    this->pause = true;
 }

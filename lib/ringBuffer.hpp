@@ -48,6 +48,7 @@ public:
             }
         }
         thread->stop_ = false;
+        thread->pause_ = false;
         this->writeThreads.push_back(thread);
         return true;
     }
@@ -69,6 +70,7 @@ public:
             }
         }
         thread->stop_ = false;
+        thread->pause_ = false;
         this->readThreads.push_back(thread);
         return true;
     }
@@ -76,11 +78,20 @@ public:
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->readThreads.erase(it);
+                for(auto t:this->readThreads){
+                    t->cv_.notify_one();
+                }
                 return true;
             }
         }
         std::cerr << "Ring Buffer error: ereaseReadThread with non-exist id!" <<std::endl;
         return false;
+    }
+    u_int32_t getWriteThreadNum() const{
+        return this->writeThreads.size();
+    }
+    u_int32_t getReadThreadNum() const{
+        return this->readThreads.size();
     }
     bool put(const void* data, u_int32_t thread_id, u_int32_t len){
         if(len!= this->dataLen_){
@@ -147,6 +158,10 @@ public:
             return data;
         }
 
+        if(this->writeThreads.size()){
+            return std::string();
+        }
+
         ThreadPointer* thread = nullptr;
         for(auto t:this->readThreads){
             if(t->id == thread_id){
@@ -160,36 +175,22 @@ public:
         }
 
         std::unique_lock<std::mutex> lock(thread->mutex_);
-        thread->cv_.wait(lock, [this,thread,&pos]{return this->signalBuffer_[pos] || thread->stop_;});
-        if(thread->stop_){
+        thread->cv_.wait(lock, [this,thread,&pos]{return this->signalBuffer_[pos] || thread->stop_ || this->getWriteThreadNum();});
+        if(thread->stop_ ){
             std::cout << "Ring Buffer log: thread " << thread_id << " stop." <<std::endl;
             return std::string();
         }
-
-        data = std::string(this->buffer_ + pos*this->dataLen_, this->dataLen_);
-        this->signalBuffer_[pos] = false;
-        for(auto t:this->readThreads){
-            t->cv_.notify_one();
+        if(this->signalBuffer_[pos]){
+            data = std::string(this->buffer_ + pos*this->dataLen_, this->dataLen_);
+            this->signalBuffer_[pos] = false;
+            for(auto t:this->writeThreads){
+                t->cv_.notify_one();
+            }
+            return data;
         }
-        return data;
+
+        return std::string();
     } 
-    // this function is used for phased test, and it should not be used if there is more than 1 read thread.
-    // std::string outputToChar(){
-    //     std::string data = std::string();
-    //     if(this->readThreads.size() || this->readThreads.size()){
-    //         std::cerr << "Ring buffer error: outputToChar while it is used by certain thread!" <<std::endl;
-    //         return data;
-    //     }
-    //     std::cout << this->writePos_ << " " << this->readPos_ << std::endl;
-    //     u_int32_t len = (this->writePos_ + this->capacity_ - this->readPos_) % this->capacity_ ;
-    //     if(this->writePos_ >= this->readPos_){
-    //         data = std::string(this->buffer_ + this->readPos_, len);
-    //     }else{
-    //         data = std::string(this->buffer_ + this->readPos_, this->capacity_ - this->readPos_) +
-    //                 std::string(this->buffer_, this->writePos_);
-    //     }
-    //     return data;
-    // }
     void asynchronousStop(u_int32_t threadID){
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == threadID){
@@ -200,6 +201,16 @@ public:
         }
         std::cerr << "Ring buffer error: asynchronousStop with non-exist id!" <<std::endl;
     }
+    // void asynchronousPause(u_int32_t threadID){
+    //     for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
+    //         if((*(it))->id == threadID){
+    //             (*(it))->pause_ = true;
+    //             (*(it))->cv_.notify_one();
+    //             return;
+    //         }
+    //     }
+    //     std::cerr << "Ring buffer error: asynchronousStop with non-exist id!" <<std::endl;
+    // }
     // readPos - writePos, just for test
     int getPosDiff()const{
         if(this->readThreads.size() || this->readThreads.size()){

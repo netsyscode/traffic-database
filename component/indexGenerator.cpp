@@ -25,6 +25,20 @@ void IndexGenerator::putIndexToCache(const Index& index){
     this->indexCache->insert(index.key,index.value);
 }
 
+// void IndexGenerator::truncate(){
+//     if(this->newBuffer == nullptr || this->newIndexCache == nullptr){
+//         std::cerr <<"Indext generator error: trancate without new memory!" << std::endl;
+//         this->pause = false;
+//         return;
+//     }
+
+//     this->buffer = this->newBuffer;
+//     this->indexCache = this->newIndexCache;
+//     this->newBuffer = nullptr;
+//     this->newIndexCache = nullptr;
+//     this->pause = false;
+// }
+
 void IndexGenerator::setThreadID(u_int32_t threadID){
     this->threadID = threadID;
 }
@@ -35,6 +49,7 @@ void IndexGenerator::run(){
     }
     std::cout << "Index generator log: thread " << this->threadID << " run." << std::endl;
     this->stop = false;
+    // this->pause = false;
 
     // u_int32_t count = 0; // just for test
     while (true){
@@ -43,8 +58,17 @@ void IndexGenerator::run(){
         }
         Index data = this->readIndexFromBuffer();
         if(data.key.size()==0){
+            this->stop = true;
             break;
         }
+        // if(data.key.size()==0){
+        //     if(this->stop){
+        //         break;
+        //     }
+        //     if(this->pause){
+        //         this->truncate();
+        //     }
+        // }
         this->putIndexToCache(data);
 
         // count++;// just for test
@@ -55,3 +79,8 @@ void IndexGenerator::run(){
 void IndexGenerator::asynchronousStop(){
     this->stop = true;
 }
+// void IndexGenerator::asynchronousPause(RingBuffer* newBuffer, SkipList* newIndexCache){
+//     this->newBuffer = newBuffer;
+//     this->newIndexCache = newIndexCache;
+//     this->pause = true;
+// }

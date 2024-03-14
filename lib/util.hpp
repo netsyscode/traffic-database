@@ -7,6 +7,7 @@ struct ThreadPointer{
     std::mutex mutex_;
     std::condition_variable cv_;
     std::atomic_bool stop_;
+    std::atomic_bool pause_;
 };
 
 struct Index{

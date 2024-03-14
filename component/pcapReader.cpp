@@ -100,12 +100,26 @@ u_int32_t PcapReader::writePacketToPacketPointer(u_int32_t _offset, u_int8_t id)
     return this->packetPointer->addNodeOneThread(_offset,id);
 }
 
+void PcapReader::truncate(){
+    if(this->newPacketBuffer == nullptr || this->newpacketPointer == nullptr){
+        std::cerr << "Pcap reader error: trancate without new memory!" << std::endl;
+        this->pause = false;
+        return;
+    }
+    this->packetBuffer = this->newPacketBuffer;
+    this->packetPointer = this->newpacketPointer;
+    this->newPacketBuffer = nullptr;
+    this->newpacketPointer = nullptr;
+    this->pause = false;
+}
+
 void PcapReader::run(){
     if(!this->openFile()){
         return;
     }
     std::cout << "Pcap reader log: thread run." << std::endl;
     this->stop = false;
+    this->pause = false;
     //align
     this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
     while(true){
@@ -129,10 +143,19 @@ void PcapReader::run(){
             std::cout << "Pcap reader log: asynchronous stop." << std::endl;
             break;
         }
+        if(this->pause){
+            this->truncate();
+        }
     }
     std::cout << "Pcap reader log: thread quit." << std::endl;
 }
 
 void PcapReader::asynchronousStop(){
     this->stop = true;
+}
+
+void PcapReader::asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newpacketPointer){
+    this->newPacketBuffer = newPacketBuffer;
+    this->newpacketPointer = newpacketPointer;
+    this->pause = true;
 }

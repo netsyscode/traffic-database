@@ -69,6 +69,8 @@ class MultiThreadController{
 
     void threadsRun();
 
+    void truncate();
+
     // run as a new thread
     void queryThreadRun();
 

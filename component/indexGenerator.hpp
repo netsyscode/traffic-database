@@ -16,10 +16,11 @@ class IndexGenerator{
     // thread member
     u_int32_t threadID;
     std::atomic_bool stop;
-    std::atomic_bool pause;
+    // we needn't think about  pause now -- just stop
+    // std::atomic_bool pause;
 
-    RingBuffer* newBuffer;
-    SkipList* newIndexCache;
+    // RingBuffer* newBuffer;
+    // SkipList* newIndexCache;
 
     // for old flows, but for flow index, NO need to be considered
     // RingBuffer* oldBuffer;
@@ -28,19 +29,20 @@ class IndexGenerator{
     Index readIndexFromBuffer();
     void putIndexToCache(const Index& index);
 
-    void trancate();
+    // void truncate();
 public:
     IndexGenerator(RingBuffer* buffer, SkipList* indexCache, u_int32_t keyLen):keyLen(keyLen){
         this->buffer = buffer;
         this->indexCache = indexCache;
         this->threadID = std::numeric_limits<uint32_t>::max();
         this->stop = true;
+        // this->pause = false;
     }
     ~IndexGenerator(){}
     void setThreadID(u_int32_t threadID);
     void run();
     void asynchronousStop();
-    void asynchronousPause(RingBuffer* newBuffer, SkipList* newIndexCache);
+    // void asynchronousPause(RingBuffer* newBuffer, SkipList* newIndexCache);
 };
 
 #endif

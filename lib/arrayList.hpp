@@ -16,12 +16,12 @@ struct IDData{
 template<class T>
 struct ArrayListNode{
     T value;
-    u_int32_t next;
+    u_int32_t next; // if next > this->nodeNum, the next is in the other new array list
 };
 
 template<class T>
 class ArrayList{
-    const u_int32_t maxLength;
+    const u_int32_t maxLength; // maxLength should be less than u_int32_t::max/2
     const u_int32_t warningLength; //once exceed warningLength, warning = true
     std::atomic_bool warning;
     std::atomic_uint32_t nodeNum; // now number of nodes, only increase
@@ -100,6 +100,7 @@ public:
             }
         }
         thread->stop_ = false;
+        thread->pause_ = false;
         this->readThreads.push_back(thread);
         this->threadCount++;
         return true;
@@ -156,14 +157,20 @@ public:
         }
 
         std::unique_lock<std::mutex> lock(thread->mutex_);
-        thread->cv_.wait(lock, [&pos,this,thread] { return pos < this->nodeNum || thread->stop_; });
+        thread->cv_.wait(lock, [&pos,this,thread] { return pos < this->nodeNum || thread->stop_ || thread->pause_; });
         
         if(thread->stop_){
             std::cout << "Array list log: thread " << thread_id << " stop." <<std::endl;
             data.err = 3;
             return data;
         }
-        data.data = this->idArray[pos];
+        if(pos < this->nodeNum){
+            data.data = this->idArray[pos];
+            return data;
+        }
+        //pause and read all data
+        data.data = std::numeric_limits<uint32_t>::max();
+        data.err = 4;
         return data;
     }
     // Non-parallelizable, get ID from certain pos
@@ -249,6 +256,16 @@ public:
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == threadID){
                 (*(it))->stop_ = true;
+                (*(it))->cv_.notify_one();
+                return;
+            }
+        }
+        std::cerr << "Array list error: asynchronousStop with non-exist id!" <<std::endl;
+    }
+    void asynchronousPause(u_int32_t threadID){
+        for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
+            if((*(it))->id == threadID){
+                (*(it))->pause_ = true;
                 (*(it))->cv_.notify_one();
                 return;
             }
