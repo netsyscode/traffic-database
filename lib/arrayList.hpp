@@ -169,7 +169,6 @@ public:
             return data;
         }
         //pause and read all data
-        data.data = std::numeric_limits<uint32_t>::max();
         data.err = 4;
         return data;
     }

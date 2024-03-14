@@ -155,8 +155,8 @@ void PacketAggregator::truncate(){
     this->oldAggMap = this->aggMap;
 
     this->packetBuffer = this->newPacketBuffer;
-    this->packetPointer = this->packetPointer;
-    this->flowMetaIndexBuffers = this->flowMetaIndexBuffers;
+    this->packetPointer = this->newPacketPointer;
+    this->flowMetaIndexBuffers = this->newFlowMetaIndexBuffers;
     this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
 
     this->newPacketBuffer = nullptr;

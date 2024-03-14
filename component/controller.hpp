@@ -11,20 +11,6 @@
 #include "indexGenerator.hpp"
 #include "querier.hpp"
 
-struct InitData{
-    u_int32_t buffer_len;
-    u_int32_t packet_num;
-    u_int32_t buffer_warn;
-    u_int32_t packet_warn;
-    // u_int32_t pcap_header_len;
-    u_int32_t eth_header_len;
-    std::string filename;
-    u_int32_t flow_capacity;
-    u_int32_t packetAggregatorThreadCount;
-    u_int32_t flowMetaIndexGeneratorThreadCountEach;
-    std::string pcap_header;
-};
-
 struct OutputData{
     ShareBuffer* packetBuffer;
     ArrayList<u_int32_t>* packetPointer;
@@ -74,8 +60,8 @@ class MultiThreadController{
     // run as a new thread
     void queryThreadRun();
 
-    void pushPacketAggregatorRunning(u_int32_t eth_header_len);
-    void popPacketAggregatorRunning();
+    // void pushPacketAggregatorRunning(u_int32_t eth_header_len);
+    // void popPacketAggregatorRunning();
 
     void threadsStop();
     void threadsClear();
