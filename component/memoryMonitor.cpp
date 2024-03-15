@@ -35,7 +35,7 @@ void MemoryMonitor::makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_he
 }
 void MemoryMonitor::pushPacketAggregatorInit(u_int32_t eth_header_len){
     PacketAggregator* aggregator = new PacketAggregator(eth_header_len, this->memoryPool[0].packetBuffer, this->memoryPool[0].packetPointer, this->memoryPool[0].flowMetaIndexBuffers);
-    ThreadPointer* read_pointer = new ThreadPointer{(u_int32_t)(this->packetAggregatorPointers.size()), std::mutex(), std::condition_variable(), std::atomic_bool(false)};
+    ThreadPointer* read_pointer = new ThreadPointer{(u_int32_t)(this->packetAggregatorPointers.size()), std::mutex(), std::condition_variable(), std::atomic_bool(false),std::atomic_bool(false)};
     if(!this->memoryPool[0].packetPointer->addReadThread(read_pointer)){
         return;
     }
@@ -75,7 +75,7 @@ void MemoryMonitor::pushFlowMetaIndexGeneratorInit(const std::vector<u_int32_t>&
         IndexGenerator* generator = new IndexGenerator((*(this->memoryPool[0].flowMetaIndexBuffers))[i],(*(this->memoryPool[0].flowMetaIndexCaches))[i],this->flowMetaEleLens[i]);
         ThreadPointer* write_pointer = new ThreadPointer{
             (u_int32_t)(this->flowMetaIndexGeneratorPointers[i].size()*this->memoryPool[0].flowMetaIndexBuffers->size() + i), 
-            std::mutex(), std::condition_variable(), std::atomic_bool(false)};
+            std::mutex(), std::condition_variable(), std::atomic_bool(false), std::atomic_bool(false)};
         if(!(*(this->memoryPool[0].flowMetaIndexBuffers))[i]->addReadThread(write_pointer)){
             return;
         }
