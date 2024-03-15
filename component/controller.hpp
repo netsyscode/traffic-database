@@ -6,19 +6,19 @@
 #include "../lib/arrayList.hpp"
 #include "../lib/shareBuffer.hpp"
 #include "../lib/ringBuffer.hpp"
-#include "pcapReader.hpp"
-#include "packetAggregator.hpp"
-#include "indexGenerator.hpp"
+// #include "pcapReader.hpp"
+// #include "packetAggregator.hpp"
+// #include "indexGenerator.hpp"
 #include "querier.hpp"
 #include "memoryMonitor.hpp"
 
-struct OutputData{
-    ShareBuffer* packetBuffer;
-    ArrayList<u_int32_t>* packetPointer;
-    std::vector<RingBuffer*>* flowMetaIndexBuffers;
-    std::vector<SkipList*>* flowMetaIndexCaches;
-    std::vector<u_int32_t> flowMetaEleLens;
-};
+// struct OutputData{
+//     ShareBuffer* packetBuffer;
+//     ArrayList<u_int32_t>* packetPointer;
+//     std::vector<RingBuffer*>* flowMetaIndexBuffers;
+//     std::vector<SkipList*>* flowMetaIndexCaches;
+//     std::vector<u_int32_t> flowMetaEleLens;
+// };
 
 class MultiThreadController{
     const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2};

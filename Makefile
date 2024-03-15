@@ -6,9 +6,9 @@ CC := clang++
 COMPILE_OPT := -std=c++17
 INC = -I$(LIB_PATH)
 
-TARGET = controllerTest
-TEST_SRCS = controllerTest.cpp
-COMPONENT_SRCS = packetAggregator.cpp pcapReader.cpp indexGenerator.cpp controller.cpp querier.cpp
+TARGET = memoryMonitorTest
+TEST_SRCS = memoryMonitorTest.cpp
+COMPONENT_SRCS = packetAggregator.cpp pcapReader.cpp indexGenerator.cpp memoryMonitor.cpp controller.cpp 
 SRCS = $(addprefix $(TEST_PATH), $(TEST_SRCS)) $(addprefix $(COMPONENT_PATH), $(COMPONENT_SRCS))
 # TEST_OBJS = $(TEST_SRCS:.cpp=.o)
 # COMPONENT_OBJS = $(COMPONENT_SRCS:.cpp=.o)

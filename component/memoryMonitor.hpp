@@ -3,7 +3,6 @@
 #include <iostream>
 #include <thread>
 #include <vector>
-#include <list>
 #include <condition_variable>
 #include "../lib/arrayList.hpp"
 #include "../lib/shareBuffer.hpp"
@@ -20,6 +19,21 @@ struct MemoryGroup{
     std::vector<SkipList*>* flowMetaIndexCaches;
 };
 
+struct TruncateGroup{
+    // delayed truncate
+    ShareBuffer* oldPacketBuffer;
+    ArrayList<u_int32_t>* oldPacketPointer;
+    ShareBuffer* newPacketBuffer;
+    ArrayList<u_int32_t>* newPacketPointer;
+
+    // monitor util stop
+    std::vector<RingBuffer*>* flowMetaIndexBuffers;
+    std::vector<SkipList*>* flowMetaIndexCaches;
+    std::vector<std::vector<IndexGenerator*>>* flowMetaIndexGenerators;
+    std::vector<std::vector<ThreadPointer*>>* flowMetaIndexGeneratorPointers;
+    std::vector<std::vector<std::thread*>>* flowMetaIndexGeneratorThreads;
+};
+
 class MemoryMonitor{
     const u_int32_t memoryPoolSize = 3;
     const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2};
@@ -28,7 +42,7 @@ class MemoryMonitor{
 
     std::atomic_bool stop;
     u_int32_t threadId;
-    std::condition_variable cv;
+    std::condition_variable* cv;
     std::mutex mutex;
 
     // shared memory pool
@@ -82,6 +96,8 @@ public:
     MemoryMonitor(RingBuffer* truncatePipe, u_int32_t threadId){
         this->stop = true;
         this->threadId = threadId;
+        this->cv = new std::condition_variable();
+
         this->memoryPool = std::vector<MemoryGroup>();
 
         this->traceCatcher = nullptr;

@@ -20,6 +20,7 @@ void MultiThreadController::threadsRun(){
     this->memoryMonitorThreadRun();
 }
 void MultiThreadController::threadsStop(){
+    std::cout << "Controller log: threads stop." << std::endl;
     if(this->memoryMonitorThread != nullptr){
         this->memoryMonitor->asynchronousStop();
         this->memoryMonitorThread->join();
@@ -43,6 +44,8 @@ void MultiThreadController::threadsClear(){
 void MultiThreadController::init(InitData init_data){
     this->makeMemoryStoragePipe();
     this->makeMemoryMonitor();
+    
+    this->memoryMonitor->init(init_data);
     std::cout << "Controller log: init." << std::endl;
 }
 void MultiThreadController::run(){
@@ -53,7 +56,7 @@ void MultiThreadController::run(){
     
     std::cout << "Controller log: run." << std::endl;
     this->threadsRun();
-    std::this_thread::sleep_for(std::chrono::microseconds(500));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     this->threadsStop();
     this->threadsClear();

@@ -154,10 +154,19 @@ void PacketAggregator::truncate(){
     this->oldPacketPointer = this->packetPointer;
     this->oldAggMap = this->aggMap;
 
+    for(auto ib:(*(this->flowMetaIndexBuffers))){
+        ib->ereaseWriteThread(this->selfPointer);
+    }
+
     this->packetBuffer = this->newPacketBuffer;
     this->packetPointer = this->newPacketPointer;
     this->flowMetaIndexBuffers = this->newFlowMetaIndexBuffers;
     this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
+
+    this->packetPointer->addReadThread(this->selfPointer);
+    for(auto ib:(*(this->flowMetaIndexBuffers))){
+        ib->addWriteThread(this->selfPointer);
+    }
 
     this->newPacketBuffer = nullptr;
     this->newPacketPointer = nullptr;
@@ -214,7 +223,7 @@ void PacketAggregator::run(){
 
         auto last_ret = this->addPacketToMap(meta,this->readPos - 1);
         if(last_ret.second){
-            if(this->writeNextToOldPacketPointer(last_ret.first,this->readPos - 1)){
+            if(!this->writeNextToOldPacketPointer(last_ret.first,this->readPos - 1)){
                 break;
             }
         }else{
@@ -235,9 +244,16 @@ void PacketAggregator::run(){
 void PacketAggregator::asynchronousStop(){
     this->stop = true;
 }
-void PacketAggregator::asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers){
+void PacketAggregator::asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers, ThreadPointer* pointer){
+    if(this->threadID != pointer->id){
+        std::cerr << "Packet aggregator error: asynchronousPause with wrong thread pointer!" << std::endl;
+    }
+    this->selfPointer = pointer;
     this->newPacketBuffer = newPacketBuffer;
     this->newPacketPointer = newPacketPointer;
     this->newFlowMetaIndexBuffers = newFlowMetaIndexBuffers;
     this->pause = true;
+}
+bool PacketAggregator::getPause()const{
+    return this->pause;
 }

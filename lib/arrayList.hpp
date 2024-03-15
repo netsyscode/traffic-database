@@ -41,7 +41,7 @@ public:
     }
     ~ArrayList(){
         if(this->threadCount){
-            std::cout << "Array list warning: it is used by certain thread." <<std::endl;
+            std::cout << "Array list warning: it is used by " << this->threadCount << " thread." <<std::endl;
         }
         delete[] array;
         delete[] idArray;
@@ -259,7 +259,7 @@ public:
                 return;
             }
         }
-        std::cerr << "Array list error: asynchronousStop with non-exist id!" <<std::endl;
+        std::cerr << "Array list error: asynchronousStop with non-exist id " << threadID << "!" <<std::endl;
     }
     void asynchronousPause(u_int32_t threadID){
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
@@ -269,7 +269,7 @@ public:
                 return;
             }
         }
-        std::cerr << "Array list error: asynchronousStop with non-exist id!" <<std::endl;
+        std::cerr << "Array list error: asynchronousPause with non-exist id!" <<std::endl;
     }
 };
 

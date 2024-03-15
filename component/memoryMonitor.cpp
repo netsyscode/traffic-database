@@ -30,7 +30,7 @@ std::vector<SkipList*>* MemoryMonitor::makeFlowMetaIndexCaches(const std::vector
 }
 
 void MemoryMonitor::makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename){
-    this->traceCatcher = new PcapReader(pcap_header_len,eth_header_len,filename,this->memoryPool[0].packetBuffer,this->memoryPool[0].packetPointer,&(this->cv));
+    this->traceCatcher = new PcapReader(pcap_header_len,eth_header_len,filename,this->memoryPool[0].packetBuffer,this->memoryPool[0].packetPointer,this->cv);
     this->memoryPool[0].packetPointer->addWriteThread();
 }
 void MemoryMonitor::pushPacketAggregatorInit(u_int32_t eth_header_len){
@@ -74,7 +74,7 @@ void MemoryMonitor::pushFlowMetaIndexGeneratorInit(const std::vector<u_int32_t>&
     for(int i=0;i<this->memoryPool[0].flowMetaIndexBuffers->size();++i){
         IndexGenerator* generator = new IndexGenerator((*(this->memoryPool[0].flowMetaIndexBuffers))[i],(*(this->memoryPool[0].flowMetaIndexCaches))[i],this->flowMetaEleLens[i]);
         ThreadPointer* write_pointer = new ThreadPointer{
-            (u_int32_t)(this->flowMetaIndexGeneratorPointers[i].size()*this->memoryPool[0].flowMetaIndexBuffers->size() + i), 
+            (u_int32_t)((*(this->flowMetaIndexGeneratorPointers))[i].size()*this->memoryPool[0].flowMetaIndexBuffers->size() + i), 
             std::mutex(), std::condition_variable(), std::atomic_bool(false), std::atomic_bool(false)};
         if(!(*(this->memoryPool[0].flowMetaIndexBuffers))[i]->addReadThread(write_pointer)){
             return;
@@ -86,12 +86,17 @@ void MemoryMonitor::pushFlowMetaIndexGeneratorInit(const std::vector<u_int32_t>&
 }
 
 void MemoryMonitor::putTruncateGroupToPipe(TruncateGroup group){
+    // for test
+    // for(auto ic:*(group.flowMetaIndexCaches)){
+    //     std::cout << "Memory monitor log: skip list size of " << ic->getNodeNum() << std::endl;
+    // }
+    std::cout << "Memory monitor log: skip list size of " << group.oldPacketBuffer->getLen() << std::endl;
     this->truncatePipe->put((void*)&group,this->threadId,sizeof(group));
 }
 
 void MemoryMonitor::makeMemoryPool(){
     int i = this->memoryPool.size();
-    for(i;i<this->memoryPoolSize;++i){
+    for(;i<this->memoryPoolSize;++i){
         MemoryGroup group = {
             .packetBuffer = this->makePacketBuffer(this->init_data.buffer_len,this->init_data.buffer_warn),
             .packetPointer = this->makePacketPointer(this->init_data.packet_num,this->init_data.packet_warn),
@@ -128,7 +133,7 @@ void MemoryMonitor::dynamicThreadsRun(){
     this->flowMetaIndexGeneratorThreads = new std::vector<std::vector<std::thread*>>();
     for(int i=0; i<this->flowMetaIndexGenerators->size();++i){
         this->flowMetaIndexGeneratorThreads->push_back(std::vector<std::thread*>());
-        for(auto ger:this->flowMetaIndexGenerators[i]){
+        for(auto ger:(*(this->flowMetaIndexGenerators))[i]){
             std::thread* t = new std::thread(&IndexGenerator::run,ger);
             (*(this->flowMetaIndexGeneratorThreads))[i].push_back(t);
         }
@@ -143,6 +148,13 @@ void MemoryMonitor::truncate(){
     if(this->memoryPool.size()<=1){
         std::cerr << "Memory monitor error: truncate with too less memory in pool!" << std::endl;
     }
+    std::cout << "Memory monitor log: truncate." << std::endl;
+
+    // this needs to be optimized
+    // for(int i=0;i<this->packetAggregatorThreads.size();++i){
+    //     while (this->packetAggregators[i]->getPause());
+    // }
+
     auto memory_group = this->memoryPool[0];
     this->memoryPool.erase(this->memoryPool.begin());
 
@@ -160,15 +172,24 @@ void MemoryMonitor::truncate(){
 
     this->traceCatcher->asynchronousPause(this->memoryPool[0].packetBuffer,this->memoryPool[0].packetPointer);
     auto tc = this->traceCatcher;
+    
     std::unique_lock<std::mutex> lock(this->mutex);
-    this->cv.wait(lock, [tc]{return !tc->getPause();});
+    this->cv->wait(lock, [tc]{return !(tc->getPause());});
+    lock.unlock();
+
+    truncate_group.oldPacketPointer->ereaseWriteThread();
+    this->memoryPool[0].packetPointer->addWriteThread();
 
     for(int i=0;i<this->packetAggregatorThreads.size();++i){
-        this->packetAggregators[i]->asynchronousStop();
-        memory_group.packetPointer->asynchronousStop(this->packetAggregatorPointers[i]->id);
+        this->packetAggregators[i]->asynchronousPause(this->memoryPool[0].packetBuffer,this->memoryPool[0].packetPointer,this->memoryPool[0].flowMetaIndexBuffers,this->packetAggregatorPointers[i]);
+        memory_group.packetPointer->asynchronousPause(this->packetAggregatorPointers[i]->id);
+        // for(auto rb:*(truncate_group.flowMetaIndexBuffers)){
+        //     rb->ereaseWriteThread(this->packetAggregatorPointers[i]);
+        // }
     }
 
     // make new dynamic components
+    // this need to be optimized
     this->makeDynamicComponent();
     this->dynamicThreadsRun();
 
@@ -178,18 +199,19 @@ void MemoryMonitor::truncate(){
     // make new memory
     this->makeMemoryPool();
     
-    std::cout << "Memory monitor log: truncate." << std::endl;
+    std::cout << "Memory monitor log: truncate end." << std::endl;
 }
 void MemoryMonitor::monitor(){
     std::cout << "Memory monitor log: monitoring ..." << std::endl;
-    auto pb = this->memoryPool[0].packetBuffer;
     while(!this->stop){
+        auto pb = this->memoryPool[0].packetBuffer;
         std::unique_lock<std::mutex> lock(this->mutex);
-        this->cv.wait(lock, [pb,this]{return pb->getWarning() || this->stop;});
+        this->cv->wait(lock, [pb,this]{return pb->getWarning() || this->stop;});
+        lock.unlock();
+        this->truncate();
         if(this->stop){
             break;
         }
-        this->truncate();
     }
 }
 
@@ -204,7 +226,10 @@ void MemoryMonitor::threadsStop(){
     }
 
     for(int i=0;i<this->packetAggregatorThreads.size();++i){
-        // std::cout << "Controller log: thread " << this->packetAggregatorPointers[i]->id << " should stop." <<std::endl;
+
+        // wait truncate finish to avoid fault
+        while (this->packetAggregators[i]->getPause());
+
         this->packetAggregators[i]->asynchronousStop();
         this->memoryPool[0].packetPointer->asynchronousStop(this->packetAggregatorPointers[i]->id);
         
@@ -215,16 +240,21 @@ void MemoryMonitor::threadsStop(){
 
     if(this->flowMetaIndexGeneratorThreads != nullptr){    
         for(int i=0;i<this->flowMetaIndexGeneratorThreads->size();++i){
-            for(int j=0;j<this->flowMetaIndexGeneratorThreads[i].size();++j){
+            for(int j=0;j<(*(this->flowMetaIndexGeneratorThreads))[i].size();++j){
                 // std::cout << "Controller log: read thread " << this->flowMetaIndexGeneratorPointers[i][j]->id << " should stop." <<std::endl;
-                (*(this->flowMetaIndexGenerators))[i][j]->asynchronousStop();
-                (*(this->memoryPool[0].flowMetaIndexBuffers))[i]->asynchronousStop((*(this->flowMetaIndexGeneratorPointers))[i][j]->id);
-                (*(this->flowMetaIndexGeneratorThreads))[i][j]->join();
-                delete (*(this->flowMetaIndexGeneratorThreads))[i][j];
+                if((*(this->flowMetaIndexGeneratorThreads))[i][j]!=nullptr){
+                    (*(this->flowMetaIndexGenerators))[i][j]->asynchronousStop();
+                    (*(this->memoryPool[0].flowMetaIndexBuffers))[i]->asynchronousStop((*(this->flowMetaIndexGeneratorPointers))[i][j]->id);
+                    (*(this->flowMetaIndexGeneratorThreads))[i][j]->join();
+                    delete (*(this->flowMetaIndexGeneratorThreads))[i][j];
+                    (*(this->flowMetaIndexGeneratorThreads))[i][j] = nullptr;
+                }
             }
-            this->flowMetaIndexGeneratorThreads[i].clear();
+            (*(this->flowMetaIndexGeneratorThreads))[i].clear();
         }
         this->flowMetaIndexGeneratorThreads->clear();
+        delete this->flowMetaIndexGeneratorThreads;
+        this->flowMetaIndexGeneratorThreads = nullptr;
     }
 }
 void MemoryMonitor::threadsClear(){
@@ -234,7 +264,7 @@ void MemoryMonitor::threadsClear(){
                 (*(this->memoryPool[0].flowMetaIndexBuffers))[i]->ereaseReadThread(p);
                 delete p;
             }
-            this->flowMetaIndexGeneratorPointers[i].clear();
+            (*(this->flowMetaIndexGeneratorPointers))[i].clear();
         }
         this->flowMetaIndexGeneratorPointers->clear();
     }
@@ -275,6 +305,7 @@ void MemoryMonitor::memoryClear(){
         }
 
         if(m.packetPointer!=nullptr){
+            std::cout << "Memory monitor log: test." << std::endl;
             delete m.packetPointer;
         }
 
@@ -311,6 +342,7 @@ void MemoryMonitor::run(){
         std::cerr << "Memory monitor error: run without init!" << std::endl;
         return;
     }
+    this->stop = false;
     std::cout << "Memory monitor log: run." << std::endl;
     this->threadsRun();
     this->monitor();
@@ -322,5 +354,5 @@ void MemoryMonitor::run(){
 }
 void MemoryMonitor::asynchronousStop(){
     this->stop = true;
-    this->cv.notify_one();
+    this->cv->notify_one();
 }

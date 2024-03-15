@@ -152,6 +152,15 @@ void PcapReader::run(){
             this->monitor_cv->notify_one();
         }
     }
+    while(true){// wait
+        if(this->stop){
+            std::cout << "Pcap reader log: asynchronous stop." << std::endl;
+            break;
+        }
+        if(this->pause){
+            this->truncate();
+        }
+    }
     std::cout << "Pcap reader log: thread quit." << std::endl;
 }
 

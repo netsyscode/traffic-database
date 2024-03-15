@@ -29,19 +29,4 @@ struct InitData{
     std::string pcap_header;
 };
 
-struct TruncateGroup{
-    // delayed truncate
-    ShareBuffer* oldPacketBuffer;
-    ArrayList<u_int32_t>* oldPacketPointer;
-    ShareBuffer* newPacketBuffer;
-    ArrayList<u_int32_t>* newPacketPointer;
-
-    // monitor util stop
-    std::vector<RingBuffer*>* flowMetaIndexBuffers;
-    std::vector<SkipList*>* flowMetaIndexCaches;
-    std::vector<std::vector<IndexGenerator*>>* flowMetaIndexGenerators;
-    std::vector<std::vector<ThreadPointer*>>* flowMetaIndexGeneratorPointers;
-    std::vector<std::vector<std::thread*>>* flowMetaIndexGeneratorThreads;
-};
-
 #endif

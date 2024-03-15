@@ -59,6 +59,7 @@ class PacketAggregator{
 
     std::atomic_bool stop;
     std::atomic_bool pause;
+    ThreadPointer* selfPointer;
 
     u_int32_t readFromPacketPointer();
     std::string readFromPacketBuffer(u_int32_t offset);
@@ -93,7 +94,8 @@ public:
     void ereaseID(u_int8_t id);
     void run();
     void asynchronousStop();
-    void asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers);
+    void asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers, ThreadPointer* pointer);
+    bool getPause()const;
 };
 
 #endif

@@ -74,7 +74,7 @@
 	* (v)线程旧内存替换后，修改pause变量
 	* (vi)将旧内存整理后交给存储系统
 	* (vii)回收旧内存
-* 待测试
+* 已测试，在index generator线程过多时会偶发错误，怀疑与申请index generator的较大开销有关，此处需要修复
 
 ### pcapReader
 * 从指定pcap文件中持续读取pcap格式数据包

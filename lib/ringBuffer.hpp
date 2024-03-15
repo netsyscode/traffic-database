@@ -20,6 +20,8 @@ class RingBuffer{
     const u_int32_t capacity_;
     const u_int32_t dataLen_; // length of each data
 
+    std::atomic_bool has_begin;
+
     std::atomic_uint64_t readPos_;
     std::atomic_uint64_t writePos_;
 
@@ -33,6 +35,7 @@ public:
         this->writePos_ = 0;
         this->readThreads = std::vector<ThreadPointer*>();
         this->writeThreads = std::vector<ThreadPointer*>();
+        this->has_begin = false;
     }
     ~RingBuffer(){
         if(this->writeThreads.size() || this->readThreads.size()){
@@ -50,6 +53,7 @@ public:
         thread->stop_ = false;
         thread->pause_ = false;
         this->writeThreads.push_back(thread);
+        this->has_begin = true;
         return true;
     }
     bool ereaseWriteThread(ThreadPointer* thread){
@@ -158,7 +162,7 @@ public:
             return data;
         }
 
-        if(this->writeThreads.size()){
+        if(!this->getWriteThreadNum() && this->has_begin){
             return std::string();
         }
 
@@ -173,11 +177,10 @@ public:
             std::cerr << "Ring Buffer error: getID with non-exist thread id!" <<std::endl;
             return data;
         }
-
         std::unique_lock<std::mutex> lock(thread->mutex_);
-        thread->cv_.wait(lock, [this,thread,&pos]{return this->signalBuffer_[pos] || thread->stop_ || this->getWriteThreadNum();});
+        thread->cv_.wait(lock, [this,thread,&pos]{return this->signalBuffer_[pos] || thread->stop_ || (!this->getWriteThreadNum() && this->has_begin);});
         if(thread->stop_ ){
-            std::cout << "Ring Buffer log: thread " << thread_id << " stop." <<std::endl;
+            std::cout << "Ring Buffer log: read thread " << thread_id << " stop." <<std::endl;
             return std::string();
         }
         if(this->signalBuffer_[pos]){
@@ -188,7 +191,6 @@ public:
             }
             return data;
         }
-
         return std::string();
     } 
     void asynchronousStop(u_int32_t threadID){
