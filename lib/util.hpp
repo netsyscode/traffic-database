@@ -37,6 +37,7 @@ struct TruncateGroup{
     ArrayList<u_int32_t>* newPacketPointer;
 
     // monitor util stop
+    std::vector<RingBuffer*>* flowMetaIndexBuffers;
     std::vector<SkipList*>* flowMetaIndexCaches;
     std::vector<std::vector<IndexGenerator*>>* flowMetaIndexGenerators;
     std::vector<std::vector<ThreadPointer*>>* flowMetaIndexGeneratorPointers;

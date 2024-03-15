@@ -104,6 +104,7 @@ void PcapReader::truncate(){
     if(this->newPacketBuffer == nullptr || this->newpacketPointer == nullptr){
         std::cerr << "Pcap reader error: trancate without new memory!" << std::endl;
         this->pause = false;
+        this->monitor_cv->notify_one();
         return;
     }
     this->packetBuffer = this->newPacketBuffer;
@@ -111,6 +112,7 @@ void PcapReader::truncate(){
     this->newPacketBuffer = nullptr;
     this->newpacketPointer = nullptr;
     this->pause = false;
+    this->monitor_cv->notify_one();
 }
 
 void PcapReader::run(){
@@ -146,6 +148,9 @@ void PcapReader::run(){
         if(this->pause){
             this->truncate();
         }
+        if(this->packetBuffer->getWarning()){
+            this->monitor_cv->notify_one();
+        }
     }
     std::cout << "Pcap reader log: thread quit." << std::endl;
 }
@@ -158,4 +163,8 @@ void PcapReader::asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int
     this->newPacketBuffer = newPacketBuffer;
     this->newpacketPointer = newpacketPointer;
     this->pause = true;
+}
+
+bool PcapReader::getPause() const{
+    return this->pause;
 }

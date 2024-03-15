@@ -50,11 +50,15 @@
 ## component
 ### controller
 * 组件控制器
-* 生成其余组件，调整可并行部分线程数量
-* 可生成索引建立线程，已测试，其余功能待完成
+* 生成各类monitor
+* multithread分支原有功能拆分到memoryMonitor中
+
+### memoryMonitor
+* 索引生成系统内存部分工作的控制器（将原controller的工作拆分出来）
+* 生成索引生成系统组件
 * 截断操作设计：
 	* (i)触发：packet buffer~~或packet pointer~~使用大小超过警告（调整两者大小，保证packet pointer不会先触发）
-	* (ii)~~申请新共享内存~~（使用内存池，避免频繁申请和删除内存）
+	* (ii)~~申请新共享内存~~（使用内存池，提前申请新内存以节省时间）
 	* (iii)通过线程asynchronousPause接口替换旧内存
 	* (iv)线程内部操作
 		* trace catcher：直接替换，旧内存交由controller管理
@@ -70,6 +74,7 @@
 	* (v)线程旧内存替换后，修改pause变量
 	* (vi)将旧内存整理后交给存储系统
 	* (vii)回收旧内存
+* 待测试
 
 ### pcapReader
 * 从指定pcap文件中持续读取pcap格式数据包
@@ -91,7 +96,6 @@
 	* 共享数据结构index buffer
 * 截断：如果新数据包属于截断前的旧流：
 	* 将旧的packet pointer中，流的最后位置指向新数据包位置+旧buffer长度
-	* 
 * 完成测试
 
 ### indexGenerator

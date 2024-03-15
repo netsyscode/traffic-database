@@ -4,6 +4,7 @@
 #include <thread>
 #include <vector>
 #include <list>
+#include <condition_variable>
 #include "../lib/arrayList.hpp"
 #include "../lib/shareBuffer.hpp"
 #include "../lib/ringBuffer.hpp"
@@ -21,6 +22,14 @@ struct MemoryGroup{
 
 class MemoryMonitor{
     const u_int32_t memoryPoolSize = 3;
+    const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2};
+
+    InitData init_data;
+
+    std::atomic_bool stop;
+    u_int32_t threadId;
+    std::condition_variable cv;
+    std::mutex mutex;
 
     // shared memory pool
     std::vector<MemoryGroup> memoryPool; // 0 for use
@@ -29,6 +38,9 @@ class MemoryMonitor{
     PcapReader* traceCatcher;
     std::vector<PacketAggregator*> packetAggregators;
     std::vector<ThreadPointer*> packetAggregatorPointers;
+    std::thread* traceCatcherThread;
+    std::vector<std::thread*> packetAggregatorThreads;
+    
 
     // dynamic component
     std::vector<std::vector<IndexGenerator*>>* flowMetaIndexGenerators;
@@ -38,20 +50,26 @@ class MemoryMonitor{
     // pipe to storage
     RingBuffer* truncatePipe;
 
-    void makePacketBuffer(u_int32_t maxLength, u_int32_t warningLength);
-    void makePacketPointer(u_int32_t maxLength, u_int32_t warningLength);
-    void makeFlowMetaIndexBuffers(u_int32_t capacity, const std::vector<u_int32_t>& ele_lens);
-    bool makeFlowMetaIndexCaches(const std::vector<u_int32_t>& ele_lens);
+    ShareBuffer* makePacketBuffer(u_int32_t maxLength, u_int32_t warningLength);
+    ArrayList<u_int32_t>* makePacketPointer(u_int32_t maxLength, u_int32_t warningLength);
+    std::vector<RingBuffer*>* makeFlowMetaIndexBuffers(u_int32_t capacity, const std::vector<u_int32_t>& ele_lens);
+    std::vector<SkipList*>* makeFlowMetaIndexCaches(const std::vector<u_int32_t>& ele_lens);
 
     void makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename);
     void pushPacketAggregatorInit(u_int32_t eth_header_len);
     void allocateID();
+
+    // void pushFlowMetaIndexGenerator(const std::vector<u_int32_t>& ele_lens);
+    void pushFlowMetaIndexGeneratorInit(const std::vector<u_int32_t>& ele_lens);
 
     void putTruncateGroupToPipe(TruncateGroup group);
 
     void makeMemoryPool();
     void makeStaticComponent();
     void makeDynamicComponent();
+
+    void staticThreadsRun();
+    void dynamicThreadsRun();
 
     void truncate();
     void threadsRun();
@@ -61,7 +79,9 @@ class MemoryMonitor{
     void threadsClear();
     void memoryClear();
 public:
-    MemoryMonitor(RingBuffer* truncatePipe){
+    MemoryMonitor(RingBuffer* truncatePipe, u_int32_t threadId){
+        this->stop = true;
+        this->threadId = threadId;
         this->memoryPool = std::vector<MemoryGroup>();
 
         this->traceCatcher = nullptr;

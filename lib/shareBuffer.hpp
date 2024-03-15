@@ -56,6 +56,9 @@ public:
         data = std::string(this->buffer,len);
         return data;
     }
+    bool getWarning()const{
+        return this->warning;
+    }
 };
 
 #endif
