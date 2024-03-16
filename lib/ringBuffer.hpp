@@ -60,6 +60,10 @@ public:
         for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->writeThreads.erase(it);
+                for(auto t:this->readThreads){
+                    t->cv_.notify_one();
+                }
+                // std::cout << "Ring Buffer log: ereaseWriteThread " << thread->id <<std::endl;
                 return true;
             }
         }
@@ -82,9 +86,6 @@ public:
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->readThreads.erase(it);
-                for(auto t:this->readThreads){
-                    t->cv_.notify_one();
-                }
                 return true;
             }
         }
@@ -161,8 +162,8 @@ public:
             }
             return data;
         }
-
-        if(!this->getWriteThreadNum() && this->has_begin){
+        if((!this->getWriteThreadNum()) && this->has_begin){
+            // std::cout << "Ring Buffer log: read thread " << thread_id << " finish." <<std::endl;
             return std::string();
         }
 
@@ -191,6 +192,7 @@ public:
             }
             return data;
         }
+        // std::cout << "Ring Buffer log: read thread " << thread_id << " finish." <<std::endl;
         return std::string();
     } 
     void asynchronousStop(u_int32_t threadID){
@@ -215,7 +217,7 @@ public:
     // }
     // readPos - writePos, just for test
     int getPosDiff()const{
-        if(this->readThreads.size() || this->readThreads.size()){
+        if(this->readThreads.size() || this->writeThreads.size()){
             std::cerr << "Ring buffer error: outputToChar while it is used by certain thread!" <<std::endl;
             return -1;
         }

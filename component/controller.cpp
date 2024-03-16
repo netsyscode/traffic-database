@@ -1,36 +1,54 @@
 #include "controller.hpp"
 #define IDSIZE 256
 #define FLOW_META_NUM 4
+#define MEMORY_MONITOR_ID 100
+#define STORAGE_MONITOR_ID 100
 
 void MultiThreadController::makeMemoryStoragePipe(){
     this->memoryStoragePipe = new RingBuffer(this->capacity,sizeof(TruncateGroup));
 }
 void MultiThreadController::makeMemoryMonitor(){
-    this->memoryMonitor = new MemoryMonitor(this->memoryStoragePipe, 0);
+    this->memoryMonitor = new MemoryMonitor(this->memoryStoragePipe, MEMORY_MONITOR_ID);
     this->memoryMonitorPointer = new ThreadPointer{
-        0, std::mutex(), std::condition_variable(), std::atomic_bool(false), std::atomic_bool(false),
+        MEMORY_MONITOR_ID, std::mutex(), std::condition_variable(), std::atomic_bool(false), std::atomic_bool(false),
     };
     this->memoryStoragePipe->addWriteThread(this->memoryMonitorPointer);
+}
+void MultiThreadController::makeStorageMonitor(){
+    this->storageMonitor = new StorageMonitor(this->memoryStoragePipe,STORAGE_MONITOR_ID);
+    this->storageMonitorPointer = new ThreadPointer{
+        STORAGE_MONITOR_ID, std::mutex(), std::condition_variable(), std::atomic_bool(false), std::atomic_bool(false),
+    };
+    this->memoryStoragePipe->addReadThread(this->storageMonitorPointer);
 }
 
 void MultiThreadController::memoryMonitorThreadRun(){
     this->memoryMonitorThread = new std::thread(&MemoryMonitor::run,this->memoryMonitor);
 }
+void MultiThreadController::storageMonitorThreadRun(){
+    this->storageMonitorThread = new std::thread(&StorageMonitor::run,this->storageMonitor);
+}
 void MultiThreadController::threadsRun(){
     this->memoryMonitorThreadRun();
+    this->storageMonitorThreadRun();
 }
 void MultiThreadController::threadsStop(){
     std::cout << "Controller log: threads stop." << std::endl;
     if(this->memoryMonitorThread != nullptr){
         this->memoryMonitor->asynchronousStop();
         this->memoryMonitorThread->join();
+        this->memoryStoragePipe->ereaseWriteThread(this->memoryMonitorPointer);
         delete this->memoryMonitorThread;
         this->memoryMonitorThread = nullptr;
+    }
+    if(this->storageMonitorThread != nullptr){
+        this->storageMonitorThread->join();
+        delete this->storageMonitorThread;
+        this->storageMonitorThread = nullptr;
     }
 }
 void MultiThreadController::threadsClear(){
     if(this->memoryMonitorPointer != nullptr){
-        this->memoryStoragePipe->ereaseWriteThread(this->memoryMonitorPointer);
         delete this->memoryMonitorPointer;
         this->memoryMonitorPointer = nullptr;
     }
@@ -39,13 +57,26 @@ void MultiThreadController::threadsClear(){
         delete this->memoryMonitor;
         this->memoryMonitor = nullptr;
     }
+
+    if(this->storageMonitorPointer != nullptr){
+        this->memoryStoragePipe->ereaseReadThread(this->storageMonitorPointer);
+        delete this->storageMonitorPointer;
+        this->storageMonitorPointer = nullptr;
+    }
+
+    if(this->storageMonitor != nullptr){
+        delete this->storageMonitor;
+        this->storageMonitor = nullptr;
+    }
 }
 
 void MultiThreadController::init(InitData init_data){
     this->makeMemoryStoragePipe();
     this->makeMemoryMonitor();
+    this->makeStorageMonitor();
     
     this->memoryMonitor->init(init_data);
+    this->storageMonitor->init(init_data);
     std::cout << "Controller log: init." << std::endl;
 }
 void MultiThreadController::run(){
@@ -56,7 +87,7 @@ void MultiThreadController::run(){
     
     std::cout << "Controller log: run." << std::endl;
     this->threadsRun();
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(2));
 
     this->threadsStop();
     this->threadsClear();

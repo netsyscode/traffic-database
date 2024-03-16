@@ -87,10 +87,10 @@ void MemoryMonitor::pushFlowMetaIndexGeneratorInit(const std::vector<u_int32_t>&
 
 void MemoryMonitor::putTruncateGroupToPipe(TruncateGroup group){
     // for test
-    // for(auto ic:*(group.flowMetaIndexCaches)){
-    //     std::cout << "Memory monitor log: skip list size of " << ic->getNodeNum() << std::endl;
-    // }
-    std::cout << "Memory monitor log: skip list size of " << group.oldPacketBuffer->getLen() << std::endl;
+    for(auto ic:*(group.flowMetaIndexCaches)){
+        std::cout << "Memory monitor log: skip list size of " << ic->getNodeNum() << std::endl;
+    }
+    // std::cout << "Memory monitor log: share buffer size of " << group.oldPacketBuffer->getLen() << std::endl;
     this->truncatePipe->put((void*)&group,this->threadId,sizeof(group));
 }
 
@@ -193,6 +193,14 @@ void MemoryMonitor::truncate(){
     this->makeDynamicComponent();
     this->dynamicThreadsRun();
 
+    if(this->stop){
+        truncate_group.newPacketBuffer = nullptr;
+        truncate_group.newPacketPointer = nullptr;
+        for(auto p:this->packetAggregatorPointers){
+            truncate_group.oldPacketPointer->ereaseReadThread(p);
+        }
+    }
+
     // pass truncate_group to storage_monitor
     this->putTruncateGroupToPipe(truncate_group);
 
@@ -267,6 +275,8 @@ void MemoryMonitor::threadsClear(){
             (*(this->flowMetaIndexGeneratorPointers))[i].clear();
         }
         this->flowMetaIndexGeneratorPointers->clear();
+        delete this->flowMetaIndexGeneratorPointers;
+        this->flowMetaIndexGeneratorPointers = nullptr;
     }
 
     if(this->flowMetaIndexGenerators != nullptr){
@@ -305,7 +315,7 @@ void MemoryMonitor::memoryClear(){
         }
 
         if(m.packetPointer!=nullptr){
-            std::cout << "Memory monitor log: test." << std::endl;
+            // std::cout << "Memory monitor log: test." << std::endl;
             delete m.packetPointer;
         }
 

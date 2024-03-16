@@ -11,6 +11,7 @@
 // #include "indexGenerator.hpp"
 #include "querier.hpp"
 #include "memoryMonitor.hpp"
+#include "storageMonitor.hpp"
 
 // struct OutputData{
 //     ShareBuffer* packetBuffer;
@@ -44,9 +45,12 @@ class MultiThreadController{
     // Querier* querier;
     MemoryMonitor* memoryMonitor;
     ThreadPointer* memoryMonitorPointer;
+    StorageMonitor* storageMonitor;
+    ThreadPointer* storageMonitorPointer;
 
     // std::thread* queryThread;
     std::thread* memoryMonitorThread;
+    std::thread* storageMonitorThread;
     
 
     //thread
@@ -69,10 +73,12 @@ class MultiThreadController{
 
     void makeMemoryStoragePipe();
     void makeMemoryMonitor();
+    void makeStorageMonitor();
 
     // run as a new thread
     // void queryThreadRun();
     void memoryMonitorThreadRun();
+    void storageMonitorThreadRun();
     void threadsRun();
 
     // void pushPacketAggregatorRunning(u_int32_t eth_header_len);
@@ -86,7 +92,10 @@ public:
         this->memoryStoragePipe = nullptr;
         this->memoryMonitor = nullptr;
         this->memoryMonitorPointer = nullptr;
+        this->storageMonitor = nullptr;
+        this->storageMonitorPointer = nullptr;
         this->memoryMonitorThread = nullptr;
+        this->storageMonitorThread = nullptr;
 
         // this->packetBuffer = nullptr;
         // this->packetPointer = nullptr;

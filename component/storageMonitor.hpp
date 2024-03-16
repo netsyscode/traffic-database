@@ -11,39 +11,77 @@
 #include "pcapReader.hpp"
 #include "packetAggregator.hpp"
 #include "indexGenerator.hpp"
-#include "storageOperator.hpp"
+// #include "storageOperator.hpp"
+#include "memoryMonitor.hpp"
+
+#define FLOW_META_INDEX_NUM 4
+
+struct StorageMeta{
+    u_int32_t index_offset[FLOW_META_INDEX_NUM];
+    u_int32_t pointer_offset;
+    u_int32_t data_offset;
+};
 
 
 class StorageMonitor{
+    const std::string index_name[FLOW_META_INDEX_NUM] = {
+        "./data/index/pcap.pcap_srcip_idx",
+        "./data/index/pcap.pcap_dstip_idx",
+        "./data/index/pcap.pcap_srcport_idx",
+        "./data/index/pcap.pcap_dstport_idx",
+    };
+    const std::string pointer_name = "./data/index/pcap.pcappt";
+    const std::string data_name = "./data/index/pcap.pcap";
+
+    u_int32_t index_offset[FLOW_META_INDEX_NUM];
+    u_int32_t pointer_offset;
+    u_int32_t data_offset;
+
+    u_int32_t pcap_header_len;
+    std::string pcap_header;
+
+    u_int32_t threadID;
 
     RingBuffer* truncatePipe;
 
     std::vector<TruncateGroup> truncatedMemory;
+    std::vector<StorageMeta> storageMetas;
 
-    std::vector<StorageOperator*> storageOperators;
-    std::vector<std::thread*> storageThread;
+    // std::vector<StorageOperator*> storageOperators;
+    // std::vector<ThreadPointer*> storageOperatorPointers;
+    // std::vector<std::thread*> storageOperatorThread;
 
-    void storageThreadRun(TruncateGroup group);
+    // void storageOperatorThreadRun(TruncateGroup group);
 
+    bool readTruncatePipe();
+    void clearTruncateGroup(TruncateGroup& tg);
+    void store(TruncateGroup& tg);
     void monitor();
 
-    void threadStop();
-    void threadClear();
+    // void threadStop();
+    // void threadClear();
+    void runUnit();
     void memoryClear();
 
 public:
-    StorageMonitor(RingBuffer* truncatePipe){
+    StorageMonitor(RingBuffer* truncatePipe, u_int32_t threadID){
         this->truncatePipe = truncatePipe;
+        this->threadID = threadID;
         this->truncatedMemory = std::vector<TruncateGroup>();
-        this->storageThread = std::vector<std::thread*>();
+        this->storageMetas = std::vector<StorageMeta>();
+        this->pcap_header_len = 0;
+        // this->storageOperators = std::vector<StorageOperator*>();
+        // this->storageOperatorPointers = std::vector<ThreadPointer*>();
+        // this->storageOperatorThread = std::vector<std::thread*>();
     }
     ~StorageMonitor(){
-        this->threadStop();
-        this->threadClear();
+        // this->threadStop();
+        // this->threadClear();
         this->memoryClear();
     }
+    void init(InitData init_data);
     void run();
-    void asynchronousStop();
+    // void asynchronousStop();
 };
 
 #endif

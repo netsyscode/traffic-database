@@ -62,19 +62,19 @@ FlowMetadata PacketAggregator::parsePacket(const char* packet){
 
 std::pair<u_int32_t,bool> PacketAggregator::addPacketToMap(FlowMetadata meta, u_int32_t pos){
     u_int32_t last = std::numeric_limits<uint32_t>::max();
-    auto it = this->oldAggMap.find(meta);
-    if(it != this->oldAggMap.end()){
-        last = it->second.tail;
-        it->second.tail = pos;
-        Flow flow;
-        flow.head = pos;
-        flow.tail = pos;
-        this->aggMap.insert(std::make_pair(meta,flow));
-        this->oldAggMap.erase(it);
-        return std::make_pair(last,true);
-    }
+    // auto it = this->oldAggMap.find(meta);
+    // if(it != this->oldAggMap.end()){
+    //     last = it->second.tail;
+    //     it->second.tail = pos;
+    //     // Flow flow;
+    //     // flow.head = pos;
+    //     // flow.tail = pos;
+    //     // this->aggMap.insert(std::make_pair(meta,flow));
+    //     // this->oldAggMap.erase(it);
+    //     return std::make_pair(last,true);
+    // }
 
-    it = this->aggMap.find(meta);
+    auto it = this->aggMap.find(meta);
     if(it == this->aggMap.end()){
         Flow flow;
         flow.head = pos;
@@ -151,6 +151,11 @@ void PacketAggregator::truncate(){
         this->pause = false;
         return;
     }
+
+    if(this->oldPacketPointer != nullptr){
+        this->oldPacketPointer->ereaseReadThread(this->selfPointer);
+    }
+
     this->oldPacketPointer = this->packetPointer;
     this->oldAggMap = this->aggMap;
 
