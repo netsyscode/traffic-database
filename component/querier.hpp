@@ -6,6 +6,7 @@
 #include "../lib/skipList.hpp"
 #include "../lib/shareBuffer.hpp"
 #include "../lib/arrayList.hpp"
+#include "storageMonitor.hpp"
 
 struct AtomKey{
     u_int32_t cachePos;
@@ -46,10 +47,20 @@ class Querier{
     std::string outputFilename;
     std::string pcapHeader;
 
+    const std::string index_name[FLOW_META_INDEX_NUM] = {
+        "./data/index/pcap.pcap_srcip_idx",
+        "./data/index/pcap.pcap_dstip_idx",
+        "./data/index/pcap.pcap_srcport_idx",
+        "./data/index/pcap.pcap_dstport_idx",
+    };
+    const std::string pointer_name = "./data/index/pcap.pcappt";
+    const std::string data_name = "./data/index/pcap.pcap";
+
     // shared memory, read only
-    ShareBuffer* packetBuffer;
-    ArrayList<u_int32_t>* packetPointer;
-    std::vector<SkipList*>* flowMetaIndexCaches;
+    // ShareBuffer* packetBuffer;
+    // ArrayList<u_int32_t>* packetPointer;
+    // std::vector<SkipList*>* flowMetaIndexCaches;
+    std::vector<StorageMeta>* storageMetas;
     
     QueryTree tree;
 
@@ -57,19 +68,20 @@ class Querier{
     void join(std::list<u_int32_t>& la, std::list<u_int32_t>& lb);
 
     std::list<std::string> decomposeExpression();
-    std::list<u_int32_t> getPointerByFlowMetaIndex(AtomKey key);
+    std::list<u_int32_t> getPointerByFlowMetaIndex(AtomKey key, u_int32_t block_id);
     std::list<u_int32_t> searchExpression(std::list<std::string> exp_list);
-    void outputPacketToFile(std::list<u_int32_t> flowHeadList);
+    void outputPacketToFile(std::list<u_int32_t> flowHeadList, u_int32_t block_id);
     void runUnit();
 public:
-    Querier(ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<SkipList*>* flowMetaIndexCaches, std::string pcapHeader){
+    Querier(std::vector<StorageMeta>* storageMetas, std::string pcapHeader){
         std::cout << "Querier construct." <<std::endl;
-        this->packetBuffer = packetBuffer;
-        this->packetPointer = packetPointer;
-        this->flowMetaIndexCaches = flowMetaIndexCaches;
+        // this->packetBuffer = packetBuffer;
+        // this->packetPointer = packetPointer;
+        // this->flowMetaIndexCaches = flowMetaIndexCaches;
         this->expression = std::string();
         this->outputFilename = std::string();
         this->pcapHeader = pcapHeader;
+        this->storageMetas = storageMetas;
         this->tree = QueryTree();
     }
     ~Querier()=default;

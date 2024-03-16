@@ -101,6 +101,7 @@ void StorageMonitor::store(TruncateGroup& tg){
         indexFile.write(index.c_str(),index.size());
         this->index_offset[i] += index.size();
         indexFile.close();
+        meta.index_end[i] = this->index_offset[i];
     }
 
     std::ofstream pointerFile(this->pointer_name, std::ios::app);
@@ -113,6 +114,7 @@ void StorageMonitor::store(TruncateGroup& tg){
     pointerFile.write(pointer.c_str(),pointer.size());
     this->pointer_offset += pointer.size();
     pointerFile.close();
+    meta.pointer_end = this->pointer_offset;
 
     std::ofstream dataFile(this->data_name, std::ios::app);
     if (!dataFile.is_open()) {
@@ -122,10 +124,13 @@ void StorageMonitor::store(TruncateGroup& tg){
     dataFile.seekp(this->data_offset,std::ios::beg);
     std::string data = (tg.oldPacketBuffer->outputToChar());
     dataFile.write(data.c_str() + this->pcap_header_len, data.size() - this->pcap_header_len);
-    this->data_offset += data.size();
+    this->data_offset += data.size() - this->pcap_header_len;
+    std::cout << "Storage monitor log: store " << data.size() - this->pcap_header_len << " bytes." << std::endl;
     dataFile.close();
+    meta.data_end = this->data_offset;
 
-    this->storageMetas.push_back(meta);
+    this->storageMetas->push_back(meta);
+    std::cout << "Storage monitor log: store finish." << std::endl;
 }
 void StorageMonitor::monitor(){
     if(this->truncatedMemory.size()==0){

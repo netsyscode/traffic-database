@@ -41,14 +41,15 @@ class MultiThreadController{
     // std::vector<std::vector<ThreadPointer*>> flowMetaIndexGeneratorPointers;
 
     RingBuffer* memoryStoragePipe;
+    std::vector<StorageMeta>* storageMetas;
 
-    // Querier* querier;
+    Querier* querier;
     MemoryMonitor* memoryMonitor;
     ThreadPointer* memoryMonitorPointer;
     StorageMonitor* storageMonitor;
     ThreadPointer* storageMonitorPointer;
 
-    // std::thread* queryThread;
+    std::thread* queryThread;
     std::thread* memoryMonitorThread;
     std::thread* storageMonitorThread;
     
@@ -72,14 +73,16 @@ class MultiThreadController{
     
 
     void makeMemoryStoragePipe();
+    void makeStorageMetas();
     void makeMemoryMonitor();
     void makeStorageMonitor();
+    void makeQuerier();
 
     // run as a new thread
-    // void queryThreadRun();
     void memoryMonitorThreadRun();
     void storageMonitorThreadRun();
     void threadsRun();
+    void queryThreadRun();
 
     // void pushPacketAggregatorRunning(u_int32_t eth_header_len);
     // void popPacketAggregatorRunning();

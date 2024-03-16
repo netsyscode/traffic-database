@@ -10,6 +10,30 @@ const char leftBracket[] = "({[\"";
 const char rightBracket[] = ")}]\"";
 const std::string opt[] = {"==", "!=", ">=", "<=", "contains", ">", "<"};
 
+template <class KeyType>
+std::list<u_int32_t> binarySearch(char* index, u_int32_t index_len, KeyType key){
+    std::list<u_int32_t> ret = std::list<u_int32_t>();
+    u_int32_t ele_len = sizeof(KeyType) + sizeof(u_int32_t);
+    u_int32_t left = 0;
+    u_int32_t right = index_len/ele_len;
+
+    while (left < right) {
+        u_int32_t mid = left + (right - left) / 2;
+
+        KeyType key_mid = *(KeyType*)(index + mid * ele_len);
+        if (key_mid < key) {
+            left = mid + 1;
+        } else {
+            right = mid;
+        }
+    }
+    for(;left<index_len/ele_len;left++){
+        u_int32_t value = *(u_int32_t*)(index + left * ele_len + sizeof(KeyType));
+        ret.push_back(value);
+    }
+    return ret;
+}
+
 bool isNumeric(const std::string& s) {
     bool numSeen = false;
     bool dotSeen = false;
@@ -388,8 +412,39 @@ std::list<std::string> Querier::decomposeExpression(){
     }
     return this->tree.getExpList();
 }
-std::list<u_int32_t> Querier::getPointerByFlowMetaIndex(AtomKey key){
-    return (*(this->flowMetaIndexCaches))[key.cachePos]->findByKey(key.key);
+std::list<u_int32_t> Querier::getPointerByFlowMetaIndex(AtomKey key, u_int32_t block_id){
+    std::ifstream indexFile(this->index_name[key.cachePos],std::ios::binary);
+    std::list<u_int32_t> ret = std::list<u_int32_t>();
+    if(!indexFile.is_open()){
+        std::cerr << "Querier error: getPointerByFlowMetaIndex to non-exist file name " << this->index_name[key.cachePos] << "!" << std::endl;
+        return ret;
+    }
+    // for(int i=0;i<this->storageMetas->size();++i){
+        indexFile.seekg((*(this->storageMetas))[block_id].index_offset[key.cachePos],std::ios::beg);
+        u_int32_t len = (*(this->storageMetas))[block_id].index_end[key.cachePos] - (*(this->storageMetas))[block_id].index_offset[key.cachePos];
+        char* index = new char[len];
+        indexFile.read(index,len);
+        std::list<u_int32_t> tmp;
+        if(key.key.size()==1){
+            u_int8_t real_key = *(u_int8_t*)(&key.key[0]);
+            tmp = binarySearch(index,len,real_key);
+        }else if(key.key.size()==2){
+            u_int16_t real_key = *(u_int16_t*)(&key.key[0]);
+            tmp = binarySearch(index,len,real_key);
+        }else if(key.key.size()==4){
+            u_int32_t real_key = *(u_int32_t*)(&key.key[0]);
+            tmp = binarySearch(index,len,real_key);
+        }else if(key.key.size()==8){
+            u_int64_t real_key = *(u_int64_t*)(&key.key[0]);
+            tmp = binarySearch(index,len,real_key);
+        }else{
+            std::cerr << "Querier error: getPointerByFlowMetaIndex with error key size " << key.key.size() << "!" << std::endl;
+            tmp = std::list<u_int32_t>();
+        }
+        ret.insert(ret.end(),tmp.begin(),tmp.end());
+    // }
+    return ret;
+    // return (*(this->flowMetaIndexCaches))[key.cachePos]->findByKey(key.key);
 }
 std::list<u_int32_t> Querier::searchExpression(std::list<std::string> exp_list){
     std::stack<std::list<u_int32_t>> before_lists = std::stack<std::list<u_int32_t>>();
@@ -450,7 +505,7 @@ std::list<u_int32_t> Querier::searchExpression(std::list<std::string> exp_list){
                 u_int32_t ipv4 = ntohl(tmp.s_addr);
                 key.key = std::string((char*)&ipv4,sizeof(ipv4));
             }
-            right_list = this->getPointerByFlowMetaIndex(key);
+            right_list = this->getPointerByFlowMetaIndex(key,0);
             if(op_now == "||"){
                 this->join(left_list,right_list);
             }else{
@@ -461,17 +516,41 @@ std::list<u_int32_t> Querier::searchExpression(std::list<std::string> exp_list){
     }
     return left_list;
 }
-void Querier::outputPacketToFile(std::list<u_int32_t> flowHeadList){
+void Querier::outputPacketToFile(std::list<u_int32_t> flowHeadList, u_int32_t block_id){
     std::ofstream outputFile(this->outputFilename, std::ios::binary);
+    std::ifstream pointerFile(this->pointer_name,std::ios::binary);
+    std::ifstream dataFile(this->data_name,std::ios::binary);
     if (!outputFile.is_open()) {
         std::cerr << "Querier error: outputPacketToFile to non-exist file name " << this->outputFilename << "!" << std::endl;
         return;
     }
+    if (!pointerFile.is_open()) {
+        std::cerr << "Querier error: outputPacketToFile to non-exist file name " << this->pointer_name << "!" << std::endl;
+        return;
+    }
+    if (!dataFile.is_open()) {
+        std::cerr << "Querier error: outputPacketToFile to non-exist file name " << this->data_name << "!" << std::endl;
+        return;
+    }
     outputFile.write(this->pcapHeader.c_str(),this->pcapHeader.size());
+
+    u_int32_t pointer_len = (*(this->storageMetas))[block_id].pointer_end - (*(this->storageMetas))[block_id].pointer_offset;
+    u_int32_t data_len = (*(this->storageMetas))[block_id].data_end - (*(this->storageMetas))[block_id].data_offset;
+    char* pointer_buffer = new char[pointer_len];
+    char* data_buffer = new char[data_len];
+    
+    pointerFile.seekg((*(this->storageMetas))[block_id].pointer_offset, std::ios::beg);
+    pointerFile.read(pointer_buffer,pointer_len);
+    dataFile.seekg((*(this->storageMetas))[block_id].data_offset, std::ios::beg);
+    dataFile.read(data_buffer,data_len);
+    ArrayListNode<u_int32_t>* pointers = (ArrayListNode<u_int32_t>*)pointer_buffer;
+
     // char buffer[2000];
 
     u_int32_t pos = 0;
     u_int32_t next = 0;
+    // std::cout << "list: " << flowHeadList.front() << std::endl;
+    // std::cout << "pcapHeader len: " << this->pcapHeader.size() << std::endl;
     for(auto flow_head:flowHeadList){
         next = flow_head;   
         while(true){
@@ -479,11 +558,19 @@ void Querier::outputPacketToFile(std::list<u_int32_t> flowHeadList){
                 break;
             }
             pos = next;
-            // std::cout << "pos: " << pos << std::endl;
-            u_int32_t offset = this->packetPointer->getValueReadOnly(pos);
-            std::string data = this->packetBuffer->readPcap(offset);
-            outputFile.write(data.c_str(),data.size());
-            next = this->packetPointer->getNext(pos);
+
+            u_int32_t offset = pointers[pos].value;
+            
+            char* data_ele = data_buffer + (offset - this->pcapHeader.size());
+            data_header* pheader = (data_header*)data_ele;
+            // std::cout << "len: " << pheader->caplen << std::endl;
+            outputFile.write(data_ele,sizeof(data_header)+pheader->caplen);
+            next = pointers[pos].next;
+            
+            // u_int32_t offset = this->packetPointer->getValueReadOnly(pos);
+            // std::string data = this->packetBuffer->readPcap(offset);
+            // outputFile.write(data.c_str(),data.size());
+            // next = this->packetPointer->getNext(pos);
         }
     }
     outputFile.close();
@@ -499,7 +586,8 @@ void Querier::runUnit(){
         return;
     }
     std::list<u_int32_t> flow_header_list = this->searchExpression(exp_list);
-    this->outputPacketToFile(flow_header_list);
+    this->outputPacketToFile(flow_header_list,0);
+    std::cout << "Querier log: query done." << std::endl;
 }
 void Querier::run(){
     std::cout << "Querier log: query begin, enter your request below (q for QUIT)." <<std::endl;

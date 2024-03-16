@@ -20,6 +20,9 @@ struct StorageMeta{
     u_int32_t index_offset[FLOW_META_INDEX_NUM];
     u_int32_t pointer_offset;
     u_int32_t data_offset;
+    u_int32_t index_end[FLOW_META_INDEX_NUM];
+    u_int32_t pointer_end;
+    u_int32_t data_end;
 };
 
 
@@ -45,7 +48,7 @@ class StorageMonitor{
     RingBuffer* truncatePipe;
 
     std::vector<TruncateGroup> truncatedMemory;
-    std::vector<StorageMeta> storageMetas;
+    std::vector<StorageMeta>* storageMetas;
 
     // std::vector<StorageOperator*> storageOperators;
     // std::vector<ThreadPointer*> storageOperatorPointers;
@@ -64,11 +67,11 @@ class StorageMonitor{
     void memoryClear();
 
 public:
-    StorageMonitor(RingBuffer* truncatePipe, u_int32_t threadID){
+    StorageMonitor(RingBuffer* truncatePipe, std::vector<StorageMeta>* storageMetas, u_int32_t threadID){
         this->truncatePipe = truncatePipe;
         this->threadID = threadID;
         this->truncatedMemory = std::vector<TruncateGroup>();
-        this->storageMetas = std::vector<StorageMeta>();
+        this->storageMetas = storageMetas;
         this->pcap_header_len = 0;
         // this->storageOperators = std::vector<StorageOperator*>();
         // this->storageOperatorPointers = std::vector<ThreadPointer*>();
