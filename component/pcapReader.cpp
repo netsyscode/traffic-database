@@ -111,6 +111,7 @@ void PcapReader::truncate(){
     this->packetPointer = this->newpacketPointer;
     this->newPacketBuffer = nullptr;
     this->newpacketPointer = nullptr;
+    this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
     this->pause = false;
     this->monitor_cv->notify_one();
 }

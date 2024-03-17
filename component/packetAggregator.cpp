@@ -62,6 +62,7 @@ FlowMetadata PacketAggregator::parsePacket(const char* packet){
 
 std::pair<u_int32_t,bool> PacketAggregator::addPacketToMap(FlowMetadata meta, u_int32_t pos){
     u_int32_t last = std::numeric_limits<uint32_t>::max();
+    // todo: delay truncate
     // auto it = this->oldAggMap.find(meta);
     // if(it != this->oldAggMap.end()){
     //     last = it->second.tail;
@@ -152,8 +153,12 @@ void PacketAggregator::truncate(){
         return;
     }
 
-    if(this->oldPacketPointer != nullptr){
-        this->oldPacketPointer->ereaseReadThread(this->selfPointer);
+    // todo: delay truncate
+    // if(this->oldPacketPointer != nullptr){
+    //     this->oldPacketPointer->ereaseReadThread(this->selfPointer);
+    // }
+    if(this->packetPointer != nullptr){
+        this->packetPointer->ereaseReadThread(this->selfPointer);
     }
 
     this->oldPacketPointer = this->packetPointer;

@@ -99,6 +99,7 @@ void StorageMonitor::store(TruncateGroup& tg){
         indexFile.seekp(this->index_offset[i],std::ios::beg);
         std::string index = (*(tg.flowMetaIndexCaches))[i]->outputToChar();
         indexFile.write(index.c_str(),index.size());
+        // std::cout << "index len of " << i << " : " << index.size() << std::endl;
         this->index_offset[i] += index.size();
         indexFile.close();
         meta.index_end[i] = this->index_offset[i];
@@ -125,7 +126,7 @@ void StorageMonitor::store(TruncateGroup& tg){
     std::string data = (tg.oldPacketBuffer->outputToChar());
     dataFile.write(data.c_str() + this->pcap_header_len, data.size() - this->pcap_header_len);
     this->data_offset += data.size() - this->pcap_header_len;
-    std::cout << "Storage monitor log: store " << data.size() - this->pcap_header_len << " bytes." << std::endl;
+    // std::cout << "Storage monitor log: store " << data.size() - this->pcap_header_len << " bytes." << std::endl;
     dataFile.close();
     meta.data_end = this->data_offset;
 
@@ -169,11 +170,28 @@ void StorageMonitor::init(InitData init_data){
     this->pcap_header = init_data.pcap_header;
     this->pcap_header_len = this->pcap_header.size();
 
+    for(int i=0;i<FLOW_META_INDEX_NUM;++i){//clear files
+        std::ofstream indexFile(this->index_name[i], std::ios::binary);
+        if (!indexFile.is_open()) {
+            std::cerr << "Storage monitor error: store to non-exist file name " << this->index_name[i] << "!" << std::endl;
+            return;
+        }
+        indexFile.clear();
+        indexFile.close();
+    }
+    std::ofstream pointerFile(this->pointer_name, std::ios::binary);
+    if (!pointerFile.is_open()) {//clear files
+        std::cerr << "Storage monitor error: store to non-exist file name " << this->pointer_name << "!" << std::endl;
+        return;
+    }
+    pointerFile.clear();
+    pointerFile.close();
     std::ofstream dataFile(this->data_name, std::ios::binary);
     if (!dataFile.is_open()) {
         std::cerr << "Storage monitor error: store to non-exist file name " << this->data_name << "!" << std::endl;
         return;
     }
+    dataFile.clear();
     dataFile.seekp(this->data_offset,std::ios::beg);
     dataFile.write(this->pcap_header.c_str(), this->pcap_header_len);
     this->data_offset += this->pcap_header_len;

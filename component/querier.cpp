@@ -28,6 +28,10 @@ std::list<u_int32_t> binarySearch(char* index, u_int32_t index_len, KeyType key)
         }
     }
     for(;left<index_len/ele_len;left++){
+        KeyType key_now = *(KeyType*)(index + left * ele_len);
+        if(key_now != key){
+            break;
+        }
         u_int32_t value = *(u_int32_t*)(index + left * ele_len + sizeof(KeyType));
         ret.push_back(value);
     }
@@ -422,6 +426,8 @@ void Querier::intersect(std::list<Answer>& la, std::list<Answer>& lb){
             return;
         }
         this->intersect(ita->pointers,itb->pointers);
+        ita++;
+        itb++;
     }
 }
 void Querier::join(std::list<Answer>& la, std::list<Answer>& lb){
@@ -440,6 +446,8 @@ void Querier::join(std::list<Answer>& la, std::list<Answer>& lb){
             return;
         }
         this->join(ita->pointers,itb->pointers);
+        ita++;
+        itb++;
     }
 }
 std::list<std::string> Querier::decomposeExpression(){
@@ -479,6 +487,7 @@ std::list<Answer> Querier::getPointerByFlowMetaIndex(AtomKey key){
         }
         ret.push_back(Answer{.block_id = i, .pointers = tmp});
         delete[] index;
+        // std::cout << "block id: " << i << ", list size: " << tmp.size() << std::endl;
     }
     return ret;
     // return (*(this->flowMetaIndexCaches))[key.cachePos]->findByKey(key.key);
@@ -571,12 +580,18 @@ void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
     }
     outputFile.write(this->pcapHeader.c_str(),this->pcapHeader.size());
 
+
     for(auto answer:flowHeadList){
+        if(answer.pointers.size()==0){
+            continue;
+        }
         u_int32_t block_id = answer.block_id;
         u_int32_t pointer_len = (*(this->storageMetas))[block_id].pointer_end - (*(this->storageMetas))[block_id].pointer_offset;
         u_int32_t data_len = (*(this->storageMetas))[block_id].data_end - (*(this->storageMetas))[block_id].data_offset;
         char* pointer_buffer = new char[pointer_len];
         char* data_buffer = new char[data_len];
+
+        // std::cout << "pointer_offset: " << (*(this->storageMetas))[block_id].pointer_offset << " pointer_end: " << (*(this->storageMetas))[block_id].pointer_end << std::endl;
     
         pointerFile.seekg((*(this->storageMetas))[block_id].pointer_offset, std::ios::beg);
         pointerFile.read(pointer_buffer,pointer_len);
@@ -586,8 +601,11 @@ void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
 
         u_int32_t pos = 0;
         u_int32_t next = 0;
+        // u_int32_t pointer_offset = (*(this->storageMetas))[block_id].pointer_offset;
+        // u_int32_t data_offset = (*(this->storageMetas))[block_id].data_offset;
 
         for(auto flow_head:answer.pointers){
+            // std::cout << "flow head: " << flow_head << std::endl;
             next = flow_head;   
             while(true){
                 if(next == std::numeric_limits<uint32_t>::max()){
@@ -599,9 +617,12 @@ void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
             
                 char* data_ele = data_buffer + (offset - this->pcapHeader.size());
                 data_header* pheader = (data_header*)data_ele;
+                // std::cout << "packet len: " << sizeof(data_header)+pheader->caplen << std::endl;
 
                 outputFile.write(data_ele,sizeof(data_header)+pheader->caplen);
                 next = pointers[pos].next;
+                // std::cout << "next: " << next << std::endl;
+                if(next == 0) break;
             }
         }
         delete[] pointer_buffer;
