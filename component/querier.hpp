@@ -8,6 +8,11 @@
 #include "../lib/arrayList.hpp"
 #include "storageMonitor.hpp"
 
+struct Answer{
+    u_int32_t block_id;
+    std::list<u_int32_t> pointers;
+};
+
 struct AtomKey{
     u_int32_t cachePos;
     std::string key;
@@ -66,11 +71,13 @@ class Querier{
 
     void intersect(std::list<u_int32_t>& la, std::list<u_int32_t>& lb);
     void join(std::list<u_int32_t>& la, std::list<u_int32_t>& lb);
+    void intersect(std::list<Answer>& la, std::list<Answer>& lb);
+    void join(std::list<Answer>& la, std::list<Answer>& lb);
 
     std::list<std::string> decomposeExpression();
-    std::list<u_int32_t> getPointerByFlowMetaIndex(AtomKey key, u_int32_t block_id);
-    std::list<u_int32_t> searchExpression(std::list<std::string> exp_list);
-    void outputPacketToFile(std::list<u_int32_t> flowHeadList, u_int32_t block_id);
+    std::list<Answer> getPointerByFlowMetaIndex(AtomKey key);
+    std::list<Answer> searchExpression(std::list<std::string> exp_list);
+    void outputPacketToFile(std::list<Answer> flowHeadList);
     void runUnit();
 public:
     Querier(std::vector<StorageMeta>* storageMetas, std::string pcapHeader){
