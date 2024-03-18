@@ -107,7 +107,7 @@ bool PacketAggregator::writeNextToPacketPointer(u_int32_t last, u_int32_t now){
 
 bool PacketAggregator::writeFlowMetaIndexToIndexBuffer(FlowMetadata meta, u_int32_t pos){
     if(this->flowMetaIndexBuffers->size()!=FLOW_META_NUM){
-        std::cout << "Packet aggregator error: writeFlowMetaIndexToIndexBuffer when flow meta number not equal." <<std::endl;
+        std::cerr << "Packet aggregator error: writeFlowMetaIndexToIndexBuffer when flow meta number not equal." <<std::endl;
         return false;
     }
     for(int i = 0; i<FLOW_META_NUM; ++i){

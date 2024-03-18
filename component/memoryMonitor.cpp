@@ -149,7 +149,13 @@ void MemoryMonitor::truncate(){
     if(this->memoryPool.size()<=1){
         std::cerr << "Memory monitor error: truncate with too less memory in pool!" << std::endl;
     }
-    std::cout << "Memory monitor log: truncate." << std::endl;
+    // std::cout << "Memory monitor log: truncate." << std::endl;
+
+    std::unique_lock<std::mutex> lock_pa(this->mutex);
+    for(auto pa:this->packetAggregators){
+        this->packet_aggregator_cv->wait(lock_pa, [pa]{return !(pa->getPause());});
+    }
+    lock_pa.unlock();
 
     auto memory_group = this->memoryPool[0];
     this->memoryPool.erase(this->memoryPool.begin());
@@ -166,7 +172,7 @@ void MemoryMonitor::truncate(){
         .flowMetaIndexGeneratorThreads = this->flowMetaIndexGeneratorThreads,
     };
 
-    std::cout << "Memory monitor log: traceCatcher truncate begin." << std::endl;
+    // std::cout << "Memory monitor log: traceCatcher truncate begin." << std::endl;
     this->traceCatcher->asynchronousPause(this->memoryPool[0].packetBuffer,this->memoryPool[0].packetPointer);
     auto tc = this->traceCatcher;
     
@@ -174,12 +180,12 @@ void MemoryMonitor::truncate(){
     this->trace_catcher_cv->wait(lock_tc, [tc]{return !(tc->getPause());});
     lock_tc.unlock();
 
-    std::cout << "Memory monitor log: traceCatcher truncate end." << std::endl;
+    // std::cout << "Memory monitor log: traceCatcher truncate end." << std::endl;
 
     truncate_group.oldPacketPointer->ereaseWriteThread();
     this->memoryPool[0].packetPointer->addWriteThread();
 
-    std::cout << "Memory monitor log: packetAggregator truncate begin." << std::endl;
+    // std::cout << "Memory monitor log: packetAggregator truncate begin." << std::endl;
 
     for(int i=0;i<this->packetAggregatorThreads.size();++i){
         this->packetAggregators[i]->asynchronousPause(this->memoryPool[0].packetBuffer,this->memoryPool[0].packetPointer,this->memoryPool[0].flowMetaIndexBuffers,this->packetAggregatorPointers[i]);
@@ -189,13 +195,13 @@ void MemoryMonitor::truncate(){
         // }
     }
 
-    std::cout << "Memory monitor log: indexGenerator truncate begin." << std::endl;
+    // std::cout << "Memory monitor log: indexGenerator truncate begin." << std::endl;
 
     // make new dynamic components
     // this need to be optimized
     this->makeDynamicComponent();
 
-    std::cout << "Memory monitor log: indexGenerator run begin." << std::endl;
+    // std::cout << "Memory monitor log: indexGenerator run begin." << std::endl;
 
     this->dynamicThreadsRun();
 
@@ -207,25 +213,19 @@ void MemoryMonitor::truncate(){
     //     // }
     // }
 
-    std::cout << "Memory monitor log: truncate wait." << std::endl;
+    // std::cout << "Memory monitor log: truncate wait." << std::endl;
 
-    std::unique_lock<std::mutex> lock_pa(this->mutex);
-    for(auto pa:this->packetAggregators){
-        this->packet_aggregator_cv->wait(lock_pa, [pa]{return !(pa->getPause());});
-    }
-    lock_pa.unlock();
-
-    std::cout << "Memory monitor log: putTruncateGroupToPipe begin." << std::endl;
+    // std::cout << "Memory monitor log: putTruncateGroupToPipe begin." << std::endl;
 
     // pass truncate_group to storage_monitor
     this->putTruncateGroupToPipe(truncate_group);
 
-    std::cout << "Memory monitor log: makeMemoryPool begin." << std::endl;
+    // std::cout << "Memory monitor log: makeMemoryPool begin." << std::endl;
 
     // make new memory
     this->makeMemoryPool();
     
-    std::cout << "Memory monitor log: truncate end." << std::endl;
+    // std::cout << "Memory monitor log: truncate end." << std::endl;
 }
 void MemoryMonitor::monitor(){
     std::cout << "Memory monitor log: monitoring ..." << std::endl;
@@ -239,11 +239,11 @@ void MemoryMonitor::monitor(){
             break;
         }
     }
-    std::cout << "Memory monitor log: monitor end." << std::endl;
+    // std::cout << "Memory monitor log: monitor end." << std::endl;
 }
 
 void MemoryMonitor::threadsStop(){
-    std::cout << "Memory monitor log: threadsStop." <<std::endl;
+    // std::cout << "Memory monitor log: threadsStop." <<std::endl;
 
     std::unique_lock<std::mutex> lock(this->mutex);
     for(auto pa:this->packetAggregators){
@@ -290,7 +290,7 @@ void MemoryMonitor::threadsStop(){
     }
 }
 void MemoryMonitor::threadsClear(){
-    std::cout << "Memory monitor log: threadsClear." <<std::endl;
+    // std::cout << "Memory monitor log: threadsClear." <<std::endl;
     if(this->flowMetaIndexGeneratorPointers != nullptr){
         for(int i=0;i<this->flowMetaIndexGeneratorPointers->size();++i){
             for(auto p:(*(this->flowMetaIndexGeneratorPointers))[i]){

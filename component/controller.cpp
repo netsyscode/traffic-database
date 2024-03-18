@@ -43,17 +43,17 @@ void MultiThreadController::threadsRun(){
     this->storageMonitorThreadRun();
 }
 void MultiThreadController::threadsStop(){
-    std::cout << "Controller log: threads stop." << std::endl;
+    // std::cout << "Controller log: threads stop." << std::endl;
     if(this->memoryMonitorThread != nullptr){
         this->memoryMonitor->asynchronousStop();
         this->memoryMonitorThread->join();
-        std::cout << "Controller log: memoryMonitorThread stop." << std::endl;
+        // std::cout << "Controller log: memoryMonitorThread stop." << std::endl;
         this->memoryStoragePipe->ereaseWriteThread(this->memoryMonitorPointer);
         delete this->memoryMonitorThread;
         this->memoryMonitorThread = nullptr;
     }
     if(this->storageMonitorThread != nullptr){
-        std::cout << "Controller log: storageMonitorThread wait." << std::endl;
+        // std::cout << "Controller log: storageMonitorThread wait." << std::endl;
         this->storageMonitorThread->join();
         delete this->storageMonitorThread;
         this->storageMonitorThread = nullptr;
@@ -108,6 +108,7 @@ void MultiThreadController::run(){
     
     std::cout << "Controller log: run." << std::endl;
     this->threadsRun();
+    
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     this->threadsStop();

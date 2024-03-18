@@ -81,7 +81,7 @@ class Querier{
     void runUnit();
 public:
     Querier(std::vector<StorageMeta>* storageMetas, std::string pcapHeader){
-        std::cout << "Querier construct." <<std::endl;
+        // std::cout << "Querier construct." <<std::endl;
         // this->packetBuffer = packetBuffer;
         // this->packetPointer = packetPointer;
         // this->flowMetaIndexCaches = flowMetaIndexCaches;

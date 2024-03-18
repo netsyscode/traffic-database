@@ -70,7 +70,7 @@ public:
                 for(auto t:this->readThreads){
                     t->cv_.notify_one();
                 }
-                printf("Ring Buffer log: ereaseWriteThread %u.\n",thread->id);
+                // printf("Ring Buffer log: ereaseWriteThread %u.\n",thread->id);
                 // std::cout << "Ring Buffer log: ereaseWriteThread " << thread->id <<std::endl;
                 lock.unlock();
                 return true;
@@ -154,7 +154,7 @@ public:
         //     std::cout << "Ring Buffer log: write thread " << thread_id << " stop." <<std::endl;
         //     return false;
         // }
-        std::cout << pos <<std::endl;
+        // std::cout << pos <<std::endl;
         memcpy(this->buffer_ + pos*this->dataLen_, data, this->dataLen_);
         this->signalBuffer_[pos] = true;
         for(auto t:this->readThreads){

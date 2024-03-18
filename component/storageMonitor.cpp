@@ -2,7 +2,7 @@
 
 bool StorageMonitor::readTruncatePipe(){
     std::string data = this->truncatePipe->get(this->threadID);
-    std::cout << "Storage log: readTruncatePipe get one." << std::endl;
+    // std::cout << "Storage log: readTruncatePipe get one." << std::endl;
     TruncateGroup group;
     if(data.size() == 0){
         return false;
@@ -149,7 +149,7 @@ void StorageMonitor::store(TruncateGroup& tg){
     meta.data_end = this->data_offset;
 
     this->storageMetas->push_back(meta);
-    std::cout << "Storage monitor log: store finish." << std::endl;
+    // std::cout << "Storage monitor log: store finish." << std::endl;
 }
 void StorageMonitor::monitor(){
     if(this->truncatedMemory.size()==0){
@@ -158,9 +158,9 @@ void StorageMonitor::monitor(){
     auto tg = this->truncatedMemory[0];
     for(int i=0;i<tg.flowMetaIndexGeneratorThreads->size();++i){
         for(int j=0;j<(*(tg.flowMetaIndexGeneratorThreads))[i].size();++j){
-            std::cout << "Storage monitor log: index generator thread " << (*(tg.flowMetaIndexGeneratorPointers))[i][j]->id << " wait." << std::endl;
+            // std::cout << "Storage monitor log: index generator thread " << (*(tg.flowMetaIndexGeneratorPointers))[i][j]->id << " wait." << std::endl;
             (*(tg.flowMetaIndexGeneratorThreads))[i][j]->join();
-            std::cout << "Storage monitor log: index generator thread " << (*(tg.flowMetaIndexGeneratorPointers))[i][j]->id << " stop." << std::endl;
+            // std::cout << "Storage monitor log: index generator thread " << (*(tg.flowMetaIndexGeneratorPointers))[i][j]->id << " stop." << std::endl;
             (*(tg.flowMetaIndexBuffers))[i]->ereaseReadThread((*(tg.flowMetaIndexGeneratorPointers))[i][j]);
         }
     }
