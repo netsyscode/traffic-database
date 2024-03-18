@@ -58,9 +58,6 @@ void MultiThreadController::threadsStop(){
         delete this->storageMonitorThread;
         this->storageMonitorThread = nullptr;
     }
-    if(this->queryThread != nullptr){
-        delete this->queryThread;
-    }
 }
 void MultiThreadController::threadsClear(){
     if(this->memoryMonitorPointer != nullptr){
@@ -89,6 +86,12 @@ void MultiThreadController::threadsClear(){
     }
 }
 
+void MultiThreadController::queryThreadStop(){
+    if(this->queryThread != nullptr){
+        delete this->queryThread;
+    }
+}
+
 void MultiThreadController::init(InitData init_data){
     this->makeMemoryStoragePipe();
     this->makeStorageMetas();
@@ -108,14 +111,18 @@ void MultiThreadController::run(){
     
     std::cout << "Controller log: run." << std::endl;
     this->threadsRun();
+    this->queryThreadRun();
     
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     this->threadsStop();
 
+    // std::cout << "Controller log: wait for query." << std::endl;
+
     //for test
-    this->queryThreadRun();
+    
     this->queryThread->join();
+    this->queryThreadStop();
 
     this->threadsClear();
     std::cout << "Controller log: run quit." << std::endl;

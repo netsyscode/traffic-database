@@ -89,6 +89,7 @@ class MultiThreadController{
 
     void threadsStop();
     void threadsClear();
+    void queryThreadStop();
 public:
     MultiThreadController(){
         this->pcapHeader = std::string();

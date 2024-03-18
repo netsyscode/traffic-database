@@ -635,6 +635,7 @@ void Querier::input(std::string expression, std::string outputFilename){
     this->outputFilename = outputFilename;
 }
 void Querier::runUnit(){
+    // std::cout << "Querier log: runUnit." <<std::endl;
     std::list<std::string> exp_list = this->decomposeExpression();
     if(exp_list.size()==0){
         std::cerr<<"Querier error: run with wrong expression!" << std::endl;

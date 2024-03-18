@@ -90,6 +90,7 @@ public:
         this->pcapHeader = pcapHeader;
         this->storageMetas = storageMetas;
         this->tree = QueryTree();
+        // std::cout << "Querier construct end." <<std::endl;
     }
     ~Querier()=default;
     void input(std::string expression, std::string outputFilename);
