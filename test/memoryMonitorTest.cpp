@@ -25,8 +25,8 @@ int main(){
         .eth_header_len = eth_header_len,
         .filename = filename,
         .flow_capacity = flow_capacity,
-        .packetAggregatorThreadCount = 1,
-        .flowMetaIndexGeneratorThreadCountEach = 1,
+        .packetAggregatorThreadCount = 8,
+        .flowMetaIndexGeneratorThreadCountEach = 4,
         .pcap_header = std::string((char*)pcap_head,pcap_header_len),
     };
     controller->init(init_data);

@@ -60,6 +60,7 @@ class PacketAggregator{
     std::atomic_bool stop;
     std::atomic_bool pause;
     ThreadPointer* selfPointer;
+    std::condition_variable* monitor_cv;
 
     u_int32_t readFromPacketPointer();
     std::string readFromPacketBuffer(u_int32_t offset);
@@ -72,7 +73,7 @@ class PacketAggregator{
 
     void truncate();
 public:
-    PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers):eth_header_len(eth_header_len){
+    PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers, std::condition_variable* monitor_cv):eth_header_len(eth_header_len){
         this->oldAggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
         this->oldPacketPointer = nullptr;
         this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
@@ -85,6 +86,7 @@ public:
         }
         this->threadID = std::numeric_limits<uint32_t>::max();
         this->readPos = 0;
+        this->monitor_cv = monitor_cv;
         this->stop = true;
         this->pause = false;
     }

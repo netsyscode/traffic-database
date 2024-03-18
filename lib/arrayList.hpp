@@ -28,6 +28,7 @@ class ArrayList{
 
     std::atomic_uint32_t threadCount; // read + write thread count
     std::vector<ThreadPointer*> readThreads;
+    std::mutex readThreadsMutex;
 
     u_int8_t* idArray;
     ArrayListNode<T>* array;
@@ -93,9 +94,11 @@ public:
         this->threadCount--;
     }
     bool addReadThread(ThreadPointer* thread){
+        std::unique_lock lock(this->readThreadsMutex);
         for(auto t:this->readThreads){
             if(t->id == thread->id){
                 std::cerr << "Array list error: addReadThread with exist id!" <<std::endl;
+                lock.unlock();
                 return false;
             }
         }
@@ -103,17 +106,21 @@ public:
         thread->pause_ = false;
         this->readThreads.push_back(thread);
         this->threadCount++;
+        lock.unlock();
         return true;
     }
     bool ereaseReadThread(ThreadPointer* thread){
+        std::unique_lock lock(this->readThreadsMutex);
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->readThreads.erase(it);
                 this->threadCount--;
+                lock.unlock();
                 return true;
             }
         }
-        std::cerr << "Array list error: ereaseReadThread with non-exist id!" <<std::endl;
+        std::cerr << "Array list error: ereaseReadThread with non-exist id: " << thread->id << "!" <<std::endl;
+        lock.unlock();
         return false;
     }
     bool getWarning()const{

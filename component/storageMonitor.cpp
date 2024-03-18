@@ -2,6 +2,7 @@
 
 bool StorageMonitor::readTruncatePipe(){
     std::string data = this->truncatePipe->get(this->threadID);
+    std::cout << "Storage log: readTruncatePipe get one." << std::endl;
     TruncateGroup group;
     if(data.size() == 0){
         return false;
@@ -22,6 +23,9 @@ void StorageMonitor::clearTruncateGroup(TruncateGroup& tg){
                 // (*(tg.flowMetaIndexGenerators))[i][j]->asynchronousStop();
                 // (*(tg.flowMetaIndexBuffers))[i]->asynchronousStop((*(tg.flowMetaIndexGeneratorPointers))[i][j]->id);
                 // (*(tg.flowMetaIndexGeneratorThreads))[i][j]->join();
+                if((*(tg.flowMetaIndexGeneratorThreads))[i][j]==nullptr){
+                    continue;
+                }
                 delete (*(tg.flowMetaIndexGeneratorThreads))[i][j];
                 (*(tg.flowMetaIndexGeneratorThreads))[i][j] = nullptr;
             }
@@ -35,6 +39,9 @@ void StorageMonitor::clearTruncateGroup(TruncateGroup& tg){
     if(tg.flowMetaIndexGeneratorPointers != nullptr){
         for(int i=0;i<tg.flowMetaIndexGeneratorPointers->size();++i){
             for(auto p:(*(tg.flowMetaIndexGeneratorPointers))[i]){
+                if(p==nullptr){
+                    continue;
+                }
                 // (*(tg.flowMetaIndexBuffers))[i]->ereaseReadThread(p);
                 delete p;
             }
@@ -48,19 +55,26 @@ void StorageMonitor::clearTruncateGroup(TruncateGroup& tg){
     if(tg.flowMetaIndexGenerators != nullptr){
         for(int i=0;i<tg.flowMetaIndexGenerators->size();++i){
             for(auto p:(*(tg.flowMetaIndexGenerators))[i]){
+                if(p==nullptr){
+                    continue;
+                }
                 delete p;
             }
             tg.flowMetaIndexGenerators[i].clear();
         }
         tg.flowMetaIndexGenerators->clear();
+        delete tg.flowMetaIndexGenerators;
+        tg.flowMetaIndexGenerators = nullptr;
     }
 
     if(tg.oldPacketBuffer!=nullptr){
         delete tg.oldPacketBuffer;
+        tg.oldPacketBuffer = nullptr;
     }
 
     if(tg.oldPacketPointer!=nullptr){
         delete tg.oldPacketPointer;
+        tg.oldPacketPointer = nullptr;
     }
 
     if(tg.flowMetaIndexCaches!=nullptr){
@@ -77,10 +91,14 @@ void StorageMonitor::clearTruncateGroup(TruncateGroup& tg){
 
     if(tg.flowMetaIndexBuffers!=nullptr){
         for(auto rb:*(tg.flowMetaIndexBuffers)){
+            if(rb==nullptr){
+                continue;
+            }
             delete rb;
         }
         tg.flowMetaIndexBuffers->clear();
         delete tg.flowMetaIndexBuffers;
+        tg.flowMetaIndexBuffers = nullptr;
     }
 
 }
@@ -140,7 +158,9 @@ void StorageMonitor::monitor(){
     auto tg = this->truncatedMemory[0];
     for(int i=0;i<tg.flowMetaIndexGeneratorThreads->size();++i){
         for(int j=0;j<(*(tg.flowMetaIndexGeneratorThreads))[i].size();++j){
+            std::cout << "Storage monitor log: index generator thread " << (*(tg.flowMetaIndexGeneratorPointers))[i][j]->id << " wait." << std::endl;
             (*(tg.flowMetaIndexGeneratorThreads))[i][j]->join();
+            std::cout << "Storage monitor log: index generator thread " << (*(tg.flowMetaIndexGeneratorPointers))[i][j]->id << " stop." << std::endl;
             (*(tg.flowMetaIndexBuffers))[i]->ereaseReadThread((*(tg.flowMetaIndexGeneratorPointers))[i][j]);
         }
     }

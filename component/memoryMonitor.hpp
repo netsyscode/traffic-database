@@ -42,7 +42,8 @@ class MemoryMonitor{
 
     std::atomic_bool stop;
     u_int32_t threadId;
-    std::condition_variable* cv;
+    std::condition_variable* trace_catcher_cv;
+    std::condition_variable* packet_aggregator_cv;
     std::mutex mutex;
 
     // shared memory pool
@@ -96,7 +97,8 @@ public:
     MemoryMonitor(RingBuffer* truncatePipe, u_int32_t threadId){
         this->stop = true;
         this->threadId = threadId;
-        this->cv = new std::condition_variable();
+        this->trace_catcher_cv = new std::condition_variable();
+        this->packet_aggregator_cv = new std::condition_variable();
 
         this->memoryPool = std::vector<MemoryGroup>();
 

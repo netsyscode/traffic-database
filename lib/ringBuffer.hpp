@@ -26,7 +26,10 @@ class RingBuffer{
     std::atomic_uint64_t writePos_;
 
     std::vector<ThreadPointer*> readThreads;
+    std::mutex readThreadsMutex;
+
     std::vector<ThreadPointer*> writeThreads;
+    std::mutex writeThreadsMutex;
 public:
     RingBuffer(u_int32_t capacity, u_int32_t dataLen) : capacity_(capacity),dataLen_(dataLen){
         this->buffer_ = new char[capacity*dataLen];
@@ -44,52 +47,65 @@ public:
         delete[] buffer_;
     }
     bool addWriteThread(ThreadPointer* thread){
+        std::unique_lock lock(this->writeThreadsMutex);
         for(auto t:this->writeThreads){
             if(t->id == thread->id){
                 std::cerr << "Ring Buffer error: addWriteThread with exist id!" <<std::endl;
+                lock.unlock();
                 return false;
             }
         }
         thread->stop_ = false;
         thread->pause_ = false;
         this->writeThreads.push_back(thread);
+        lock.unlock();
         this->has_begin = true;
         return true;
     }
     bool ereaseWriteThread(ThreadPointer* thread){
+        std::unique_lock lock(this->writeThreadsMutex);
         for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->writeThreads.erase(it);
                 for(auto t:this->readThreads){
                     t->cv_.notify_one();
                 }
+                printf("Ring Buffer log: ereaseWriteThread %u.\n",thread->id);
                 // std::cout << "Ring Buffer log: ereaseWriteThread " << thread->id <<std::endl;
+                lock.unlock();
                 return true;
             }
         }
-        std::cerr << "Ring Buffer error: ereaseWriteThread with non-exist id!" <<std::endl;
+        std::cerr << "Ring Buffer error: ereaseWriteThread with non-exist id " << thread->id << "!" <<std::endl;
+        lock.unlock();
         return false;
     }
     bool addReadThread(ThreadPointer* thread){
+        std::unique_lock lock(this->readThreadsMutex);
         for(auto t:this->readThreads){
             if(t->id == thread->id){
-                std::cerr << "Ring Buffer error: addReadThread with exist id!" <<std::endl;
+                std::cerr << "Ring Buffer error: addReadThread with exist id " << thread->id << "!" <<std::endl;
+                lock.unlock();
                 return false;
             }
         }
         thread->stop_ = false;
         thread->pause_ = false;
         this->readThreads.push_back(thread);
+        lock.unlock();
         return true;
     }
     bool ereaseReadThread(ThreadPointer* thread){
+        std::unique_lock lock(this->readThreadsMutex);
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->readThreads.erase(it);
+                lock.unlock();
                 return true;
             }
         }
         std::cerr << "Ring Buffer error: ereaseReadThread with non-exist id!" <<std::endl;
+        lock.unlock();
         return false;
     }
     u_int32_t getWriteThreadNum() const{

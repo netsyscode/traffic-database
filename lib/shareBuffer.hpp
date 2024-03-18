@@ -38,7 +38,7 @@ public:
     std::string readPcap(u_int32_t pos){
         std::string data = std::string();
         if(pos >= this->maxLength){
-            std::cerr << "Share buffer error: read pos overflow the buffer!" <<std::endl;
+            std::cerr << "Share buffer error: read pos overflow the buffer: " << pos << "!" <<std::endl;
             return data;
         }
         data_header* pcap_header = (data_header*)(this->buffer+pos);

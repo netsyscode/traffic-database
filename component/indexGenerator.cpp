@@ -47,7 +47,8 @@ void IndexGenerator::run(){
         std::cerr << "Index generator error: run without threadID!" << std::endl;
         return;
     }
-    std::cout << "Index generator log: thread " << this->threadID << " run." << std::endl;
+    printf("Index generator log: thread %u  run.\n",this->threadID);
+    //std::cout << "Index generator log: thread " << this->threadID << " run." << std::endl;
     this->stop = false;
     // this->pause = false;
 
@@ -74,7 +75,8 @@ void IndexGenerator::run(){
         // count++;// just for test
     }
     // std::cout << "Index generator log: thread " << this->threadID << " count " << count << std::endl; //just for test
-    std::cout << "Index generator log: thread " << this->threadID << " quit." << std::endl;
+    printf("Index generator log: thread %u quit.\n",this->threadID);
+    //std::cout << "Index generator log: thread " << this->threadID << " quit." << std::endl;
 }
 void IndexGenerator::asynchronousStop(){
     this->stop = true;

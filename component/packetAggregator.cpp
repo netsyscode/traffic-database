@@ -9,11 +9,13 @@ u_int32_t PacketAggregator::readFromPacketPointer(){
     while(true){
         id_data = this->packetPointer->getID(this->readPos,this->threadID);
         if(this->stop){
-            std::cout << "Packet aggregator log: asynchronous stop." << std::endl;
+            printf("Packet aggregator log: %u asynchronous stop.\n",this->threadID);
+            //std::cout << "Packet aggregator log: " << this->threadID << " asynchronous stop." << std::endl;
             return std::numeric_limits<uint32_t>::max();
         }
         if(id_data.err == 4 && this->pause){ // pause
-            std::cout << "Packet aggregator log: asynchronous pause." << std::endl;
+            printf("Packet aggregator log: %u asynchronous pause.\n",this->threadID);
+            //std::cout << "Packet aggregator log: " << this->threadID << " asynchronous pause." << std::endl;
             return std::numeric_limits<uint32_t>::max();
         }
         if(id_data.err){
@@ -147,26 +149,24 @@ bool PacketAggregator::writeFlowMetaIndexToIndexBuffer(FlowMetadata meta, u_int3
 }
 
 void PacketAggregator::truncate(){
-    if(this->newPacketBuffer == nullptr || this->newPacketPointer == nullptr || this->flowMetaIndexBuffers == nullptr){
+    if(this->newPacketBuffer == nullptr || this->newPacketPointer == nullptr || this->flowMetaIndexBuffers == nullptr || this->selfPointer == nullptr){
         std::cerr <<"Packet aggregator error: trancate without new memory!" << std::endl;
         this->pause = false;
         return;
     }
 
+    printf("Packet aggregator log: thread %u begin truncate.\n",this->threadID);
+    // std::cout << "Packet aggregator log: thread " << this->threadID << " begin truncate." << std::endl;
+
     // todo: delay truncate
     // if(this->oldPacketPointer != nullptr){
     //     this->oldPacketPointer->ereaseReadThread(this->selfPointer);
     // }
-    if(this->packetPointer != nullptr){
-        this->packetPointer->ereaseReadThread(this->selfPointer);
-    }
+    auto oldpp = this->packetPointer;
+    auto oldib = this->flowMetaIndexBuffers;
 
     this->oldPacketPointer = this->packetPointer;
     this->oldAggMap = this->aggMap;
-
-    for(auto ib:(*(this->flowMetaIndexBuffers))){
-        ib->ereaseWriteThread(this->selfPointer);
-    }
 
     this->packetBuffer = this->newPacketBuffer;
     this->packetPointer = this->newPacketPointer;
@@ -184,7 +184,21 @@ void PacketAggregator::truncate(){
     
     this->readPos = 0;
 
+    if(oldpp != nullptr){
+        oldpp->ereaseReadThread(this->selfPointer);
+    }
+    if(oldib != nullptr){
+        for(auto ib:(*(oldib))){
+            if(ib == nullptr){
+                continue;
+            }
+            ib->ereaseWriteThread(this->selfPointer);
+        }
+    }
     this->pause = false;
+    this->monitor_cv->notify_all();
+    printf("Packet aggregator log: thread %u end truncate.\n",this->threadID);
+    // std::cout << "Packet aggregator log: thread " << this->threadID << " end truncate." << std::endl;
 }
 
 void PacketAggregator::setThreadID(u_int32_t threadID){
@@ -204,7 +218,8 @@ void PacketAggregator::run(){
         std::cerr << "Packet aggregator error: run without threadID!" << std::endl;
         return;
     }
-    std::cout << "Packet aggregator log: thread " << this->threadID << " run." << std::endl;
+    printf("Packet aggregator log: thread %u run.\n",this->threadID);
+    //std::cout << "Packet aggregator log: thread " << this->threadID << " run." << std::endl;
     this->stop = false;
     this->pause = false;
     
@@ -216,12 +231,16 @@ void PacketAggregator::run(){
         // std::cout << "offset:" << offset << std::endl;
         if(offset == std::numeric_limits<uint32_t>::max()){
             if(this->stop){
+                printf("Packet aggregator log: thread %u should stop.\n",this->threadID);
+                //std::cout << "Packet aggregator log: thread " << this->threadID << " should stop." << std::endl;
                 break;
             }
             if(this->pause){
                 this->truncate();
                 continue;
             }
+            std::cerr << "Packet aggregator log: thread " << this->threadID << " get wrong pos!" << std::endl;
+            break;
         }
 
         std::string packet = this->readFromPacketBuffer(offset);
@@ -248,7 +267,8 @@ void PacketAggregator::run(){
             }
         }
     }
-    std::cout << "Packet aggregator log: thread " << this->threadID << " quit." << std::endl;
+    printf("Packet aggregator log: thread %u quit\n.",this->threadID);
+    //std::cout << "Packet aggregator log: thread " << this->threadID << " quit." << std::endl;
 }
 
 void PacketAggregator::asynchronousStop(){
