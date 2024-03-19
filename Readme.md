@@ -63,16 +63,11 @@
 		* packet aggregator：packet buffer与index buffer直接替换（因为当前只考虑流索引，不需要考虑截断问题），packet pointer保留直至下一次截断
 		* index generater：不由外部截断，当index buffer的写线程为空，且读取结束后直接停止
 		* 问题：当前设计中需要等上游线程替换完成，下游线程再开始替换。如果有一个线程（特别是packet aggregator）显著慢于其他线程，会导致下游截断滞后，是否会造成严重后果（如ring buffer阻塞）？
-			* ~~controller负载平衡？~~未解决本质问题
-			* ~~一个ring buffer对一个数据包聚合器？~~index cache依旧会遇到该问题
-			* 连同index generator一同替换？这个应该最合适，而且可以通过线程池优化线程建立过程
-			* ~~ring buffer残余收集器？~~难以实现残余区分
-			* ~~不替换ring buffer？~~无法区分新旧流
-			* ~~保留index buffer，直至其write thread清零，期间不等待旧index buffer读取？~~难以实现不等待读取
+			* 连同index generator一同替换
 	* (v)线程旧内存替换后，修改pause变量
 	* (vi)将旧内存整理后交给存储系统
 	* (vii)回收旧内存
-* 已测试，在index generator线程过多时会偶发错误，~~怀疑与申请index generator的较大开销有关，此处需要修复~~已修复
+* 已测试，~~在index generator线程过多时会偶发错误，~~已修复
 
 ### pcapReader
 * 从指定pcap文件中持续读取pcap格式数据包
