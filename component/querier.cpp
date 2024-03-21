@@ -637,12 +637,14 @@ void Querier::input(std::string expression, std::string outputFilename){
 void Querier::runUnit(){
     // std::cout << "Querier log: runUnit." <<std::endl;
     std::list<std::string> exp_list = this->decomposeExpression();
+    std::cout << this->expression <<std::endl;
     if(exp_list.size()==0){
         std::cerr<<"Querier error: run with wrong expression!" << std::endl;
         return;
     }
     std::list<Answer> flow_header_list = this->searchExpression(exp_list);
     this->outputPacketToFile(flow_header_list);
+    std::cout << "Querier log: get " << flow_header_list.front().pointers.size() << " flows." << std::endl;
     std::cout << "Querier log: query done." << std::endl;
 }
 void Querier::run(){
