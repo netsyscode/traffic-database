@@ -1,13 +1,20 @@
 from flask import Flask, request, send_file
 from socketConnect import *
 from pcapReader import *
+from flask_cors import CORS
 
 app = Flask(__name__)
 app.config['CSRF_ENABLED'] = False
-s = socket_connect(SERVER_HOST,SERVER_PORT)
+CORS(app)
+# s = socket_connect(SERVER_HOST,SERVER_PORT)
 packets = []
 meta_list = []
 findPacket = False
+
+# @app.after_request
+# def add_cors_headers(response):
+#     response.headers.add('Access-Control-Allow-Origin', 'http://localhost:8000')
+#     return response
 
 @app.route('/search',methods=['POST'])
 def search():
@@ -17,16 +24,17 @@ def search():
     if request.method == 'POST':
         key = request.form['searchKey']
         
-        send_pkt(s,key)
+        # send_pkt(s,key)
         
         if key == "q":
             return {'message': 'Querier quit.'}, 200
         
-        response = recv_pkt(s)
+        # response = recv_pkt(s)
+        response = "query done."
 
-        if response == "query fail.":
-            findPacket = False
-            return {'message': response, "data": []}, 200
+        # if response == "query fail.":
+        #     findPacket = False
+        #     return {'message': response, "data": []}, 200
 
         findPacket = True
         packets = get_packets()

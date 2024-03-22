@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Example</title>
+    <style>
+        body {
+            background-color: #f0f0f0; /* 背景色 */
+        }
+
+        /* 定义搜索结果区域样式 */
+        #searchResults {
+            margin-top: 10px;
+            height: 300px; /* 固定高度 */
+            overflow-y: auto; /* 垂直滚动条 */
+            border: 1px solid #ccc; /* 边框样式 */
+            padding: 0px; /* 内边距 */
+            background-color: #ffffff;
+        }
+
+        #searchResults table {
+            width: 100%; /* 表格宽度为100% */
+            border-collapse: collapse; /* 边框合并 */
+        }
+
+        #searchResults th {
+            background-color: #f0f0f0; /* 表头背景色 */
+            border: 1px solid #ccc; /* 表头边框样式 */
+            padding: 8px; /* 表头内边距 */
+            text-align: left; /* 文本左对齐 */
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        #searchResults td {
+            border: 1px solid #ccc; /* 单元格边框样式 */
+            padding: 8px; /* 单元格内边距 */
+            cursor: pointer; /* 设置鼠标样式为手型 */
+        }
+
+        /* 定义选中搜索结果行的样式 */
+        .selected {
+            border: 2px solid #333; /* 深色边框 */
+        }
+
+        /* 输入框样式 */
+        #searchInput {
+            padding: 10px; /* 内边距 */
+            width: 200px; /* 宽度 */
+            border: 1px solid #ccc; /* 边框样式 */
+            border-radius: 5px; /* 边框圆角 */
+            box-sizing: border-box; /* 盒模型 */
+            margin-right: 10px; /* 右侧外边距 */
+        }
+
+        /* 输入框样式 */
+        #startTimeInput {
+            padding: 10px; /* 内边距 */
+            width: 200px; /* 宽度 */
+            border: 1px solid #ccc; /* 边框样式 */
+            border-radius: 5px; /* 边框圆角 */
+            box-sizing: border-box; /* 盒模型 */
+            margin-right: 10px; /* 右侧外边距 */
+        }
+
+        /* 输入框样式 */
+        #endTimeInput {
+            padding: 10px; /* 内边距 */
+            width: 200px; /* 宽度 */
+            border: 1px solid #ccc; /* 边框样式 */
+            border-radius: 5px; /* 边框圆角 */
+            box-sizing: border-box; /* 盒模型 */
+            margin-right: 10px; /* 右侧外边距 */
+        }
+
+        /* 搜索按钮样式 */
+        #searchButton {
+            padding: 10px 20px; /* 上下内边距 左右内边距 */
+            background-color: #007bff; /* 背景色 */
+            color: #fff; /* 文字颜色 */
+            border: none; /* 去除边框 */
+            border-radius: 5px; /* 边框圆角 */
+            cursor: pointer; /* 鼠标样式 */
+        }
+
+        #searchContainer {
+            text-align: center; /* 文本居中 */
+            margin-top: 20px; /* 顶部外边距 */
+        }
+    </style>
+</head>
+<body>
+    <div id="searchContainer">
+        <!-- 搜索输入框 -->
+        <input type="text" id="searchInput" placeholder="Enter search term">
+        
+        <!-- 搜索按钮 -->
+        <button id="searchButton">Search</button>
+
+        <input type="text" id="startTimeInput" placeholder="Enter search start time">
+
+        <input type="text" id="endTimeInput" placeholder="Enter search end time">
+    </div>
+
+    <div id="searchResults"></div>
+
+    <!-- 引入外部的 JavaScript 文件 -->
+    <script src="component/global.js"></script>
+    <script src="component/search.js"></script>
+</body>
+</html>
