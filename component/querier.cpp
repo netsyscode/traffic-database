@@ -641,18 +641,19 @@ void Querier::input(std::string expression, std::string outputFilename){
     this->expression = expression;
     this->outputFilename = outputFilename;
 }
-void Querier::runUnit(){
+bool Querier::runUnit(){
     // std::cout << "Querier log: runUnit." <<std::endl;
     std::list<std::string> exp_list = this->decomposeExpression();
     std::cout << this->expression <<std::endl;
     if(exp_list.size()==0){
         std::cerr<<"Querier error: run with wrong expression!" << std::endl;
-        return;
+        return false;
     }
     std::list<Answer> flow_header_list = this->searchExpression(exp_list);
     this->outputPacketToFile(flow_header_list);
-    std::cout << "Querier log: get " << flow_header_list.front().pointers.size() << " flows." << std::endl;
+    // std::cout << "Querier log: get " << flow_header_list.front().pointers.size() << " flows." << std::endl;
     std::cout << "Querier log: query done." << std::endl;
+    return true;
 }
 // void Querier::run(){
 //     std::cout << "Querier log: query begin, enter your request below (q for QUIT)." <<std::endl;
@@ -675,6 +676,7 @@ void Querier::runUnit(){
 // }
 
 void Querier::run(){
+    std::cout << "Querier log: query run." <<std::endl;
     int server_fd, new_socket;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
@@ -711,7 +713,8 @@ void Querier::run(){
     std::cout << "Querier log: query begin, enter your request below (q for QUIT)." <<std::endl;
     std::string filename;
     std::string expression;
-    std::string response = "query done.";
+    std::string response_r = "query done.";
+    std::string response_w = "query fail.";
     while(true){
         memset(buffer, 0, sizeof(buffer));
         // std::getline(std::cin, filename);
@@ -730,9 +733,13 @@ void Querier::run(){
             break;
         }
         this->input(expression,filename);
-        this->runUnit();
+        if(this->runUnit()){
+            send(new_socket, response_r.c_str(), response_r.length(), 0);
+        }else{
+            send(new_socket, response_w.c_str(), response_w.length(), 0);
+        }
         
-        send(new_socket, response.c_str(), response.length(), 0);
+        
     }
     std::cout << "Controller log: query end." <<std::endl;
 }

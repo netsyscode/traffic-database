@@ -78,7 +78,7 @@ class Querier{
     std::list<Answer> getPointerByFlowMetaIndex(AtomKey key);
     std::list<Answer> searchExpression(std::list<std::string> exp_list);
     void outputPacketToFile(std::list<Answer> flowHeadList);
-    void runUnit();
+    bool runUnit();
 public:
     Querier(std::vector<StorageMeta>* storageMetas, std::string pcapHeader){
         // std::cout << "Querier construct." <<std::endl;
