@@ -15,3 +15,6 @@ columnTitles.forEach(function(title) {
 });
 table.appendChild(headerRow);
 searchResults.appendChild(table);
+
+var metaArea = document.getElementById('metaArea');
+var dataArea = document.getElementById('dataArea');

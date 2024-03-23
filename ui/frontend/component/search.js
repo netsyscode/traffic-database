@@ -14,6 +14,8 @@ document.getElementById('searchButton').addEventListener('click', function() {
         // 清空搜索结果表格
         // var searchResults = document.getElementById('searchResults');
         searchResults.innerHTML = '';
+        metaArea.innerHTML = '';
+        dataArea.innerHTML = '';
 
         // 创建搜索结果表格
         var table = document.createElement('table');       
@@ -61,7 +63,7 @@ document.getElementById('searchButton').addEventListener('click', function() {
                 .then(response => response.json())
                 .then(details => {
                     // 将详细信息显示在页面上
-                    var metaArea = document.getElementById('metaArea');
+                    
                     var detailHTML = ``;
                     
                     if('l2' in details.meta){
@@ -108,7 +110,6 @@ document.getElementById('searchButton').addEventListener('click', function() {
                     }
                     metaArea.innerHTML = detailHTML;
 
-                    var dataArea = document.getElementById('dataArea');
                     dataArea.innerHTML = `${details.data.replace(/\n/g, '<br>')}`
                 })
                 .catch(error => {
