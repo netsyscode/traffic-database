@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search Example</title>
+    <title>Database UI</title>
     <style>
         body {
             background-color: #f0f0f0; /* 背景色 */
@@ -85,9 +85,36 @@
             cursor: pointer; /* 鼠标样式 */
         }
 
+        #downloadButton {
+            padding: 10px 20px; /* 上下内边距 左右内边距 */
+            background-color: #007000; /* 背景色 */
+            color: #fff; /* 文字颜色 */
+            border: none; /* 去除边框 */
+            border-radius: 5px; /* 边框圆角 */
+            cursor: pointer; /* 鼠标样式 */
+        }
+
         #searchContainer {
             text-align: center; /* 文本居中 */
             margin-top: 20px; /* 顶部外边距 */
+        }
+
+        /* 设置显示区域容器的样式 */
+        #detailContainer {
+            margin-top: 10px;
+            display: flex; /* 使用 Flexbox 布局 */
+        }
+
+        /* 设置显示区域的样式 */
+        .detailArea {
+            flex: 1; /* 让两个显示区域平分父容器的宽度 */
+            height: 300px; /* 固定高度 */
+            border: 1px solid #ccc; /* 边框样式 */
+            padding: 10px; /* 内边距 */
+            background-color: #ffffff;
+            overflow-y: auto; /* 垂直滚动条 */
+            font-family: 'Courier New', Courier, monospace;
+            white-space: pre;
         }
     </style>
 </head>
@@ -102,12 +129,26 @@
         <input type="text" id="startTimeInput" placeholder="Enter search start time">
 
         <input type="text" id="endTimeInput" placeholder="Enter search end time">
+
+        <button id="downloadButton">Download File</button>
     </div>
 
     <div id="searchResults"></div>
 
+    <div id="detailContainer">
+        <!-- 第一个显示区域 -->
+        <div class="detailArea" id="metaArea">
+            <!-- 显示区域的内容将在 JavaScript 中动态更新 -->
+        </div>
+        <!-- 第二个显示区域 -->
+        <div class="detailArea" id="dataArea">
+            <!-- 显示区域的内容将在 JavaScript 中动态更新 -->
+        </div>
+    </div>
+
     <!-- 引入外部的 JavaScript 文件 -->
     <script src="component/global.js"></script>
     <script src="component/search.js"></script>
+    <script src="component/download.js"></script>
 </body>
 </html>

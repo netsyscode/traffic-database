@@ -105,7 +105,7 @@ def get_packet_meta(buf):
         flags = tcp.flags
         sport = tcp.sport
         dport = tcp.dport
-        tcp_meta = {"protocol":"TCP","srcport":sport,"dport":dport,"seq":seq_num,"flags":flags}
+        tcp_meta = {"protocol":"TCP","srcport":sport,"dstport":dport,"seq":seq_num,"flags":flags}
         meta["l4"] = tcp_meta
         meta["data"] = len(tcp.data)
         return meta
@@ -114,7 +114,7 @@ def get_packet_meta(buf):
         udp = ip.data
         sport = udp.sport
         dport = udp.dport
-        udp_meta = {"protocol":"UDP","srcport":sport,"dport":dport}
+        udp_meta = {"protocol":"UDP","srcport":sport,"dstport":dport}
         meta["l4"] = udp_meta
         meta["data"] = len(udp.data)
         return meta

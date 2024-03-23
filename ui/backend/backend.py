@@ -57,7 +57,22 @@ def get_packet():
             return {'message': 'too big number.', "meta":{}, "data":""}, 200
         _, packet, _ = packets[num]
         meta = get_packet_meta(packet)
-        data = ':'.join('{:02x}'.format(byte) for byte in packet)
+        # data = ' '.join('{:02x}'.format(byte) for byte in packet)
+
+        line_break_interval = 16
+        data = ''
+        i = 0
+        for byte in packet:
+            if(i % line_break_interval == 0):
+                data += '0x'
+                data += '{:04x}'.format(i)
+                data += ': '
+            data += '{:02x}'.format(byte)
+            if (i + 1) % line_break_interval == 0 and i != len(packet) - 1:
+                data += '\n'
+            else:
+                data += ' '
+            i+=1
         return {'message': 'get packet.', "meta":meta, "data":data}, 200
     else:
         return {'error': 'Only POST requests are allowed'}, 405
