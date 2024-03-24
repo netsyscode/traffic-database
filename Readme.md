@@ -52,6 +52,7 @@
 * 组件控制器
 * 生成各类monitor
 * multithread分支原有功能拆分到memoryMonitor中
+* 目前sleep+强制停止，需要把握睡眠时间（实际应用中不该有这一操作）
 
 ### memoryMonitor
 * 索引生成系统内存部分工作的控制器（将原controller的工作拆分出来）

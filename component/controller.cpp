@@ -113,7 +113,8 @@ void MultiThreadController::run(){
     this->threadsRun();
     this->queryThreadRun();
     
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    // for test, this should be deleted when actually used
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     this->threadsStop();
 
