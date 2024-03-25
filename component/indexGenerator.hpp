@@ -16,6 +16,9 @@ class IndexGenerator{
     // thread member
     u_int32_t threadID;
     std::atomic_bool stop;
+
+    u_int64_t duration_time;
+
     // we needn't think about  pause now -- just stop
     // std::atomic_bool pause;
 
@@ -37,6 +40,8 @@ public:
         this->threadID = std::numeric_limits<uint32_t>::max();
         this->stop = true;
         // this->pause = false;
+
+        this->duration_time = 0;
     }
     ~IndexGenerator(){}
     void setThreadID(u_int32_t threadID);

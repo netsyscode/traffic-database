@@ -4,6 +4,7 @@
 #include <thread>
 #include <vector>
 #include <list>
+#include <chrono>
 #include "../lib/arrayList.hpp"
 #include "../lib/shareBuffer.hpp"
 #include "../lib/ringBuffer.hpp"
@@ -49,6 +50,8 @@ class StorageMonitor{
 
     std::vector<TruncateGroup> truncatedMemory;
     std::vector<StorageMeta>* storageMetas;
+
+    u_int64_t duration_time;
 
     // std::vector<StorageOperator*> storageOperators;
     // std::vector<ThreadPointer*> storageOperatorPointers;

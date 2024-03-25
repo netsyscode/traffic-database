@@ -6,6 +6,7 @@
 #include "../lib/util.hpp"
 #include <unordered_map>
 #include <unordered_set>
+#include <chrono>
 #define FLOW_META_NUM 4
 
 struct FlowMetadata{
@@ -62,6 +63,8 @@ class PacketAggregator{
     ThreadPointer* selfPointer;
     std::condition_variable* monitor_cv;
 
+    u_int64_t duration_time;
+
     u_int32_t readFromPacketPointer();
     std::string readFromPacketBuffer(u_int32_t offset);
     FlowMetadata parsePacket(const char* packet);
@@ -89,6 +92,8 @@ public:
         this->monitor_cv = monitor_cv;
         this->stop = true;
         this->pause = false;
+
+        this->duration_time = 0;
     }
     ~PacketAggregator(){}
     void setThreadID(u_int32_t threadID);

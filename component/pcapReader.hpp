@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <chrono>
 #include "../lib/shareBuffer.hpp"
 #include "../lib/header.hpp"
 #include "../lib/arrayList.hpp"
@@ -37,6 +38,8 @@ class PcapReader{
 
     std::condition_variable* monitor_cv;
 
+    u_int64_t duration_time;
+
     //opne file
     bool openFile();
     //read packet of offset from file;
@@ -56,6 +59,8 @@ public:
         this->stop = true;
         this->pause = false;
         this->monitor_cv = monitor_cv;
+
+        this->duration_time = 0;
     }
     ~PcapReader()=default;
     

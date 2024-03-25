@@ -643,6 +643,9 @@ void Querier::input(std::string expression, std::string outputFilename){
 }
 bool Querier::runUnit(){
     // std::cout << "Querier log: runUnit." <<std::endl;
+
+    auto start = std::chrono::high_resolution_clock::now();
+    
     std::list<std::string> exp_list = this->decomposeExpression();
     std::cout << this->expression <<std::endl;
     if(exp_list.size()==0){
@@ -650,9 +653,14 @@ bool Querier::runUnit(){
         return false;
     }
     std::list<Answer> flow_header_list = this->searchExpression(exp_list);
+    auto end = std::chrono::high_resolution_clock::now();
     this->outputPacketToFile(flow_header_list);
-    // std::cout << "Querier log: get " << flow_header_list.front().pointers.size() << " flows." << std::endl;
-    std::cout << "Querier log: query done." << std::endl;
+
+    
+
+    u_int64_t duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    printf("Querier log: query done, with %llu us.\n",duration);
     return true;
 }
 void Querier::run(){

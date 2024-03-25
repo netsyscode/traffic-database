@@ -125,6 +125,9 @@ void PcapReader::run(){
     this->pause = false;
     //align
     this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    u_int64_t truncate_time = 0;
     while(true){
         PacketMeta meta = this->readPacket();
         if(meta.data == nullptr){
@@ -147,12 +150,18 @@ void PcapReader::run(){
             break;
         }
         if(this->pause){
+            auto start_truncate = std::chrono::high_resolution_clock::now();
             this->truncate();
+            auto end_truncate = std::chrono::high_resolution_clock::now();
+            truncate_time += std::chrono::duration_cast<std::chrono::microseconds>(end_truncate - start_truncate).count();
         }
         if(this->packetBuffer->getWarning()){
             this->monitor_cv->notify_all();
         }
     }
+    auto end = std::chrono::high_resolution_clock::now();
+
+    this->duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     while(true){// wait
         if(this->stop){
             std::cout << "Pcap reader log: asynchronous stop." << std::endl;
@@ -162,7 +171,7 @@ void PcapReader::run(){
             this->truncate();
         }
     }
-    std::cout << "Pcap reader log: thread quit." << std::endl;
+    printf("Pcap reader log: thread quit, during %llu us and %llu is truncate time.\n",this->duration_time,truncate_time);
 }
 
 void PcapReader::asynchronousStop(){

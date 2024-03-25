@@ -174,10 +174,16 @@ void StorageMonitor::memoryClear(){
 }
 void StorageMonitor::runUnit(){
     this->monitor();
+
+    auto start = std::chrono::high_resolution_clock::now();
+
     auto tg = this->truncatedMemory[0];
     this->truncatedMemory.erase(this->truncatedMemory.begin());
     this->store(tg);
     this->clearTruncateGroup(tg);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    this->duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 }
 
 void StorageMonitor::init(InitData init_data){
@@ -233,5 +239,5 @@ void StorageMonitor::run(){
     while(this->truncatedMemory.size()){
         this->runUnit();
     }
-    std::cout << "Storage monitor log: quit." << std::endl;
+    printf("Storage monitor log: quit, during %lld store time.\n",this->duration_time);
 }

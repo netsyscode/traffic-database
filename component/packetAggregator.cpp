@@ -155,7 +155,7 @@ void PacketAggregator::truncate(){
         return;
     }
 
-    printf("Packet aggregator log: thread %u begin truncate.\n",this->threadID);
+    // printf("Packet aggregator log: thread %u begin truncate.\n",this->threadID);
     // std::cout << "Packet aggregator log: thread " << this->threadID << " begin truncate." << std::endl;
 
     // todo: delay truncate
@@ -197,7 +197,7 @@ void PacketAggregator::truncate(){
     }
     this->pause = false;
     this->monitor_cv->notify_all();
-    printf("Packet aggregator log: thread %u end truncate.\n",this->threadID);
+    // printf("Packet aggregator log: thread %u end truncate.\n",this->threadID);
     // std::cout << "Packet aggregator log: thread " << this->threadID << " end truncate." << std::endl;
 }
 
@@ -223,11 +223,14 @@ void PacketAggregator::run(){
     this->stop = false;
     this->pause = false;
     
+    u_int64_t truncate_time = 0;
     while (true){
         if(this->stop){
             break;
         }
         u_int32_t offset = this->readFromPacketPointer();
+
+        auto start = std::chrono::high_resolution_clock::now();
         // std::cout << "offset:" << offset << std::endl;
         if(offset == std::numeric_limits<uint32_t>::max()){
             if(this->stop){
@@ -236,7 +239,10 @@ void PacketAggregator::run(){
                 break;
             }
             if(this->pause){
+                auto start_truncate = std::chrono::high_resolution_clock::now();
                 this->truncate();
+                auto end_truncate = std::chrono::high_resolution_clock::now();
+                truncate_time += std::chrono::duration_cast<std::chrono::microseconds>(end_truncate - start_truncate).count();
                 continue;
             }
             std::cerr << "Packet aggregator log: thread " << this->threadID << " get wrong pos!" << std::endl;
@@ -266,8 +272,11 @@ void PacketAggregator::run(){
                 break;
             }
         }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        this->duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     }
-    printf("Packet aggregator log: thread %u quit\n.",this->threadID);
+    printf("Packet aggregator log: thread %u quit, during %llu us, with truncate time %llu us\n.",this->threadID, this->duration_time, truncate_time);
     //std::cout << "Packet aggregator log: thread " << this->threadID << " quit." << std::endl;
 }
 

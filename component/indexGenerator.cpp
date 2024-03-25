@@ -58,6 +58,7 @@ void IndexGenerator::run(){
             break;
         }
         Index data = this->readIndexFromBuffer();
+        auto start = std::chrono::high_resolution_clock::now();
         if(data.key.size()==0){
             this->stop = true;
             break;
@@ -73,9 +74,11 @@ void IndexGenerator::run(){
         this->putIndexToCache(data);
 
         // count++;// just for test
+        auto end = std::chrono::high_resolution_clock::now();
+        this->duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     }
     // std::cout << "Index generator log: thread " << this->threadID << " count " << count << std::endl; //just for test
-    printf("Index generator log: thread %u quit.\n",this->threadID);
+    printf("Index generator log: thread %u quit, during %llu us.\n",this->threadID,this->duration_time);
     //std::cout << "Index generator log: thread " << this->threadID << " quit." << std::endl;
 }
 void IndexGenerator::asynchronousStop(){
