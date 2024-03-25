@@ -148,6 +148,17 @@ void StorageMonitor::store(TruncateGroup& tg){
     dataFile.close();
     meta.data_end = this->data_offset;
 
+    // get time, assume data and pointers are time ordered
+    ArrayListNode<u_int32_t>* pointer_array = (ArrayListNode<u_int32_t>*)(&pointer[0]);
+    u_int32_t first_packet_offset = pointer_array[0].value;
+    u_int32_t last_packet_offset = pointer_array[pointer.size()/sizeof(ArrayListNode<u_int32_t>) - 1].value;
+
+    data_header* first_packet_header = (data_header*)(&data[first_packet_offset]);
+    data_header* last_packet_header = (data_header*)(&data[last_packet_offset]);
+
+    meta.time_start = ((u_int64_t)(first_packet_header->ts_h) << sizeof(u_int32_t)*8) + (u_int64_t)(first_packet_header->ts_l);
+    meta.time_end = ((u_int64_t)(last_packet_header->ts_h) << sizeof(u_int32_t)*8) + (u_int64_t)(last_packet_header->ts_l);
+
     this->storageMetas->push_back(meta);
     // std::cout << "Storage monitor log: store finish." << std::endl;
 }
@@ -174,11 +185,12 @@ void StorageMonitor::memoryClear(){
 }
 void StorageMonitor::runUnit(){
     this->monitor();
-
+    
     auto start = std::chrono::high_resolution_clock::now();
 
     auto tg = this->truncatedMemory[0];
     this->truncatedMemory.erase(this->truncatedMemory.begin());
+    
     this->store(tg);
     this->clearTruncateGroup(tg);
 

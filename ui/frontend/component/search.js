@@ -1,8 +1,12 @@
 document.getElementById('searchButton').addEventListener('click', function() {
     // 获取搜索框内的文字
     var searchTerm = document.getElementById('searchInput').value;
+    var startTime = document.getElementById('startTimeInput').value;
+    var endTime = document.getElementById('endTimeInput').value;
     var formData = new FormData();
     formData.append('searchKey', searchTerm);
+    formData.append('startTime',startTime);
+    formData.append('endTime',endTime);
 
     // 发送搜索请求到后端接口
     fetch(window.BackendURL+'/search', {

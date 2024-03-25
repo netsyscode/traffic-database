@@ -53,6 +53,9 @@ class Querier{
     std::string outputFilename;
     std::string pcapHeader;
 
+    u_int64_t startTime;
+    u_int64_t endTime;
+
     const std::string index_name[FLOW_META_INDEX_NUM] = {
         "./data/index/pcap.pcap_srcip_idx",
         "./data/index/pcap.pcap_dstip_idx",
@@ -95,7 +98,7 @@ public:
         // std::cout << "Querier construct end." <<std::endl;
     }
     ~Querier()=default;
-    void input(std::string expression, std::string outputFilename);
+    void input(std::string expression, std::string outputFilename, std::string start_time, std::string end_time);
     void run();
 };
 

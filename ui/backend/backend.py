@@ -18,8 +18,11 @@ def search():
     global meta_list
     if request.method == 'POST':
         key = request.form['searchKey']
+        start_time = request.form['startTime']
+        end_time = request.form['endTime']
+        print(start_time+'\n'+end_time+'\n'+key)
         
-        send_pkt(s,key)
+        send_pkt(s,start_time+'\n'+end_time+'\n'+key)
         
         if key == "q":
             return {'message': 'Querier quit.'}, 200

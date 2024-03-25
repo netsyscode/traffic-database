@@ -24,6 +24,8 @@ struct StorageMeta{
     u_int32_t index_end[FLOW_META_INDEX_NUM];
     u_int32_t pointer_end;
     u_int32_t data_end;
+    u_int64_t time_start;
+    u_int64_t time_end;
 };
 
 

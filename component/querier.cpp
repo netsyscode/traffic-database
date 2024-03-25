@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <sstream>
 
 #define PUSH_TMP if(tmp.size()){op = tmp.back();if(op=='='||op=='|'||op=='&'||op=='^'){return std::list<std::string>();}exp_list.push_back(tmp);tmp.clear();}
 
@@ -16,6 +17,16 @@ const std::string connector[] = {"&&", "||", "^^", "in"};
 const char leftBracket[] = "({[\"";
 const char rightBracket[] = ")}]\"";
 const std::string opt[] = {"==", "!=", ">=", "<=", "contains", ">", "<"};
+
+u_int32_t blockSearch(std::vector<StorageMeta>* storageMetas, u_int64_t time){
+    for(int i=0;i<storageMetas->size();++i){
+        if((*storageMetas)[i].time_end < time){
+            continue;
+        }
+        return i;
+    }
+    return storageMetas->size();
+}
 
 template <class KeyType>
 std::list<u_int32_t> binarySearch(char* index, u_int32_t index_len, KeyType key){
@@ -80,6 +91,27 @@ u_int32_t splitIP(const std::string& s){
         }
     }
     return s.size();
+}
+
+u_int32_t splitTime(const std::string& s){
+    for(int i = 0;i<s.size();++i){
+        if(s[i]=='.'){
+            return i;
+        }
+    }
+    return s.size();
+}
+
+u_int64_t stollTime(const std::string& s){
+    u_int32_t sp_pos = splitTime(s);
+    u_int64_t ret_time = 0;
+    ret_time += stoul(s.substr(0,sp_pos));
+    ret_time <<= 32;
+    if(sp_pos == s.size()){
+        return ret_time;
+    }
+    ret_time += stoul(s.substr(sp_pos + 1, s.size() - sp_pos - 1));
+    return ret_time;
 }
 
 uint32_t maskToInteger(int maskBits) {
@@ -511,7 +543,15 @@ std::list<Answer> Querier::getPointerByFlowMetaIndex(AtomKey key){
         std::cerr << "Querier error: getPointerByFlowMetaIndex to non-exist file name " << this->index_name[key.cachePos] << "!" << std::endl;
         return ret;
     }
-    for(u_int32_t i=0;i<this->storageMetas->size();++i){
+
+    u_int32_t first_id = blockSearch(this->storageMetas,this->startTime);
+
+    for(u_int32_t i=first_id;i<this->storageMetas->size();++i){
+
+        if((*(this->storageMetas))[i].time_start > this->endTime){
+            continue;
+        }
+
         indexFile.seekg((*(this->storageMetas))[i].index_offset[key.cachePos],std::ios::beg);
         u_int32_t len = (*(this->storageMetas))[i].index_end[key.cachePos] - (*(this->storageMetas))[i].index_offset[key.cachePos];
         char* index = new char[len];
@@ -547,7 +587,15 @@ std::list<Answer> Querier::getPointerByFlowMetaRange(AtomKey startKey,AtomKey en
         std::cerr << "Querier error: getPointerByFlowMetaIndex to non-exist file name " << this->index_name[startKey.cachePos] << "!" << std::endl;
         return ret;
     }
+
+    u_int32_t first_id = blockSearch(this->storageMetas,this->startTime);
+
     for(u_int32_t i=0;i<this->storageMetas->size();++i){
+
+        if((*(this->storageMetas))[i].time_start > this->endTime){
+            continue;
+        }
+
         indexFile.seekg((*(this->storageMetas))[i].index_offset[startKey.cachePos],std::ios::beg);
         u_int32_t len = (*(this->storageMetas))[i].index_end[startKey.cachePos] - (*(this->storageMetas))[i].index_offset[startKey.cachePos];
         char* index = new char[len];
@@ -726,9 +774,13 @@ void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
             
                 char* data_ele = data_buffer + (offset - this->pcapHeader.size());
                 data_header* pheader = (data_header*)data_ele;
-                // std::cout << "packet len: " << sizeof(data_header)+pheader->caplen << std::endl;
 
-                outputFile.write(data_ele,sizeof(data_header)+pheader->caplen);
+                u_int64_t ti = ((u_int64_t)(pheader->ts_h) << 32) + (u_int64_t)(pheader->ts_l);
+                if( ti >= this->startTime && ti <= this->endTime){
+                    outputFile.write(data_ele,sizeof(data_header)+pheader->caplen);
+                }
+                // std::cout << "packet len: " << sizeof(data_header)+pheader->caplen << std::endl;
+                
                 next = pointers[pos].next;
                 // std::cout << "next: " << next << std::endl;
                 if(next == 0) break;
@@ -739,9 +791,19 @@ void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
     }
     outputFile.close();
 }
-void Querier::input(std::string expression, std::string outputFilename){
+void Querier::input(std::string expression, std::string outputFilename, std::string start_time, std::string end_time){
     this->expression = expression;
     this->outputFilename = outputFilename;
+    if(start_time.size()){
+        this->startTime = stollTime(start_time);
+    }else{
+        this->startTime = 0;
+    }
+    if(end_time.size()){
+        this->endTime = stollTime(end_time);
+    }else{
+        this->endTime = std::numeric_limits<uint64_t>::max();
+    }
 }
 bool Querier::runUnit(){
     // std::cout << "Querier log: runUnit." <<std::endl;
@@ -769,6 +831,8 @@ bool Querier::runUnit(){
 //     std::cout << "Querier log: query begin, enter your request below (q for QUIT)." <<std::endl;
 //     std::string filename;
 //     std::string expression;
+//     std::string start_time;
+//     std::string end_time;
 //     while(true){
 //         // std::getline(std::cin, filename);
 //         filename = "./data/output/pcap_multithread.pcap"; // just as test
@@ -779,7 +843,15 @@ bool Querier::runUnit(){
 //         if(expression == "q"){
 //             break;
 //         }
-//         this->input(expression,filename);
+//         std::getline(std::cin, start_time);
+//         if(start_time == "q"){
+//             break;
+//         }
+//         std::getline(std::cin, end_time);
+//         if(end_time == "q"){
+//             break;
+//         }
+//         this->input(expression,filename,start_time,end_time);
 //         this->runUnit();
 //     }
 //     std::cout << "Controller log: query end." <<std::endl;
@@ -823,6 +895,8 @@ void Querier::run(){
     std::cout << "Querier log: query begin, enter your request below (q for QUIT)." <<std::endl;
     std::string filename;
     std::string expression;
+    std::string start_time;
+    std::string end_time;
     std::string response_r = "query done.";
     std::string response_w = "query fail.";
     while(true){
@@ -836,20 +910,22 @@ void Querier::run(){
         if (recv_len <= 0) {
             break;
         }
-        expression = std::string(buffer,recv_len);
-        std::cout << "Querier log: Received message: " << expression << std::endl;
+        auto tmp = std::string(buffer,recv_len);
+        std::cout << "Querier log: Received message: " << tmp << std::endl;
+        std::istringstream iss(tmp);
+        std::getline(iss, start_time,'\n' );
+        std::getline(iss, end_time,'\n' );
+        std::getline(iss, expression,'\n' );
         // std::getline(std::cin, expression);
         if(expression == "q"){
             break;
         }
-        this->input(expression,filename);
+        this->input(expression,filename,start_time,end_time);
         if(this->runUnit()){
             send(new_socket, response_r.c_str(), response_r.length(), 0);
         }else{
             send(new_socket, response_w.c_str(), response_w.length(), 0);
         }
-        
-        
     }
     std::cout << "Controller log: query end." <<std::endl;
 }
