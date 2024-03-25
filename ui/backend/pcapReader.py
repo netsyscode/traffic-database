@@ -50,8 +50,9 @@ def get_meta_list(packets):
     num = 0
     for timestamp, buf, len in packets:
         try:
-            eth = dpkt.ethernet.Ethernet(buf)
-            ip = eth.data
+            # eth = dpkt.ethernet.Ethernet(buf)
+            # ip = eth.data
+            ip = dpkt.ip.IP(buf)
             tcp = ip.data
 
             prot = get_protocol(ip)
@@ -79,19 +80,21 @@ def get_meta_list(packets):
 
 def get_packet_meta(buf):
     meta = {}
-    eth = dpkt.ethernet.Ethernet(buf)
-    src_mac = ':'.join(f'{byte:02x}' for byte in eth.src)
-    dst_mac = ':'.join(f'{byte:02x}' for byte in eth.dst)
-    eth_type = eth.type
+    # eth = dpkt.ethernet.Ethernet(buf)
+    # src_mac = ':'.join(f'{byte:02x}' for byte in eth.src)
+    # dst_mac = ':'.join(f'{byte:02x}' for byte in eth.dst)
+    # eth_type = eth.type
 
-    eth_meta = {"srcmac":src_mac,"dstmac":dst_mac,"type":eth_type}
-    meta["l2"]=eth_meta
+    # eth_meta = {"srcmac":src_mac,"dstmac":dst_mac,"type":eth_type}
+    # meta["l2"]=eth_meta
 
-    if not isinstance(eth.data, dpkt.ip.IP):
-        meta["data"]=len(eth.data)
-        return meta
+    # if not isinstance(eth.data, dpkt.ip.IP):
+    #     meta["data"]=len(eth.data)
+    #     return meta
 
-    ip = eth.data
+    # ip = eth.data
+
+    ip = dpkt.ip.IP(buf)
 
     srcip = socket.inet_ntoa(ip.src)
     dstip = socket.inet_ntoa(ip.dst)
