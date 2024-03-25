@@ -45,6 +45,47 @@ std::list<u_int32_t> binarySearch(char* index, u_int32_t index_len, KeyType key)
     return ret;
 }
 
+template <class KeyType>
+std::list<u_int32_t> binarySearchRange(char* index, u_int32_t index_len, KeyType startKey, KeyType endKey){
+    std::list<u_int32_t> ret = std::list<u_int32_t>();
+    u_int32_t ele_len = sizeof(KeyType) + sizeof(u_int32_t);
+    u_int32_t left = 0;
+    u_int32_t right = index_len/ele_len;
+
+    while (left < right) {
+        u_int32_t mid = left + (right - left) / 2;
+
+        KeyType key_mid = *(KeyType*)(index + mid * ele_len);
+        if (key_mid < startKey) {
+            left = mid + 1;
+        } else {
+            right = mid;
+        }
+    }
+    for(;left<index_len/ele_len;left++){
+        KeyType key_now = *(KeyType*)(index + left * ele_len);
+        if(key_now >= endKey){
+            break;
+        }
+        u_int32_t value = *(u_int32_t*)(index + left * ele_len + sizeof(KeyType));
+        ret.push_back(value);
+    }
+    return ret;
+}
+
+u_int32_t splitIP(const std::string& s){
+    for(int i = 0;i<s.size();++i){
+        if(s[i]=='/'){
+            return i;
+        }
+    }
+    return s.size();
+}
+
+uint32_t maskToInteger(int maskBits) {
+    return (0xFFFFFFFFU << (32 - maskBits));
+}
+
 bool isNumeric(const std::string& s) {
     bool numSeen = false;
     bool dotSeen = false;
@@ -499,6 +540,45 @@ std::list<Answer> Querier::getPointerByFlowMetaIndex(AtomKey key){
     return ret;
     // return (*(this->flowMetaIndexCaches))[key.cachePos]->findByKey(key.key);
 }
+std::list<Answer> Querier::getPointerByFlowMetaRange(AtomKey startKey,AtomKey endKey){
+    std::ifstream indexFile(this->index_name[startKey.cachePos],std::ios::binary);
+    std::list<Answer> ret = std::list<Answer>();
+    if(!indexFile.is_open()){
+        std::cerr << "Querier error: getPointerByFlowMetaIndex to non-exist file name " << this->index_name[startKey.cachePos] << "!" << std::endl;
+        return ret;
+    }
+    for(u_int32_t i=0;i<this->storageMetas->size();++i){
+        indexFile.seekg((*(this->storageMetas))[i].index_offset[startKey.cachePos],std::ios::beg);
+        u_int32_t len = (*(this->storageMetas))[i].index_end[startKey.cachePos] - (*(this->storageMetas))[i].index_offset[startKey.cachePos];
+        char* index = new char[len];
+        indexFile.read(index,len);
+        std::list<u_int32_t> tmp;
+        if(startKey.key.size()==1 && endKey.key.size()==1){
+            u_int8_t real_s_key = *(u_int8_t*)(&startKey.key[0]);
+            u_int8_t real_e_key = *(u_int8_t*)(&endKey.key[0]);
+            tmp = binarySearchRange(index,len,real_s_key,real_e_key);
+        }else if(startKey.key.size()==2 && endKey.key.size()==2){
+            u_int16_t real_s_key = *(u_int16_t*)(&startKey.key[0]);
+            u_int16_t real_e_key = *(u_int16_t*)(&endKey.key[0]);
+            tmp = binarySearchRange(index,len,real_s_key,real_e_key);
+        }else if(startKey.key.size()==4 && endKey.key.size()==4){
+            u_int32_t real_s_key = *(u_int32_t*)(&startKey.key[0]);
+            u_int32_t real_e_key = *(u_int32_t*)(&endKey.key[0]);
+            tmp = binarySearchRange(index,len,real_s_key,real_e_key);
+        }else if(startKey.key.size()==8 && endKey.key.size()==8){
+            u_int64_t real_s_key = *(u_int64_t*)(&startKey.key[0]);
+            u_int64_t real_e_key = *(u_int64_t*)(&endKey.key[0]);
+            tmp = binarySearchRange(index,len,real_s_key,real_e_key);
+        }else{
+            std::cerr << "Querier error: getPointerByFlowMetaIndex with error key size " << startKey.key.size() << " & " <<endKey.key.size() << "!" << std::endl;
+            tmp = std::list<u_int32_t>();
+        }
+        ret.push_back(Answer{.block_id = i, .pointers = tmp});
+        delete[] index;
+        // std::cout << "block id: " << i << ", list size: " << tmp.size() << std::endl;
+    }
+    return ret;
+}
 std::list<Answer> Querier::searchExpression(std::list<std::string> exp_list){
     std::stack<std::list<Answer>> before_lists = std::stack<std::list<Answer>>();
     std::stack<std::string> ops = std::stack<std::string>();
@@ -551,14 +631,36 @@ std::list<Answer> Querier::searchExpression(std::list<std::string> exp_list){
             if(wait_for_value==2){
                 u_int16_t port = (u_int16_t)stoul(s);
                 key.key = std::string((char*)&port,sizeof(port));
+                right_list = this->getPointerByFlowMetaIndex(key);
                 // std::cout << "key: " << port << " pos: " << key.cachePos <<std::endl;
             }else{
-                struct in_addr tmp;
-                inet_aton(s.c_str(), &tmp);
-                u_int32_t ipv4 = ntohl(tmp.s_addr);
-                key.key = std::string((char*)&ipv4,sizeof(ipv4));
+                u_int32_t split_pos = splitIP(s);
+                if(split_pos == s.size()){
+                    struct in_addr tmp;
+                    inet_aton(s.c_str(), &tmp);
+                    u_int32_t ipv4 = ntohl(tmp.s_addr);
+                    key.key = std::string((char*)&ipv4,sizeof(ipv4));
+                    right_list = this->getPointerByFlowMetaIndex(key);
+                }else{
+                    std::string ip = s.substr(0,split_pos);
+                    std::string mask = s.substr(split_pos + 1,s.size() - split_pos - 1);
+                    struct in_addr tmp;
+                    inet_aton(ip.c_str(), &tmp);
+                    u_int32_t ipv4 = ntohl(tmp.s_addr);
+                    u_int32_t maskBit = (0xFFFFFFFFU << (32 - (u_int32_t)stoul(mask)));
+                    u_int32_t s_key = ipv4 & maskBit;
+                    u_int32_t e_key = s_key + (0xFFFFFFFFU - maskBit);
+                    AtomKey startKey = {
+                        .cachePos = key.cachePos,
+                        .key = std::string((char*)&s_key,sizeof(s_key)),
+                    };
+                    AtomKey endKey = {
+                        .cachePos = key.cachePos,
+                        .key = std::string((char*)&e_key,sizeof(e_key)),
+                    };
+                    right_list = this->getPointerByFlowMetaRange(startKey,endKey);
+                }
             }
-            right_list = this->getPointerByFlowMetaIndex(key);
             if(op_now == "||"){
                 this->join(left_list,right_list);
             }else{

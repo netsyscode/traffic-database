@@ -77,6 +77,7 @@ class Querier{
 
     std::list<std::string> decomposeExpression();
     std::list<Answer> getPointerByFlowMetaIndex(AtomKey key);
+    std::list<Answer> getPointerByFlowMetaRange(AtomKey startKey,AtomKey endKey);
     std::list<Answer> searchExpression(std::list<std::string> exp_list);
     void outputPacketToFile(std::list<Answer> flowHeadList);
     bool runUnit();
