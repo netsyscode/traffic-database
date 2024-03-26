@@ -2,6 +2,7 @@ from flask import Flask, request, send_file
 from socketConnect import *
 from pcapReader import *
 from flask_cors import CORS
+from dataTrans import *
 
 app = Flask(__name__)
 app.config['CSRF_ENABLED'] = False
@@ -18,8 +19,8 @@ def search():
     global meta_list
     if request.method == 'POST':
         key = request.form['searchKey']
-        start_time = request.form['startTime']
-        end_time = request.form['endTime']
+        start_time = translate(request.form['startTime'])
+        end_time = translate(request.form['endTime'])
         print(start_time+'\n'+end_time+'\n'+key)
         
         send_pkt(s,start_time+'\n'+end_time+'\n'+key)

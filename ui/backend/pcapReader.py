@@ -2,6 +2,7 @@ import dpkt
 import socket
 from operator import itemgetter
 import hashlib
+from datetime import datetime
 
 FILE_NAME = "../../data/output/result.pcap"
 
@@ -65,7 +66,7 @@ def get_meta_list(packets):
 
             dic = {}
             dic["number"] = num
-            dic["timestamp"] = timestamp
+            dic["timestamp"] = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S.%f")
             dic["len"] = len
             dic["srcip"] = src
             dic["dstip"] = dst
