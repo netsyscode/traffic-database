@@ -3,6 +3,7 @@ from socketConnect import *
 from pcapReader import *
 from flask_cors import CORS
 from dataTrans import *
+import argparse
 
 app = Flask(__name__)
 app.config['CSRF_ENABLED'] = False
@@ -11,6 +12,7 @@ s = socket_connect(SERVER_HOST,SERVER_PORT)
 packets = []
 meta_list = []
 findPacket = False
+eth_lenth = 14
 
 @app.route('/search',methods=['POST'])
 def search():
@@ -37,7 +39,7 @@ def search():
 
         findPacket = True
         packets = get_packets()
-        meta_list = get_meta_list(packets)
+        meta_list = get_meta_list(packets,eth_lenth)
 
         return {'message': response, "data": meta_list}, 200
     else:
@@ -55,7 +57,7 @@ def get_packet():
         if num > len(packets):
             return {'message': 'too big number.', "meta":{}, "data":""}, 200
         _, packet, _ = packets[num]
-        meta = get_packet_meta(packet)
+        meta = get_packet_meta(packet,eth_lenth)
         # data = ' '.join('{:02x}'.format(byte) for byte in packet)
 
         line_break_interval = 16
@@ -85,10 +87,17 @@ def download():
     if request.method == 'GET':
         if not findPacket:
             return {'message': 'no packet.'}, 200
-        write_pcap(file_path,packets)
+        write_pcap(file_path,packets,eth_lenth)
         return send_file(file_path, as_attachment=True)
     else:
         return {'error': 'Only GET requests are allowed'}, 405
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-e', '--eth_header_len', type=int, help='Ethernet header length')
+    # parser.add_argument('-f', '--filename', type=str, help='Input filename')
+
+    args = parser.parse_args()
+    if args.eth_header_len is not None:
+        eth_lenth = args.eth_header_len
     app.run(host="127.0.0.1",port=8080)

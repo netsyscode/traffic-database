@@ -3,6 +3,7 @@ import socket
 from operator import itemgetter
 import hashlib
 from datetime import datetime
+import struct
 
 FILE_NAME = "../../data/output/result.pcap"
 
@@ -46,14 +47,17 @@ def hash_ip_port(src,dst,sport,dport):
 def get_packets():
     return sort_packets_by_timestamp(read_pcap(FILE_NAME))
 
-def get_meta_list(packets):
+def get_meta_list(packets, eth_len):
     meta_list = []
     num = 0
     for timestamp, buf, len in packets:
         try:
-            # eth = dpkt.ethernet.Ethernet(buf)
-            # ip = eth.data
-            ip = dpkt.ip.IP(buf)
+            if eth_len:
+                eth = dpkt.ethernet.Ethernet(buf)
+                ip = eth.data
+            else:
+                ip = dpkt.ip.IP(buf)
+            
             tcp = ip.data
 
             prot = get_protocol(ip)
@@ -79,23 +83,24 @@ def get_meta_list(packets):
             meta_list.append({})
     return meta_list
 
-def get_packet_meta(buf):
+def get_packet_meta(buf,eth_len):
     meta = {}
-    # eth = dpkt.ethernet.Ethernet(buf)
-    # src_mac = ':'.join(f'{byte:02x}' for byte in eth.src)
-    # dst_mac = ':'.join(f'{byte:02x}' for byte in eth.dst)
-    # eth_type = eth.type
+    if eth_len:
+        eth = dpkt.ethernet.Ethernet(buf)
+        src_mac = ':'.join(f'{byte:02x}' for byte in eth.src)
+        dst_mac = ':'.join(f'{byte:02x}' for byte in eth.dst)
+        eth_type = eth.type
 
-    # eth_meta = {"srcmac":src_mac,"dstmac":dst_mac,"type":eth_type}
-    # meta["l2"]=eth_meta
+        eth_meta = {"srcmac":src_mac,"dstmac":dst_mac,"type":eth_type}
+        meta["l2"]=eth_meta
 
-    # if not isinstance(eth.data, dpkt.ip.IP):
-    #     meta["data"]=len(eth.data)
-    #     return meta
+        if not isinstance(eth.data, dpkt.ip.IP):
+            meta["data"]=len(eth.data)
+            return meta
 
-    # ip = eth.data
-
-    ip = dpkt.ip.IP(buf)
+        ip = eth.data
+    else:
+        ip = dpkt.ip.IP(buf)
 
     srcip = socket.inet_ntoa(ip.src)
     dstip = socket.inet_ntoa(ip.dst)
@@ -135,15 +140,26 @@ def get_packet_meta(buf):
     meta["data"] = len(ip.data)
     return meta
 
-def write_pcap(filename,packets):
-    with open(filename, 'wb') as f:
-        pcap_writer = dpkt.pcap.Writer(f)
-        for ts, buf, _ in packets:
-            pcap_writer.writepkt(buf, ts)
+def write_pcap(filename,packets,eth_len):
+    if eth_len:
+        with open(filename, 'wb') as f:
+            pcap_writer = dpkt.pcap.Writer(f)
+            for ts, buf, _ in packets:
+                pcap_writer.writepkt(buf, ts)
+    else:
+        with open(filename, 'wb') as f:
+            pcap_header = struct.pack('IHHIIII', 0xa1b2c3d4, 2, 4, 0, 0, 0x40000, 0x65)
+            f.write(pcap_header)
+            for ts, buf, len in packets:
+                packet_len = len
+                pcap_pkt_header = struct.pack('IIII', int(ts), int(ts // 1000000), packet_len, packet_len)
+                f.write(pcap_pkt_header)
+                f.write(buf)
+    
 
 if __name__ == "__main__":
     packets = get_packets()
-    meta_list = get_meta_list(packets)
+    meta_list = get_meta_list(packets,14)
     for dic in meta_list:
         if len(dic) == 0:
             print("error packet")
