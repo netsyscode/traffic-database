@@ -39,7 +39,9 @@ int main(int argc, char *argv[]){
         switch (opt) {
             case 'e':
                 init_data.eth_header_len = std::stoul(optarg);
-                init_data.pcap_header = std::string((char*)pcap_head_no_eth,pcap_header_len);
+                if(init_data.eth_header_len == 0){
+                    init_data.pcap_header = std::string((char*)pcap_head_no_eth,pcap_header_len);
+                }
                 break;
             case 'f':
                 init_data.filename = std::string(optarg);

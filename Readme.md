@@ -1,16 +1,41 @@
 # 流量索引数据库
 
-## build & run
-### build
+## 1.项目概述
+### 项目目的
+* 对网络中的流量进行实时全镜像抓取，建立索引，并将流量与索引持久化存储；
+* 提供用户查询接口，可从抓取的历史网络流量中快速检索特定网络流量，为网络流量取证提供支持。
+
+### 项目目标
+* **高速流量实时抓取**：开发对高吞吐量链路流量的全镜像捕获方法，并对流量进行初步过滤与处理；
+* **高并行度索引构建**：采用可高度并行化的数据结构完成数据包的初步聚合和索引构建，使索引构建速率与数据包抓取速率相匹配；
+* **高压缩比流量数据存储**：设计适合流量数据特征的高压缩比压缩方法，以较低的存储开销存储尽可能长时间的流量数据；
+* **低延迟、交互友好的查询接口**：除建立低查询延迟的查询算法外，查询接口也应满足用户自定义索引的需求，并尽可能给出有效的流量查询信息或指导
+
+### 技术栈
+* 前端技术
+	* HTML：用来设计用户界面框架
+	* JavaScript：用于实现可动态交互的查询接口页面
+* 后端技术
+	* 编程语言：Python
+	* 编程框架：Flask
+* 数据库技术
+	* 编程语言：C++
+
+## 2.项目构建与运行
+### 项目构建
+* 在macOS上构建项目
 
 ```
-mkdir build
-make
+(sudo) ./prepare_macos.sh
+```
+* 在ubuntu上构建项目
+
+```
+(sudo) ./prepare_ubuntu.sh
 ```
 
-### run
-* 建立./data文件夹，在data文件夹中建立source、index和output文件夹
-* 将待建立索引的文件放在./data/source文件夹下
+### 项目运行
+* 将待建立索引的pcap文件放在./data/source文件夹下
 * 启动数据库（请确保12345端口没有被占用）
 	* -f为待建立索引的文件路径
 	* -e为数据链路层包头长度，默认为14（用于测试的caida数据集以太网包头因隐私考虑被删去，此时包头长度设为0）
@@ -32,8 +57,11 @@ python ./ui/backend/backend.py
 python -m http.server [port] --directory ./ui/frontend
 ```
 
-### use
-* 打开浏览器，访问localhost:[port]
+### 退出
+* 使用`^c`退出前端与后端程序，此时数据库会自动退出
+
+## 3.网页接口使用
+* 打开浏览器，访问http://localhost:[port]
 * 在输入框输入检索表达式
 	* 目前支持四种查询键：`srcip`、`dstip`、`srcport`、`dstport`，分别为源IP地址、目的IP地址、源端口号和目的端口号
 	* 键与值之间通过`==`连接，如`dstport == 80`
@@ -42,10 +70,62 @@ python -m http.server [port] --directory ./ui/frontend
 * （可选）在开始与结束时间输入框输入搜索限定时间范围
 	* 时间范围格式为`年-月-日 时:分:秒`，如`2023-09-28 11:38:20`
 
-### quit
-* 使用`^c`退出前端与后端程序，此时数据库会自动退出
+## 4.代码结构
+```
+.
+├── Makefile					# c++编译脚本
+├── Readme.md					# 说明文档
+├── build						# 二进制文件
+├── component					# 组件
+│   ├── controller.cpp			# 全局控制器，用于生成内存控制器、存储控制器、查询器
+│   ├── controller.hpp
+│   ├── indexGenerator.cpp		# 索引生成器
+│   ├── indexGenerator.hpp
+│   ├── memoryMonitor.cpp		# 内存控制器，用于控制索引建立阶段组件和数据结构的建立、截断与删除
+│   ├── memoryMonitor.hpp
+│   ├── packetAggregator.cpp	# 数据包聚合器
+│   ├── packetAggregator.hpp
+│   ├── pcapReader.cpp			# pcap文件读取器
+│   ├── pcapReader.hpp
+│   ├── querier.cpp				# 查询器
+│   ├── querier.hpp
+│   ├── storageMonitor.cpp		# 存储控制器
+│   ├── storageMonitor.hpp
+│   ├── storageOperator.cpp		# 存储组件（当前未实现，使用存储控制器单线程承担功能）
+│   └── storageOperator.hpp
+├── data
+│   ├── index					# 索引文件
+│   ├── output					# 查询结果
+│   └── source					# 源pcap文件
+├── doc							# 设计文档
+├── lib							# 数据结构头文件
+│   ├── arrayList.hpp			# 数组列表
+│   ├── header.hpp				# 协议与pcap头部
+│   ├── ringBuffer.hpp			# 并行环状缓冲区
+│   ├── shareBuffer.hpp			# 线性共享缓冲区
+│   ├── skipList.hpp			# 并行跳表
+│   └── util.hpp				# 其他
+├── old_code					# 早期代码，无用
+├── prepare_macos.sh			# 构建脚本（macOS）
+├── prepare_ubuntu.sh			# 构建脚本（Ubuntu）
+├── test						# 测试运行接口
+│   ├── controllerTest.cpp
+│   └── memoryMonitorTest.cpp
+└── ui
+    ├── backend				
+    │   ├── backend.py			# 后端服务器
+    │   ├── dataTrans.py		# 日期格式转换
+    │   ├── pcapReader.py		# pcap文件读取
+    │   └── socketConnect.py	# 与数据库连接
+    └── frontend
+        ├── component
+        │   ├── download.js		# 下载按钮
+        │   ├── global.js		# 全局变量
+        │   └── search.js		# 查询接口
+        └── index.html			# 网页框架
+```
 
-## lib
+## 5.开发文档记录
 ### arrayList.hpp
 * Packet Pointer底层结构
 * value部分只能单线程写入（trace cacher），next部分可多线程写入（packet aggregator，每个线程只能读取和修改特定id的next）
@@ -167,6 +247,7 @@ python -m http.server [port] --directory ./ui/frontend
 	* 完成
 
 ## Todo List
+* 0. **修复并行bug!!!**
 * 1. **ui优化**（前置8）
 * 2. 存储并行化
 * 3. 延迟截断
