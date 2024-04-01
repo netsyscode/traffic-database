@@ -8,6 +8,7 @@
 #include <atomic>
 #include <mutex>
 #include <algorithm>
+#include <cstring>
 
 template <class KeyType, class ValueType>
 class SkipListNode{

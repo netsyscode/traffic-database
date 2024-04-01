@@ -5,6 +5,7 @@
 #include <vector>
 #include <mutex>
 #include <condition_variable>
+#include <cstring>
 #include "util.hpp"
 
 // template <class T>

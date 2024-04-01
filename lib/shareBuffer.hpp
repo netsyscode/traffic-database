@@ -1,6 +1,7 @@
 #ifndef SHAREBUFFER_HPP_
 #define SHAREBUFFER_HPP_
 #include <iostream>
+#include <cstring>
 #include "header.hpp"
 #include "util.hpp"
 

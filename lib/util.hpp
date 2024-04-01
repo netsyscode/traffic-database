@@ -1,6 +1,10 @@
 #ifndef UTIL_HPP_
 #define UTIL_HPP_
 #include <cstdlib>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
+#include <iostream>
 
 struct ThreadPointer{
     u_int32_t id;
