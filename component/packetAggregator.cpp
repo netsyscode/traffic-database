@@ -171,7 +171,8 @@ void PacketAggregator::truncate(){
     this->packetBuffer = this->newPacketBuffer;
     this->packetPointer = this->newPacketPointer;
     this->flowMetaIndexBuffers = this->newFlowMetaIndexBuffers;
-    this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
+    // this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
+    this->aggMap.clear();
 
     this->packetPointer->addReadThread(this->selfPointer);
     for(auto ib:(*(this->flowMetaIndexBuffers))){

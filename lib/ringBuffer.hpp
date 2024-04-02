@@ -4,6 +4,7 @@
 #include <atomic>
 #include <vector>
 #include <mutex>
+#include <shared_mutex>
 #include <condition_variable>
 #include <cstring>
 #include "util.hpp"
@@ -27,10 +28,10 @@ class RingBuffer{
     std::atomic_uint64_t writePos_;
 
     std::vector<ThreadPointer*> readThreads;
-    std::mutex readThreadsMutex;
+    std::shared_mutex readThreadsMutex;
 
     std::vector<ThreadPointer*> writeThreads;
-    std::mutex writeThreadsMutex;
+    std::shared_mutex writeThreadsMutex;
 public:
     RingBuffer(u_int32_t capacity, u_int32_t dataLen) : capacity_(capacity),dataLen_(dataLen){
         this->buffer_ = new char[capacity*dataLen];
@@ -48,7 +49,7 @@ public:
         delete[] buffer_;
     }
     bool addWriteThread(ThreadPointer* thread){
-        std::unique_lock lock(this->writeThreadsMutex);
+        std::unique_lock<std::shared_mutex> lock(this->writeThreadsMutex);
         for(auto t:this->writeThreads){
             if(t->id == thread->id){
                 std::cerr << "Ring Buffer error: addWriteThread with exist id!" <<std::endl;
@@ -64,7 +65,7 @@ public:
         return true;
     }
     bool ereaseWriteThread(ThreadPointer* thread){
-        std::unique_lock lock(this->writeThreadsMutex);
+        std::unique_lock<std::shared_mutex> lock(this->writeThreadsMutex);
         for(auto it = this->writeThreads.begin();it!=this->writeThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->writeThreads.erase(it);
@@ -82,7 +83,7 @@ public:
         return false;
     }
     bool addReadThread(ThreadPointer* thread){
-        std::unique_lock lock(this->readThreadsMutex);
+        std::unique_lock<std::shared_mutex> lock(this->readThreadsMutex);
         for(auto t:this->readThreads){
             if(t->id == thread->id){
                 std::cerr << "Ring Buffer error: addReadThread with exist id " << thread->id << "!" <<std::endl;
@@ -97,7 +98,7 @@ public:
         return true;
     }
     bool ereaseReadThread(ThreadPointer* thread){
-        std::unique_lock lock(this->readThreadsMutex);
+        std::unique_lock<std::shared_mutex> lock(this->readThreadsMutex);
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->readThreads.erase(it);
@@ -128,9 +129,11 @@ public:
         if(!this->signalBuffer_[pos]){//not writed
             memcpy(this->buffer_ + pos * this->dataLen_, data, this->dataLen_);
             this->signalBuffer_[pos] = true;
+            std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
             for(auto t:this->readThreads){
                 t->cv_.notify_one();
             }
+            rlock.unlock();
             // std::cout << this->dataLen_ << std::endl;
             return true;
         }
@@ -158,9 +161,11 @@ public:
         // std::cout << pos <<std::endl;
         memcpy(this->buffer_ + pos*this->dataLen_, data, this->dataLen_);
         this->signalBuffer_[pos] = true;
+        std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
         for(auto t:this->readThreads){
             t->cv_.notify_one();
         }
+        rlock.unlock();
         return true;
         // std::cout << pos <<std::endl;
         // return false;
@@ -174,9 +179,11 @@ public:
             data = std::string(this->buffer_ + pos*this->dataLen_, this->dataLen_);
             // memcpy(data_addr, this->buffer_ + pos*this->dataLen_, this->dataLen_);
             this->signalBuffer_[pos] = false;
+            std::shared_lock<std::shared_mutex> rlock(this->writeThreadsMutex);
             for(auto t:this->writeThreads){
                 t->cv_.notify_one();
             }
+            rlock.unlock();
             return data;
         }
         if((!this->getWriteThreadNum()) && this->has_begin){
@@ -192,7 +199,7 @@ public:
             }
         }
         if(thread == nullptr){
-            std::cerr << "Ring Buffer error: getID with non-exist thread id!" <<std::endl;
+            std::cerr << "Ring Buffer error: get with non-exist thread id!" <<std::endl;
             return data;
         }
         std::unique_lock<std::mutex> lock(thread->mutex_);
@@ -204,9 +211,11 @@ public:
         if(this->signalBuffer_[pos]){
             data = std::string(this->buffer_ + pos*this->dataLen_, this->dataLen_);
             this->signalBuffer_[pos] = false;
+            std::shared_lock<std::shared_mutex> rlock(this->writeThreadsMutex);
             for(auto t:this->writeThreads){
                 t->cv_.notify_one();
             }
+            rlock.unlock();
             return data;
         }
         // std::cout << "Ring Buffer log: read thread " << thread_id << " finish." <<std::endl;

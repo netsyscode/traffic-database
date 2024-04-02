@@ -28,7 +28,7 @@ class ArrayList{
 
     std::atomic_uint32_t threadCount; // read + write thread count
     std::vector<ThreadPointer*> readThreads;
-    std::mutex readThreadsMutex;
+    std::shared_mutex readThreadsMutex;
 
     u_int8_t* idArray;
     ArrayListNode<T>* array;
@@ -62,10 +62,11 @@ public:
             this->warning = true;
         }
         this->nodeNum++;
-
+        std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
         for(auto t:this->readThreads){
             t->cv_.notify_one();
         }
+        rlock.unlock();
         return now_num;
     }
     //change next of pos, make sure only one thread use it or each thread change in different pos.
@@ -94,7 +95,7 @@ public:
         this->threadCount--;
     }
     bool addReadThread(ThreadPointer* thread){
-        std::unique_lock lock(this->readThreadsMutex);
+        std::unique_lock<std::shared_mutex> lock(this->readThreadsMutex);
         for(auto t:this->readThreads){
             if(t->id == thread->id){
                 std::cerr << "Array list error: addReadThread with exist id!" <<std::endl;
@@ -110,7 +111,7 @@ public:
         return true;
     }
     bool ereaseReadThread(ThreadPointer* thread){
-        std::unique_lock lock(this->readThreadsMutex);
+        std::unique_lock<std::shared_mutex> lock(this->readThreadsMutex);
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->readThreads.erase(it);
@@ -151,12 +152,14 @@ public:
         }
 
         ThreadPointer* thread = nullptr;
+        std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
         for(auto t:this->readThreads){
             if(t->id == thread_id){
                 thread = t;
                 break;
             }
         }
+        rlock.unlock();
         if(thread == nullptr){
             std::cerr << "Array list error: getID with non-exist thread id!" <<std::endl;
             data.err = 2;
