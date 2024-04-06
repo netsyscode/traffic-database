@@ -62,11 +62,11 @@ public:
             this->warning = true;
         }
         this->nodeNum++;
-        std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
-        for(auto t:this->readThreads){
-            t->cv_.notify_one();
-        }
-        rlock.unlock();
+        // std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
+        // for(auto t:this->readThreads){
+        //     t->cv_.notify_one();
+        // }
+        // rlock.unlock();
         return now_num;
     }
     //change next of pos, make sure only one thread use it or each thread change in different pos.
@@ -166,8 +166,13 @@ public:
             return data;
         }
 
-        std::unique_lock<std::mutex> lock(thread->mutex_);
-        thread->cv_.wait(lock, [&pos,this,thread] { return pos < this->nodeNum || thread->stop_ || thread->pause_; });
+        // std::unique_lock<std::mutex> lock(thread->mutex_);
+        // thread->cv_.wait(lock, [&pos,this,thread] { return pos < this->nodeNum || thread->stop_ || thread->pause_; });
+        while (true){
+            if(pos < this->nodeNum || thread->stop_ || thread->pause_){
+                break;
+            }
+        }
         
         if(thread->stop_){
             std::cout << "Array list log: thread " << thread_id << " stop." <<std::endl;
