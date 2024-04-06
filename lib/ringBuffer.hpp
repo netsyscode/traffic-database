@@ -129,11 +129,11 @@ public:
         if(!this->signalBuffer_[pos]){//not writed
             memcpy(this->buffer_ + pos * this->dataLen_, data, this->dataLen_);
             this->signalBuffer_[pos] = true;
-            std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
-            for(auto t:this->readThreads){
-                t->cv_.notify_one();
-            }
-            rlock.unlock();
+            // std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
+            // for(auto t:this->readThreads){
+            //     t->cv_.notify_one();
+            // }
+            // rlock.unlock();
             // std::cout << this->dataLen_ << std::endl;
             return true;
         }
@@ -161,11 +161,11 @@ public:
         // std::cout << pos <<std::endl;
         memcpy(this->buffer_ + pos*this->dataLen_, data, this->dataLen_);
         this->signalBuffer_[pos] = true;
-        std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
-        for(auto t:this->readThreads){
-            t->cv_.notify_one();
-        }
-        rlock.unlock();
+        // std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
+        // for(auto t:this->readThreads){
+        //     t->cv_.notify_one();
+        // }
+        // rlock.unlock();
         return true;
         // std::cout << pos <<std::endl;
         // return false;
@@ -202,8 +202,13 @@ public:
             std::cerr << "Ring Buffer error: get with non-exist thread id!" <<std::endl;
             return data;
         }
-        std::unique_lock<std::mutex> lock(thread->mutex_);
-        thread->cv_.wait(lock, [this,thread,&pos]{return this->signalBuffer_[pos] || thread->stop_ || (!this->getWriteThreadNum() && this->has_begin);});
+        // std::unique_lock<std::mutex> lock(thread->mutex_);
+        // thread->cv_.wait(lock, [this,thread,&pos]{return this->signalBuffer_[pos] || thread->stop_ || (!this->getWriteThreadNum() && this->has_begin);});
+        while(true){
+            if(this->signalBuffer_[pos] || thread->stop_ || (!this->getWriteThreadNum() && this->has_begin)){
+                break;
+            }
+        }
         if(thread->stop_ ){
             std::cout << "Ring Buffer log: read thread " << thread_id << " stop." <<std::endl;
             return std::string();
