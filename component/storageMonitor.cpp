@@ -49,7 +49,7 @@ void StorageMonitor::clearTruncateGroup(TruncateGroup& tg){
         }
         tg.flowMetaIndexGeneratorPointers->clear();
         delete tg.flowMetaIndexGeneratorPointers;
-        tg.flowMetaIndexBuffers = nullptr;
+        tg.flowMetaIndexGeneratorPointers = nullptr;
     }
 
     if(tg.flowMetaIndexGenerators != nullptr){

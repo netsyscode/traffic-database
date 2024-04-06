@@ -114,15 +114,16 @@ void MultiThreadController::run(){
     this->queryThreadRun();
     
     // for test, this should be deleted when actually used
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    // std::this_thread::sleep_for(std::chrono::seconds(5));
 
-    this->threadsStop();
+    
 
     // std::cout << "Controller log: wait for query." << std::endl;
 
     //for test
     
     this->queryThread->join();
+    this->threadsStop();
     this->queryThreadStop();
 
     this->threadsClear();
