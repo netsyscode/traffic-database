@@ -110,7 +110,8 @@ u_int8_t PcapReader::calPacketID(PacketMeta& meta){
 }
     
 u_int32_t PcapReader::writePacketToPacketPointer(u_int32_t _offset, u_int8_t id){
-    return this->packetPointer->addNodeOneThread(_offset,id);
+    // return this->packetPointer->addNodeOneThread(_offset,id);
+    return this->packetPointer->addNodeMultiThread(_offset,id,this->nodeNumber);
 }
 
 // void PcapReader::truncate(){
@@ -138,6 +139,7 @@ void PcapReader::truncate(){
     }
     this->packetPointer = this->newpacketPointer;
     this->newpacketPointer = nullptr;
+    this->nodeNumber = 0;
     // this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
     this->pause = false;
     this->monitor_cv->notify_all();
@@ -159,9 +161,9 @@ void PcapReader::run(){
     //     std::cout << "Thread successfully bound to CPU core " << std::endl;
     // }
 
-    if(!this->openFile()){
-        return;
-    }
+    // if(!this->openFile()){
+    //     return;
+    // }
 
     // this->file_buffer = new char[60*1024*1024];
 
@@ -184,6 +186,18 @@ void PcapReader::run(){
     for(int i=0;i<1;++i){
         this->offset = pcap_header_len;
         while(true){
+            if(this->nodeNumber > this->pointer_limit){
+                auto write_buffer_start = std::chrono::high_resolution_clock::now();
+                if(this->pause){
+                    auto start_truncate = std::chrono::high_resolution_clock::now();
+                    this->truncate();
+                    auto end_truncate = std::chrono::high_resolution_clock::now();
+                    truncate_time += std::chrono::duration_cast<std::chrono::microseconds>(end_truncate - start_truncate).count();
+                }
+                auto write_buffer_end = std::chrono::high_resolution_clock::now();
+                write_buffer_time += std::chrono::duration_cast<std::chrono::microseconds>(write_buffer_end - write_buffer_start).count();
+                continue;
+            }
             auto read_start = std::chrono::high_resolution_clock::now();
             PacketMeta meta = this->readPacket();
             if(meta.data == nullptr){
@@ -194,38 +208,37 @@ void PcapReader::run(){
             auto read_end = std::chrono::high_resolution_clock::now();
             read_time += std::chrono::duration_cast<std::chrono::microseconds>(read_end - read_start).count();
 
-            auto write_buffer_start = std::chrono::high_resolution_clock::now();
+            
             // u_int32_t _offset = this->writePacketToPacketBuffer(meta);
 
             // if(_offset == std::numeric_limits<uint32_t>::max()){
             //     std::cerr << "Pcap reader error: packet buffer overflow!" << std::endl;
             //     break;
             // }
-            auto write_buffer_end = std::chrono::high_resolution_clock::now();
             auto write_cal_start = std::chrono::high_resolution_clock::now();
             u_int8_t id = this->calPacketID(meta);
             auto write_cal_end = std::chrono::high_resolution_clock::now();
             auto write_pointer_start = std::chrono::high_resolution_clock::now();
-            u_int32_t nodeNum = this->writePacketToPacketPointer(this->offset,id);
-            if(nodeNum == std::numeric_limits<uint32_t>::max()){
+
+            this->nodeNumber = this->writePacketToPacketPointer(this->offset,id);
+            if(this->nodeNumber == std::numeric_limits<uint32_t>::max()){
                 std::cerr << "Pcap reader error: packet pointer overflow!" << std::endl;
                 break;
             }
             this->offset += meta.len;
             auto write_pointer_end = std::chrono::high_resolution_clock::now();
-            write_buffer_time += std::chrono::duration_cast<std::chrono::microseconds>(write_buffer_end - write_buffer_start).count();
             write_cal_time += std::chrono::duration_cast<std::chrono::microseconds>(write_cal_end - write_cal_start).count();
             write_pointer_time += std::chrono::duration_cast<std::chrono::microseconds>(write_pointer_end - write_pointer_start).count();
             if(this->stop){
                 // std::cout << "Pcap reader log: asynchronous stop." << std::endl;
                 break;
             }
-            if(this->pause){
-                auto start_truncate = std::chrono::high_resolution_clock::now();
-                this->truncate();
-                auto end_truncate = std::chrono::high_resolution_clock::now();
-                truncate_time += std::chrono::duration_cast<std::chrono::microseconds>(end_truncate - start_truncate).count();
-            }
+            // if(this->pause){
+            //     auto start_truncate = std::chrono::high_resolution_clock::now();
+            //     this->truncate();
+            //     auto end_truncate = std::chrono::high_resolution_clock::now();
+            //     truncate_time += std::chrono::duration_cast<std::chrono::microseconds>(end_truncate - start_truncate).count();
+            // }
             if(this->packetPointer->getWarning()){
                 // printf("Pcap reader log: pointer warning.\n");
                 this->monitor_cv->notify_all();

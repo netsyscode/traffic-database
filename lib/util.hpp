@@ -30,6 +30,7 @@ struct InitData{
     u_int32_t flow_capacity;
     u_int32_t packetAggregatorThreadCount;
     u_int32_t flowMetaIndexGeneratorThreadCountEach;
+    u_int32_t pcapReaderThreadCount;
     std::string pcap_header;
 };
 

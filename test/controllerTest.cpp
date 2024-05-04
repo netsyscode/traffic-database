@@ -33,6 +33,7 @@ int main(int argc, char *argv[]){
         .filename = std::string(),
         .packetAggregatorThreadCount = 16,
         .flowMetaIndexGeneratorThreadCountEach = 4,
+        .pcapReaderThreadCount = 8,
         .pcap_header = std::string((char*)pcap_head,pcap_header_len),
     };
     while ((opt = getopt(argc, argv, "e:f:")) != -1) {

@@ -259,7 +259,7 @@ void PacketAggregator::run(){
         // std::cout << "get packet."<< std::endl;
         FlowMetadata meta = this->parsePacket(packet);
         if(meta.sourcePort == 0){
-            printf("offset:%u,len:%u\n",offset,len);
+            printf("offset:%u,len:%u,node num:%u\n",offset,len,this->packetPointer->getNodeNum());
         }
 
         auto last_ret = this->addPacketToMap(meta,this->readPos - 1);

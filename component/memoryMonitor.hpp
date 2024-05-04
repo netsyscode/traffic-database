@@ -53,10 +53,12 @@ class MemoryMonitor{
     std::vector<MemoryGroup> memoryPool; // 0 for use
 
     // static component
-    PcapReader* traceCatcher;
+    // PcapReader* traceCatcher;
+    std::vector<PcapReader*> traceCatchers;
     std::vector<PacketAggregator*> packetAggregators;
     std::vector<ThreadPointer*> packetAggregatorPointers;
-    std::thread* traceCatcherThread;
+    // std::thread* traceCatcherThread;
+    std::vector<std::thread*> traceCatcherThreads;
     std::vector<std::thread*> packetAggregatorThreads;
     
 
@@ -106,7 +108,8 @@ public:
 
         this->memoryPool = std::vector<MemoryGroup>();
 
-        this->traceCatcher = nullptr;
+        // this->traceCatcher = nullptr;
+        this->traceCatchers = std::vector<PcapReader*>();
         this->packetAggregators = std::vector<PacketAggregator*>();
         this->packetAggregatorPointers = std::vector<ThreadPointer*>();
 

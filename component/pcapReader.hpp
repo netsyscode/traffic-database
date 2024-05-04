@@ -20,6 +20,7 @@ class PcapReader{
     const u_int32_t eth_header_len;
     // const u_int32_t packet_buffer_max_len;
     // const u_int32_t packet_pointer_max_len;
+    u_int32_t pointer_limit;
 
     std::string filename;
     u_int64_t offset;
@@ -45,6 +46,7 @@ class PcapReader{
     u_int64_t duration_time;
 
     // char* file_buffer;
+    u_int32_t nodeNumber;
 
     //opne file
     bool openFile();
@@ -61,7 +63,7 @@ class PcapReader{
 public:
     // PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, ShareBuffer* buffer, ArrayList<u_int32_t>* packetPointer, std::condition_variable* monitor_cv):
     // pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),filename(filename),packetBuffer(buffer),packetPointer(packetPointer){
-    PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, MmapBuffer* buffer, ArrayList<u_int32_t>* packetPointer, std::condition_variable* monitor_cv):
+    PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, MmapBuffer* buffer, ArrayList<u_int32_t>* packetPointer, std::condition_variable* monitor_cv, u_int32_t pointer_limit):
     pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),filename(filename),packetBuffer(buffer),packetPointer(packetPointer){
         this->offset = pcap_header_len;
         this->stop = true;
@@ -69,6 +71,8 @@ public:
         this->monitor_cv = monitor_cv;
 
         this->duration_time = 0;
+        this->nodeNumber = 0;
+        this->pointer_limit = pointer_limit;
         // this->file_buffer = nullptr;
     }
     ~PcapReader()=default;

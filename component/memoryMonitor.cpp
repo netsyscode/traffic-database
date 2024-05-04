@@ -34,8 +34,10 @@ std::vector<SkipList*>* MemoryMonitor::makeFlowMetaIndexCaches(const std::vector
 }
 
 void MemoryMonitor::makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename){
-    this->traceCatcher = new PcapReader(pcap_header_len,eth_header_len,filename,this->packetBuffer,this->memoryPool[0].packetPointer,this->trace_catcher_cv);
+    // this->traceCatcher = new PcapReader(pcap_header_len,eth_header_len,filename,this->packetBuffer,this->memoryPool[0].packetPointer,this->trace_catcher_cv);
+    PcapReader* traceCatcher = new PcapReader(pcap_header_len,eth_header_len,filename,this->packetBuffer,this->memoryPool[0].packetPointer,this->trace_catcher_cv,this->init_data.packet_warn);
     this->memoryPool[0].packetPointer->addWriteThread();
+    this->traceCatchers.push_back(traceCatcher);
 }
 void MemoryMonitor::pushPacketAggregatorInit(u_int32_t eth_header_len){
     PacketAggregator* aggregator = new PacketAggregator(eth_header_len, this->packetBuffer, this->memoryPool[0].packetPointer, this->memoryPool[0].flowMetaIndexBuffers,this->packet_aggregator_cv);
@@ -112,7 +114,10 @@ void MemoryMonitor::makeMemoryPool(){
     }
 }
 void MemoryMonitor::makeStaticComponent(){
-    this->makeTraceCatcher(this->init_data.pcap_header.size(),this->init_data.eth_header_len,this->init_data.filename);
+    for(int i=0;i<init_data.pcapReaderThreadCount;++i){
+        this->makeTraceCatcher(this->init_data.pcap_header.size(),this->init_data.eth_header_len,this->init_data.filename);
+    }
+    // this->makeTraceCatcher(this->init_data.pcap_header.size(),this->init_data.eth_header_len,this->init_data.filename);
     for(int i=0;i<init_data.packetAggregatorThreadCount;++i){
         this->pushPacketAggregatorInit(this->init_data.eth_header_len);
     }
@@ -127,7 +132,11 @@ void MemoryMonitor::makeDynamicComponent(){
 }
 
 void MemoryMonitor::staticThreadsRun(){
-    this->traceCatcherThread = new std::thread(&PcapReader::run,this->traceCatcher);
+    // this->traceCatcherThread = new std::thread(&PcapReader::run,this->traceCatcher);
+    for(auto tc:this->traceCatchers){
+        std::thread* t = new std::thread(&PcapReader::run,tc);
+        this->traceCatcherThreads.push_back(t);
+    }
 
     for(auto agg:this->packetAggregators){
         std::thread* t = new std::thread(&PacketAggregator::run,agg);
@@ -178,17 +187,22 @@ void MemoryMonitor::truncate(){
     };
 
     // std::cout << "Memory monitor log: traceCatcher truncate begin." << std::endl;
-    this->traceCatcher->asynchronousPause(this->memoryPool[0].packetPointer);
-    auto tc = this->traceCatcher;
+    for(auto tc:this->traceCatchers){
+        tc->asynchronousPause(this->memoryPool[0].packetPointer);
+    }
     
     std::unique_lock<std::mutex> lock_tc(this->mutex);
-    this->trace_catcher_cv->wait(lock_tc, [tc]{return !(tc->getPause());});
+    for(auto tc:this->traceCatchers){
+        this->trace_catcher_cv->wait(lock_tc, [tc]{return !(tc->getPause());});
+    }
     lock_tc.unlock();
 
     // std::cout << "Memory monitor log: traceCatcher truncate end." << std::endl;
 
-    truncate_group.oldPacketPointer->ereaseWriteThread();
-    this->memoryPool[0].packetPointer->addWriteThread();
+    for(int i = 0;i<this->traceCatchers.size();++i){
+        truncate_group.oldPacketPointer->ereaseWriteThread();
+        this->memoryPool[0].packetPointer->addWriteThread();
+    }
 
     // std::cout << "Memory monitor log: packetAggregator truncate begin." << std::endl;
 
@@ -257,12 +271,18 @@ void MemoryMonitor::threadsStop(){
     }
     lock.unlock();
 
-    if(this->traceCatcherThread!=nullptr){
-        this->traceCatcher->asynchronousStop();
-        this->traceCatcherThread->join();
-        delete this->traceCatcherThread;
-        this->traceCatcherThread = nullptr;
+    // if(this->traceCatcherThread!=nullptr){
+    //     this->traceCatcher->asynchronousStop();
+    //     this->traceCatcherThread->join();
+    //     delete this->traceCatcherThread;
+    //     this->traceCatcherThread = nullptr;
+    // }
+    for(int i=0;i<this->traceCatcherThreads.size();++i){
+        this->traceCatchers[i]->asynchronousStop();
+        this->traceCatcherThreads[i]->join();
+        delete this->traceCatcherThreads[i];
     }
+    this->traceCatcherThreads.clear();
 
     for(int i=0;i<this->packetAggregatorThreads.size();++i){
 
@@ -346,11 +366,15 @@ void MemoryMonitor::threadsClear(){
     }
     this->packetAggregators.clear();
     
-    if(this->traceCatcher!=nullptr){
-        this->memoryPool[0].packetPointer->ereaseWriteThread();
-        delete this->traceCatcher;
-        this->traceCatcher = nullptr;
+    // if(this->traceCatcher!=nullptr){
+    //     this->memoryPool[0].packetPointer->ereaseWriteThread();
+    //     delete this->traceCatcher;
+    //     this->traceCatcher = nullptr;
+    // }
+    for(auto tc:this->traceCatchers){
+        delete tc;
     }
+    this->traceCatchers.clear();
 }
 void MemoryMonitor::memoryClear(){
     for(auto m:this->memoryPool){
@@ -390,7 +414,11 @@ void MemoryMonitor::memoryClear(){
 
 void MemoryMonitor::init(InitData init_data){
     this->init_data = init_data;
+
     this->packetBuffer = this->makePacketBuffer();
+    this->packetBuffer->changeFileName(init_data.filename);
+    this->packetBuffer->openFile();
+
     this->makeMemoryPool();
     this->makeStaticComponent();
     this->makeDynamicComponent();
