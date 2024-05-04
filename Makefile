@@ -17,7 +17,7 @@ OBJS = $(addprefix $(BUILD_PATH), $(SRCS:.cpp=.o))
 all: clean $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $(BUILD_PATH)$(TARGET) -lpcap
+	$(CC) $(OBJS) -o $(BUILD_PATH)$(TARGET) -lpcap -pthread
 
 $(BUILD_PATH)$(TEST_PATH)%.o: $(TEST_PATH)%.cpp
 	mkdir -p $(dir $@)

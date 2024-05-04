@@ -5,8 +5,10 @@
 #include <vector>
 #include <list>
 #include <chrono>
+#include <unistd.h>
 #include "../lib/arrayList.hpp"
-#include "../lib/shareBuffer.hpp"
+// #include "../lib/shareBuffer.hpp"
+#include "../lib/mmapBuffer.hpp"
 #include "../lib/ringBuffer.hpp"
 #include "../lib/util.hpp"
 #include "pcapReader.hpp"

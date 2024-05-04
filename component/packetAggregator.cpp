@@ -32,8 +32,8 @@ u_int32_t PacketAggregator::readFromPacketPointer(){
     return this->packetPointer->getValue(this->readPos - 1,id_data.data);
 }
 
-std::string PacketAggregator::readFromPacketBuffer(u_int32_t offset){
-    return this->packetBuffer->readPcap(offset);
+char* PacketAggregator::readFromPacketBuffer(u_int32_t offset){
+    return this->packetBuffer->getPointer(offset);
 }
 
 FlowMetadata PacketAggregator::parsePacket(const char* packet){
@@ -55,7 +55,7 @@ FlowMetadata PacketAggregator::parsePacket(const char* packet){
         meta.sourcePort = htons(udp_protocol->udp_source_port);
         meta.destinationPort = htons(udp_protocol->udp_destination_port);
     }else{
-        std::cout << "Packet aggregator warning: parsePacket with unknown protocol!" << std::endl;
+        std::cout << "Packet aggregator warning: parsePacket with unknown protocol:" << ip_prot << "!" << std::endl;
         meta.sourcePort = 0;
         meta.destinationPort = 0;
     }
@@ -149,7 +149,7 @@ bool PacketAggregator::writeFlowMetaIndexToIndexBuffer(FlowMetadata meta, u_int3
 }
 
 void PacketAggregator::truncate(){
-    if(this->newPacketBuffer == nullptr || this->newPacketPointer == nullptr || this->flowMetaIndexBuffers == nullptr || this->selfPointer == nullptr){
+    if(this->newPacketPointer == nullptr || this->flowMetaIndexBuffers == nullptr || this->selfPointer == nullptr){
         std::cerr <<"Packet aggregator error: trancate without new memory!" << std::endl;
         this->pause = false;
         return;
@@ -168,7 +168,7 @@ void PacketAggregator::truncate(){
     this->oldPacketPointer = this->packetPointer;
     this->oldAggMap = this->aggMap;
 
-    this->packetBuffer = this->newPacketBuffer;
+    // this->packetBuffer = this->newPacketBuffer;
     this->packetPointer = this->newPacketPointer;
     this->flowMetaIndexBuffers = this->newFlowMetaIndexBuffers;
     // this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
@@ -179,7 +179,7 @@ void PacketAggregator::truncate(){
         ib->addWriteThread(this->selfPointer);
     }
 
-    this->newPacketBuffer = nullptr;
+    // this->newPacketBuffer = nullptr;
     this->newPacketPointer = nullptr;
     this->newFlowMetaIndexBuffers = nullptr;
     
@@ -250,12 +250,17 @@ void PacketAggregator::run(){
             break;
         }
 
-        std::string packet = this->readFromPacketBuffer(offset);
-        if(packet.size() == 0){
+        char* packet = this->readFromPacketBuffer(offset);
+        if(packet == nullptr){
             break;
         }
+        u_int32_t len = ((data_header*)(packet))->caplen + sizeof(data_header);
+        
         // std::cout << "get packet."<< std::endl;
-        FlowMetadata meta = this->parsePacket(packet.c_str());
+        FlowMetadata meta = this->parsePacket(packet);
+        if(meta.sourcePort == 0){
+            printf("offset:%u,len:%u\n",offset,len);
+        }
 
         auto last_ret = this->addPacketToMap(meta,this->readPos - 1);
         if(last_ret.second){
@@ -284,12 +289,11 @@ void PacketAggregator::run(){
 void PacketAggregator::asynchronousStop(){
     this->stop = true;
 }
-void PacketAggregator::asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers, ThreadPointer* pointer){
+void PacketAggregator::asynchronousPause(ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers, ThreadPointer* pointer){
     if(this->threadID != pointer->id){
         std::cerr << "Packet aggregator error: asynchronousPause with wrong thread pointer!" << std::endl;
     }
     this->selfPointer = pointer;
-    this->newPacketBuffer = newPacketBuffer;
     this->newPacketPointer = newPacketPointer;
     this->newFlowMetaIndexBuffers = newFlowMetaIndexBuffers;
     this->pause = true;

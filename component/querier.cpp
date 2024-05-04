@@ -827,105 +827,105 @@ bool Querier::runUnit(){
     printf("Querier log: query done, with %llu us.\n",duration);
     return true;
 }
+void Querier::run(){
+    std::cout << "Querier log: query begin, enter your request below (q for QUIT)." <<std::endl;
+    std::string filename;
+    std::string expression;
+    std::string start_time = std::string();
+    std::string end_time = std::string();
+    while(true){
+        // std::getline(std::cin, filename);
+        filename = "./data/output/pcap_multithread.pcap"; // just as test
+        if(filename == "q"){
+            break;
+        }
+        std::getline(std::cin, expression);
+        if(expression == "q"){
+            break;
+        }
+        // std::getline(std::cin, start_time);
+        if(start_time == "q"){
+            break;
+        }
+        // std::getline(std::cin, end_time);
+        if(end_time == "q"){
+            break;
+        }
+        this->input(expression,filename,start_time,end_time);
+        this->runUnit();
+    }
+    std::cout << "Querier log: query end." <<std::endl;
+}
+
 // void Querier::run(){
+//     std::cout << "Querier log: query run." <<std::endl;
+//     int server_fd, new_socket;
+//     struct sockaddr_in address;
+//     int addrlen = sizeof(address);
+//     char buffer[BUFFER_SIZE] = {0};
+
+//     // 创建套接字
+//     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+//         std::cerr << "Querier error: Socket creation failed" << std::endl;
+//         return;
+//     }
+
+//     address.sin_family = AF_INET;
+//     address.sin_addr.s_addr = INADDR_ANY;
+//     address.sin_port = htons(PORT);
+
+//     // 将套接字绑定到指定的端口
+//     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+//         std::cerr << "Querier error: Bind failed" << std::endl;
+//         return;
+//     }
+
+//     // 开始监听连接
+//     if (listen(server_fd, 1) < 0) {
+//         std::cerr << "Querier error: Listen failed" << std::endl;
+//         return;
+//     }
+
+//     // 接受连接
+//     if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
+//         std::cerr << "Querier error: Accept failed" << std::endl;
+//         return;
+//     }
+
 //     std::cout << "Querier log: query begin, enter your request below (q for QUIT)." <<std::endl;
 //     std::string filename;
 //     std::string expression;
 //     std::string start_time;
 //     std::string end_time;
+//     std::string response_r = "query done.";
+//     std::string response_w = "query fail.";
 //     while(true){
+//         memset(buffer, 0, sizeof(buffer));
 //         // std::getline(std::cin, filename);
-//         filename = "./data/output/pcap_multithread.pcap"; // just as test
+//         filename = "./data/output/result.pcap"; // just as test
 //         if(filename == "q"){
 //             break;
 //         }
-//         std::getline(std::cin, expression);
+//         int recv_len = recv(new_socket, buffer, BUFFER_SIZE, 0);
+//         if (recv_len <= 0) {
+//             break;
+//         }
+//         auto tmp = std::string(buffer,recv_len);
+//         std::cout << "Querier log: Received message: " << tmp << std::endl;
+//         std::istringstream iss(tmp);
+//         std::getline(iss, start_time,'\n' );
+//         std::getline(iss, end_time,'\n' );
+//         std::getline(iss, expression,'\n' );
+//         // std::getline(std::cin, expression);
 //         if(expression == "q"){
 //             break;
 //         }
-//         std::getline(std::cin, start_time);
-//         if(start_time == "q"){
-//             break;
-//         }
-//         std::getline(std::cin, end_time);
-//         if(end_time == "q"){
-//             break;
-//         }
 //         this->input(expression,filename,start_time,end_time);
-//         this->runUnit();
+//         if(this->runUnit()){
+//             send(new_socket, response_r.c_str(), response_r.length(), 0);
+//         }else{
+//             send(new_socket, response_w.c_str(), response_w.length(), 0);
+//         }
 //     }
 //     std::cout << "Controller log: query end." <<std::endl;
 // }
-
-void Querier::run(){
-    std::cout << "Querier log: query run." <<std::endl;
-    int server_fd, new_socket;
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
-    char buffer[BUFFER_SIZE] = {0};
-
-    // 创建套接字
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        std::cerr << "Querier error: Socket creation failed" << std::endl;
-        return;
-    }
-
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-
-    // 将套接字绑定到指定的端口
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        std::cerr << "Querier error: Bind failed" << std::endl;
-        return;
-    }
-
-    // 开始监听连接
-    if (listen(server_fd, 1) < 0) {
-        std::cerr << "Querier error: Listen failed" << std::endl;
-        return;
-    }
-
-    // 接受连接
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-        std::cerr << "Querier error: Accept failed" << std::endl;
-        return;
-    }
-
-    std::cout << "Querier log: query begin, enter your request below (q for QUIT)." <<std::endl;
-    std::string filename;
-    std::string expression;
-    std::string start_time;
-    std::string end_time;
-    std::string response_r = "query done.";
-    std::string response_w = "query fail.";
-    while(true){
-        memset(buffer, 0, sizeof(buffer));
-        // std::getline(std::cin, filename);
-        filename = "./data/output/result.pcap"; // just as test
-        if(filename == "q"){
-            break;
-        }
-        int recv_len = recv(new_socket, buffer, BUFFER_SIZE, 0);
-        if (recv_len <= 0) {
-            break;
-        }
-        auto tmp = std::string(buffer,recv_len);
-        std::cout << "Querier log: Received message: " << tmp << std::endl;
-        std::istringstream iss(tmp);
-        std::getline(iss, start_time,'\n' );
-        std::getline(iss, end_time,'\n' );
-        std::getline(iss, expression,'\n' );
-        // std::getline(std::cin, expression);
-        if(expression == "q"){
-            break;
-        }
-        this->input(expression,filename,start_time,end_time);
-        if(this->runUnit()){
-            send(new_socket, response_r.c_str(), response_r.length(), 0);
-        }else{
-            send(new_socket, response_w.c_str(), response_w.length(), 0);
-        }
-    }
-    std::cout << "Controller log: query end." <<std::endl;
-}

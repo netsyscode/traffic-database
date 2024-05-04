@@ -1,9 +1,11 @@
 #ifndef PACKETAGGREGATOR_HPP_
 #define PACKETAGGREGATOR_HPP_
-#include "../lib/shareBuffer.hpp"
+// #include "../lib/shareBuffer.hpp"
+#include "../lib/mmapBuffer.hpp"
 #include "../lib/arrayList.hpp"
 #include "../lib/ringBuffer.hpp"
 #include "../lib/util.hpp"
+#include "../lib/header.hpp"
 #include <unordered_map>
 #include <unordered_set>
 #include <chrono>
@@ -40,13 +42,14 @@ class PacketAggregator{
 
     // shared memory
     // read only
-    ShareBuffer* packetBuffer;
+    // ShareBuffer* packetBuffer;
+    MmapBuffer* packetBuffer;
     // read and write to next
     ArrayList<u_int32_t>* packetPointer;
     // write only, default should be srcip(4B), dstip(4B), srcport(2B), dstport(2B)
     std::vector<RingBuffer*>* flowMetaIndexBuffers;
 
-    ShareBuffer* newPacketBuffer;
+    // ShareBuffer* newPacketBuffer;
     ArrayList<u_int32_t>* newPacketPointer;
     std::vector<RingBuffer*>* newFlowMetaIndexBuffers; 
 
@@ -66,7 +69,7 @@ class PacketAggregator{
     u_int64_t duration_time;
 
     u_int32_t readFromPacketPointer();
-    std::string readFromPacketBuffer(u_int32_t offset);
+    char* readFromPacketBuffer(u_int32_t offset);
     FlowMetadata parsePacket(const char* packet);
     //return <last packet(max for first packet), is_in_old_packet_pointer>
     std::pair<u_int32_t,bool> addPacketToMap(FlowMetadata meta, u_int32_t pos);
@@ -76,7 +79,8 @@ class PacketAggregator{
 
     void truncate();
 public:
-    PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers, std::condition_variable* monitor_cv):eth_header_len(eth_header_len){
+    // PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers, std::condition_variable* monitor_cv):eth_header_len(eth_header_len){
+    PacketAggregator(u_int32_t eth_header_len, MmapBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers, std::condition_variable* monitor_cv):eth_header_len(eth_header_len){
         this->oldAggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
         this->oldPacketPointer = nullptr;
         this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
@@ -101,7 +105,8 @@ public:
     void ereaseID(u_int8_t id);
     void run();
     void asynchronousStop();
-    void asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers, ThreadPointer* pointer);
+    // void asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers, ThreadPointer* pointer);
+    void asynchronousPause(ArrayList<u_int32_t>* newPacketPointer, std::vector<RingBuffer*>* newFlowMetaIndexBuffers, ThreadPointer* pointer);
     bool getPause()const;
 };
 

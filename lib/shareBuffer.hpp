@@ -36,16 +36,23 @@ public:
         return pos;
     }
     //parallelizable, the data should be: pcap header, pcap data
-    std::string readPcap(u_int32_t pos){
-        std::string data = std::string();
+    // std::string readPcap(u_int32_t pos){
+    //     std::string data = std::string();
+    //     if(pos >= this->maxLength){
+    //         std::cerr << "Share buffer error: read pos overflow the buffer: " << pos << "!" <<std::endl;
+    //         return data;
+    //     }
+    //     data_header* pcap_header = (data_header*)(this->buffer+pos);
+    //     u_int32_t len = pcap_header->caplen + sizeof(data_header);
+    //     data = std::string(this->buffer+pos,len);
+    //     return data;
+    // }
+    char* readPcap(u_int32_t pos){
         if(pos >= this->maxLength){
             std::cerr << "Share buffer error: read pos overflow the buffer: " << pos << "!" <<std::endl;
-            return data;
+            return nullptr;
         }
-        data_header* pcap_header = (data_header*)(this->buffer+pos);
-        u_int32_t len = pcap_header->caplen + sizeof(data_header);
-        data = std::string(this->buffer+pos,len);
-        return data;
+        return this->buffer+pos;
     }
     u_int32_t getLen(){
         return this->writePos;

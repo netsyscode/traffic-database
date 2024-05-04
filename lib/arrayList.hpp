@@ -24,7 +24,8 @@ class ArrayList{
     const u_int32_t maxLength; // maxLength should be less than u_int32_t::max/2
     const u_int32_t warningLength; //once exceed warningLength, warning = true
     std::atomic_bool warning;
-    std::atomic_uint32_t nodeNum; // now number of nodes, only increase
+    // std::atomic_uint32_t nodeNum; // now number of nodes, only increase
+    u_int32_t nodeNum; // now number of nodes, only increase
 
     std::atomic_uint32_t threadCount; // read + write thread count
     std::vector<ThreadPointer*> readThreads;
@@ -50,7 +51,8 @@ public:
     // add node to the tail, and return the tail, make sure only one thread can use this function
     u_int32_t addNodeOneThread(T value, u_int8_t id){
         if(this->nodeNum >= this->maxLength){
-            std::cerr << "Array list error: addNodeOneThread overflow the buffer!" <<std::endl;
+            // std::cerr << "Array list error: addNodeOneThread overflow the buffer!" <<std::endl;
+            printf("Array list error: addNodeOneThread overflow the buffer: %u-%u!\n",this->nodeNum,this->maxLength);
             return std::numeric_limits<uint32_t>::max();
         }
 

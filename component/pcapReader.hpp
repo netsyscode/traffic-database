@@ -4,7 +4,8 @@
 #include <string>
 #include <fstream>
 #include <chrono>
-#include "../lib/shareBuffer.hpp"
+// #include "../lib/shareBuffer.hpp"
+#include "../lib/mmapBuffer.hpp"
 #include "../lib/header.hpp"
 #include "../lib/arrayList.hpp"
 
@@ -21,16 +22,19 @@ class PcapReader{
     // const u_int32_t packet_pointer_max_len;
 
     std::string filename;
-    u_int32_t offset;
+    u_int64_t offset;
     std::ifstream file;
     u_int32_t fileLen;
 
     // write only
-    ShareBuffer* packetBuffer;
+    // ShareBuffer* packetBuffer;
+    // read only
+    MmapBuffer* packetBuffer;
     // write only
     ArrayList<u_int32_t>* packetPointer;
 
-    ShareBuffer* newPacketBuffer;
+    // ShareBuffer* newPacketBuffer;
+    MmapBuffer* newPacketBuffer;
     ArrayList<u_int32_t>* newpacketPointer;
 
     std::atomic_bool stop;
@@ -39,6 +43,8 @@ class PcapReader{
     std::condition_variable* monitor_cv;
 
     u_int64_t duration_time;
+
+    // char* file_buffer;
 
     //opne file
     bool openFile();
@@ -53,7 +59,9 @@ class PcapReader{
 
     void truncate();
 public:
-    PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, ShareBuffer* buffer, ArrayList<u_int32_t>* packetPointer, std::condition_variable* monitor_cv):
+    // PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, ShareBuffer* buffer, ArrayList<u_int32_t>* packetPointer, std::condition_variable* monitor_cv):
+    // pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),filename(filename),packetBuffer(buffer),packetPointer(packetPointer){
+    PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, MmapBuffer* buffer, ArrayList<u_int32_t>* packetPointer, std::condition_variable* monitor_cv):
     pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),filename(filename),packetBuffer(buffer),packetPointer(packetPointer){
         this->offset = pcap_header_len;
         this->stop = true;
@@ -61,12 +69,14 @@ public:
         this->monitor_cv = monitor_cv;
 
         this->duration_time = 0;
+        // this->file_buffer = nullptr;
     }
     ~PcapReader()=default;
     
     void run();
     void asynchronousStop();
-    void asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newpacketPointer);
+    // void asynchronousPause(ShareBuffer* newPacketBuffer, ArrayList<u_int32_t>* newpacketPointer);
+    void asynchronousPause(ArrayList<u_int32_t>* newpacketPointer);
     bool getPause() const;
 };
 

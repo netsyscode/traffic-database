@@ -67,10 +67,10 @@ void StorageMonitor::clearTruncateGroup(TruncateGroup& tg){
         tg.flowMetaIndexGenerators = nullptr;
     }
 
-    if(tg.oldPacketBuffer!=nullptr){
-        delete tg.oldPacketBuffer;
-        tg.oldPacketBuffer = nullptr;
-    }
+    // if(tg.oldPacketBuffer!=nullptr){
+    //     delete tg.oldPacketBuffer;
+    //     tg.oldPacketBuffer = nullptr;
+    // }
 
     if(tg.oldPacketPointer!=nullptr){
         delete tg.oldPacketPointer;
@@ -117,6 +117,7 @@ void StorageMonitor::store(TruncateGroup& tg){
         indexFile.seekp(this->index_offset[i],std::ios::beg);
         std::string index = (*(tg.flowMetaIndexCaches))[i]->outputToChar();
         indexFile.write(index.c_str(),index.size());
+        // printf("Storage monitor log: skip list size of %u\n",index.size());
         // std::cout << "index len of " << i << " : " << index.size() << std::endl;
         this->index_offset[i] += index.size();
         indexFile.close();
@@ -135,26 +136,31 @@ void StorageMonitor::store(TruncateGroup& tg){
     pointerFile.close();
     meta.pointer_end = this->pointer_offset;
 
-    std::ofstream dataFile(this->data_name, std::ios::app);
-    if (!dataFile.is_open()) {
-        std::cerr << "Storage monitor error: store to non-exist file name " << this->data_name << "!" << std::endl;
-        return;
-    }
-    dataFile.seekp(this->data_offset,std::ios::beg);
-    std::string data = (tg.oldPacketBuffer->outputToChar());
-    dataFile.write(data.c_str() + this->pcap_header_len, data.size() - this->pcap_header_len);
-    this->data_offset += data.size() - this->pcap_header_len;
+    // std::ofstream dataFile(this->data_name, std::ios::app);
+    // if (!dataFile.is_open()) {
+    //     std::cerr << "Storage monitor error: store to non-exist file name " << this->data_name << "!" << std::endl;
+    //     return;
+    // }
+    // dataFile.seekp(this->data_offset,std::ios::beg);
+    // std::string data = (tg.oldPacketBuffer->outputToChar());
+    // dataFile.write(data.c_str() + this->pcap_header_len, data.size() - this->pcap_header_len);
+    // this->data_offset += data.size() - this->pcap_header_len;
     // std::cout << "Storage monitor log: store " << data.size() - this->pcap_header_len << " bytes." << std::endl;
-    dataFile.close();
-    meta.data_end = this->data_offset;
+    // dataFile.close();
 
     // get time, assume data and pointers are time ordered
     ArrayListNode<u_int32_t>* pointer_array = (ArrayListNode<u_int32_t>*)(&pointer[0]);
     u_int32_t first_packet_offset = pointer_array[0].value;
     u_int32_t last_packet_offset = pointer_array[pointer.size()/sizeof(ArrayListNode<u_int32_t>) - 1].value;
 
-    data_header* first_packet_header = (data_header*)(&data[first_packet_offset]);
-    data_header* last_packet_header = (data_header*)(&data[last_packet_offset]);
+    // char* data = tg.packetBuffer->getPointer(first_packet_offset);
+    // if(data == nullptr){
+    //     printf("Storage monitor error: store with null data.\n");
+    // }
+    data_header* first_packet_header = (data_header*)(tg.packetBuffer->getPointer(first_packet_offset));
+    data_header* last_packet_header = (data_header*)(tg.packetBuffer->getPointer(last_packet_offset));
+
+    meta.data_end = last_packet_offset + last_packet_header->caplen;
 
     meta.time_start = ((u_int64_t)(first_packet_header->ts_h) << sizeof(u_int32_t)*8) + (u_int64_t)(first_packet_header->ts_l);
     meta.time_end = ((u_int64_t)(last_packet_header->ts_h) << sizeof(u_int32_t)*8) + (u_int64_t)(last_packet_header->ts_l);
@@ -224,16 +230,21 @@ void StorageMonitor::init(InitData init_data){
     }
     pointerFile.clear();
     pointerFile.close();
-    std::ofstream dataFile(this->data_name, std::ios::binary);
-    if (!dataFile.is_open()) {
-        std::cerr << "Storage monitor error: store to non-exist file name " << this->data_name << "!" << std::endl;
+    unlink(this->data_name.c_str());
+    if (link(init_data.filename.c_str(), this->data_name.c_str()) == -1) {
+        printf("Storage monitor error: symlink error!\n");
         return;
     }
-    dataFile.clear();
-    dataFile.seekp(this->data_offset,std::ios::beg);
-    dataFile.write(this->pcap_header.c_str(), this->pcap_header_len);
+    // std::ofstream dataFile(this->data_name, std::ios::binary);
+    // if (!dataFile.is_open()) {
+    //     std::cerr << "Storage monitor error: store to non-exist file name " << this->data_name << "!" << std::endl;
+    //     return;
+    // }
+    // dataFile.clear();
+    // dataFile.seekp(this->data_offset,std::ios::beg);
+    // dataFile.write(this->pcap_header.c_str(), this->pcap_header_len);
     this->data_offset += this->pcap_header_len;
-    dataFile.close();
+    // dataFile.close();
     std::cout << "Storage monitor log: init." << std::endl;
 }
 void StorageMonitor::run(){

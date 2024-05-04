@@ -5,7 +5,8 @@
 #include <vector>
 #include <condition_variable>
 #include "../lib/arrayList.hpp"
-#include "../lib/shareBuffer.hpp"
+// #include "../lib/shareBuffer.hpp"
+#include "../lib/mmapBuffer.hpp"
 #include "../lib/ringBuffer.hpp"
 #include "../lib/util.hpp"
 #include "pcapReader.hpp"
@@ -13,7 +14,7 @@
 #include "indexGenerator.hpp"
 
 struct MemoryGroup{
-    ShareBuffer* packetBuffer;
+    // ShareBuffer* packetBuffer;
     ArrayList<u_int32_t>* packetPointer;
     std::vector<RingBuffer*>* flowMetaIndexBuffers;
     std::vector<SkipList*>* flowMetaIndexCaches;
@@ -21,9 +22,10 @@ struct MemoryGroup{
 
 struct TruncateGroup{
     // delayed truncate
-    ShareBuffer* oldPacketBuffer;
+    // ShareBuffer* oldPacketBuffer;
+    const MmapBuffer* packetBuffer;
     ArrayList<u_int32_t>* oldPacketPointer;
-    ShareBuffer* newPacketBuffer;
+    // ShareBuffer* newPacketBuffer;
     ArrayList<u_int32_t>* newPacketPointer;
 
     // monitor util stop
@@ -47,6 +49,7 @@ class MemoryMonitor{
     std::mutex mutex;
 
     // shared memory pool
+    MmapBuffer* packetBuffer;
     std::vector<MemoryGroup> memoryPool; // 0 for use
 
     // static component
@@ -65,7 +68,8 @@ class MemoryMonitor{
     // pipe to storage
     RingBuffer* truncatePipe;
 
-    ShareBuffer* makePacketBuffer(u_int32_t maxLength, u_int32_t warningLength);
+    // ShareBuffer* makePacketBuffer(u_int32_t maxLength, u_int32_t warningLength);
+    MmapBuffer* makePacketBuffer();
     ArrayList<u_int32_t>* makePacketPointer(u_int32_t maxLength, u_int32_t warningLength);
     std::vector<RingBuffer*>* makeFlowMetaIndexBuffers(u_int32_t capacity, const std::vector<u_int32_t>& ele_lens);
     std::vector<SkipList*>* makeFlowMetaIndexCaches(const std::vector<u_int32_t>& ele_lens);
