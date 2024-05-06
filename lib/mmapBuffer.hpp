@@ -12,12 +12,14 @@ class MmapBuffer{
     std::string fileName;
     int fileFD;
     u_int64_t fileSize;
+    u_int64_t lastReadSize;
 public:
     MmapBuffer(){
         this->buffer = nullptr;
         this->fileFD = -1;
         this->fileSize = 0;
         this->fileName = std::string();
+        this->lastReadSize = 0;
     }
     ~MmapBuffer(){
         if(this->fileFD != -1){
@@ -73,7 +75,7 @@ public:
         this->buffer = nullptr;
         this->fileSize = 0;
     }
-    char* getPointer(u_int64_t pos) const{
+    char* getPointer(u_int64_t pos)const{
         if(pos >= this->fileSize){
             return nullptr;
         }
@@ -81,6 +83,13 @@ public:
     }
     std::string getFileName(){
         return this->fileName;
+    }
+    bool checkPos(u_int64_t pos){
+        if(this->lastReadSize < pos){
+            this->lastReadSize = pos;
+            return true;
+        }
+        return false;
     }
 };
 

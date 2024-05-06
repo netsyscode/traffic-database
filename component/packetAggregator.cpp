@@ -197,7 +197,7 @@ void PacketAggregator::truncate(){
         }
     }
     this->pause = false;
-    this->monitor_cv->notify_all();
+    // this->monitor_cv->notify_all();
     // printf("Packet aggregator log: thread %u end truncate.\n",this->threadID);
     // std::cout << "Packet aggregator log: thread " << this->threadID << " end truncate." << std::endl;
 }
@@ -219,12 +219,24 @@ void PacketAggregator::run(){
         std::cerr << "Packet aggregator error: run without threadID!" << std::endl;
         return;
     }
+
+    // pthread_t threadId = pthread_self();
+
+    // 创建 CPU 集合，并将指定核心加入集合中
+    // cpu_set_t cpuset;
+    // CPU_ZERO(&cpuset);
+    // CPU_SET(48+this->threadID, &cpuset);
+
+    // // // 设置线程的 CPU 亲和性
+    // int result = pthread_setaffinity_np(threadId, sizeof(cpu_set_t), &cpuset);
+
     printf("Packet aggregator log: thread %u run.\n",this->threadID);
     //std::cout << "Packet aggregator log: thread " << this->threadID << " run." << std::endl;
     this->stop = false;
     this->pause = false;
     
     u_int64_t truncate_time = 0;
+    // u_int32_t index_count = 0;
     while (true){
         if(this->stop){
             break;
@@ -242,6 +254,8 @@ void PacketAggregator::run(){
             if(this->pause){
                 auto start_truncate = std::chrono::high_resolution_clock::now();
                 this->truncate();
+                // printf("Packet aggregator log: truncate with index count %u.\n",index_count);
+                // index_count = 0;
                 auto end_truncate = std::chrono::high_resolution_clock::now();
                 truncate_time += std::chrono::duration_cast<std::chrono::microseconds>(end_truncate - start_truncate).count();
                 continue;
@@ -277,6 +291,7 @@ void PacketAggregator::run(){
             if(!this->writeFlowMetaIndexToIndexBuffer(meta,this->readPos - 1)){
                 break;
             }
+            // index_count++;
         }
 
         auto end = std::chrono::high_resolution_clock::now();

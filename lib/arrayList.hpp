@@ -23,11 +23,14 @@ template<class T>
 class ArrayList{
     const u_int32_t maxLength; // maxLength should be less than u_int32_t::max/2
     const u_int32_t warningLength; //once exceed warningLength, warning = true
-    std::atomic_bool warning;
+    // std::atomic_bool warning;
+    bool warning;
     std::atomic_uint32_t nodeNum; // now number of nodes, only increase
     // u_int32_t nodeNum; // now number of nodes, only increase
 
-    std::atomic_uint32_t threadCount; // read + write thread count
+    std::atomic_uint32_t readThreadCount; // read + write thread count
+    std::atomic_uint32_t writeThreadCount;
+    bool hasBegin;
     std::vector<ThreadPointer*> readThreads;
     std::shared_mutex readThreadsMutex;
 
@@ -36,14 +39,16 @@ class ArrayList{
 public:
     ArrayList(u_int32_t maxLength, u_int32_t warningLength):maxLength(maxLength),warningLength(warningLength){
         this->array = new ArrayListNode<T>[maxLength];
-        this->idArray = new u_int8_t[maxLength];
+        this->idArray = new u_int8_t[maxLength]();
         this->nodeNum = 0;
         this->warning = false;
-        this->threadCount = 0;
+        this->readThreadCount = 0;
+        this->writeThreadCount = 0;
+        this->hasBegin = false;
     }
     ~ArrayList(){
-        if(this->threadCount){
-            std::cout << "Array list warning: it is used by " << this->threadCount << " thread." <<std::endl;
+        if(this->readThreadCount || this->writeThreadCount){
+            std::cout << "Array list warning: it is used by " << this->readThreadCount + this->writeThreadCount << " thread." <<std::endl;
         }
         delete[] array;
         delete[] idArray;
@@ -72,23 +77,23 @@ public:
     //     return now_num;
     // }
     u_int32_t addNodeMultiThread(T value, u_int8_t id, u_int32_t num){
-        u_int32_t now_num = this->nodeNum.load();
-        if(num < now_num){
+        if(this->idArray[num]){
             return num + 1;
         }
-        if(now_num >= this->maxLength){
+        // u_int32_t now_num = this->nodeNum++;
+        if(num >= this->maxLength){
             // std::cerr << "Array list error: addNodeOneThread overflow the buffer!" <<std::endl;
             printf("Array list error: addNodeOneThread overflow the buffer: %u-%u!\n",this->nodeNum.load(),this->maxLength);
             return std::numeric_limits<uint32_t>::max();
         }
 
-        this->idArray[num] = id;
         this->array[num].value = value;
         this->array[num].next = std::numeric_limits<uint32_t>::max();
+        this->idArray[num] = id == 0? 1 : id;
         if(num >= this->warningLength){
             this->warning = true;
         }
-        this->nodeNum.compare_exchange_strong(now_num,num + 1);
+        // this->nodeNum.compare_exchange_strong(now_num,now_num + 1);
         // std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
         // for(auto t:this->readThreads){
         //     t->cv_.notify_one();
@@ -116,10 +121,11 @@ public:
     }
     //only controller can modify threads
     void addWriteThread(){
-        this->threadCount++;
+        this->writeThreadCount++;
     }
     void ereaseWriteThread(){
-        this->threadCount--;
+        this->writeThreadCount--;
+        this->hasBegin = true;
     }
     bool addReadThread(ThreadPointer* thread){
         std::unique_lock<std::shared_mutex> lock(this->readThreadsMutex);
@@ -133,7 +139,7 @@ public:
         thread->stop_ = false;
         thread->pause_ = false;
         this->readThreads.push_back(thread);
-        this->threadCount++;
+        this->readThreadCount++;
         lock.unlock();
         return true;
     }
@@ -142,7 +148,7 @@ public:
         for(auto it = this->readThreads.begin();it!=this->readThreads.end();++it){
             if((*(it))->id == thread->id){
                 this->readThreads.erase(it);
-                this->threadCount--;
+                this->readThreadCount--;
                 lock.unlock();
                 return true;
             }
@@ -173,7 +179,8 @@ public:
             return data;
         }
 
-        if(pos < this->nodeNum){
+        // if(pos < this->nodeNum && this->idArray[pos]!=0){
+        if(this->idArray[pos]!=0){
             data.data = this->idArray[pos];
             return data;
         }
@@ -196,7 +203,8 @@ public:
         // std::unique_lock<std::mutex> lock(thread->mutex_);
         // thread->cv_.wait(lock, [&pos,this,thread] { return pos < this->nodeNum || thread->stop_ || thread->pause_; });
         while (true){
-            if(pos < this->nodeNum || thread->stop_ || thread->pause_){
+            // if((pos < this->nodeNum && this->idArray[pos]!=0) || thread->stop_ || thread->pause_){
+            if(this->idArray[pos]!=0 || thread->stop_ || (pos > this->warningLength && thread->pause_) || (this->hasBegin && this->writeThreadCount == 0 && thread->pause_)){
                 break;
             }
         }
@@ -206,11 +214,14 @@ public:
             data.err = 3;
             return data;
         }
-        if(pos < this->nodeNum){
+        // if(pos < this->nodeNum && this->idArray[pos]!=0){
+        if(this->idArray[pos]!=0){
             data.data = this->idArray[pos];
             return data;
         }
         //pause and read all data
+        this->nodeNum = pos;
+        // printf("Array list log: pos is %u, node num %u, id %u.\n",pos,this->nodeNum.load(),this->idArray[pos]);
         data.err = 4;
         return data;
     }
@@ -230,7 +241,7 @@ public:
             data.err = 2;
             return data;
         }
-        if(this->threadCount){
+        if(this->ReadThreadCount){
             std::cerr << "Array list error: getIDOneThread while it is used by certain thread!" <<std::endl;
             data.err = 3;
             return data;
@@ -241,11 +252,15 @@ public:
     }
     // Parallelizable and read only, get value from certain pos, each read thread read on certain id
     T getValue(u_int32_t pos, u_int8_t id){
+        // if(pos >= this->warningLength){
+        //     printf("Array list log: pos is %u.\n",pos);
+        // }
         if(pos > this->maxLength || pos < 0){
             std::cerr << "Array list error: getValue overflow the buffer!" <<std::endl;
             return T();
         }
-        if(pos >= this->nodeNum){
+        // if(pos >= this->nodeNum){
+        if(this->idArray[pos] == 0){
             std::cerr << "Array list error: getValue overflow the node count!" <<std::endl;
             return T();
         }
@@ -285,11 +300,14 @@ public:
     //output with copy
     std::string outputToChar()const{
         std::string data = std::string();
-        if(this->threadCount){
+        if(this->readThreadCount || this->writeThreadCount){
             std::cerr << "Array list error: outputToChar while it is used by certain thread!" <<std::endl;
             return data;
         }
         u_int32_t len = this->getLength();
+        // if(this->warning){
+        //     len = (this->warningLength + 1)*sizeof(ArrayListNode<T>);
+        // }
         data = std::string((char*)this->array, len);
         return data;
     }

@@ -48,6 +48,8 @@ class PcapReader{
     // char* file_buffer;
     u_int32_t nodeNumber;
 
+    u_int32_t threadID;
+
     //opne file
     bool openFile();
     //read packet of offset from file;
@@ -63,8 +65,8 @@ class PcapReader{
 public:
     // PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, ShareBuffer* buffer, ArrayList<u_int32_t>* packetPointer, std::condition_variable* monitor_cv):
     // pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),filename(filename),packetBuffer(buffer),packetPointer(packetPointer){
-    PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, MmapBuffer* buffer, ArrayList<u_int32_t>* packetPointer, std::condition_variable* monitor_cv, u_int32_t pointer_limit):
-    pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),filename(filename),packetBuffer(buffer),packetPointer(packetPointer){
+    PcapReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, MmapBuffer* buffer, ArrayList<u_int32_t>* packetPointer, std::condition_variable* monitor_cv, u_int32_t pointer_limit, u_int32_t threadID):
+    pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),filename(filename),packetBuffer(buffer),packetPointer(packetPointer),threadID(threadID){
         this->offset = pcap_header_len;
         this->stop = true;
         this->pause = false;

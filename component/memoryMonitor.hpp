@@ -76,7 +76,7 @@ class MemoryMonitor{
     std::vector<RingBuffer*>* makeFlowMetaIndexBuffers(u_int32_t capacity, const std::vector<u_int32_t>& ele_lens);
     std::vector<SkipList*>* makeFlowMetaIndexCaches(const std::vector<u_int32_t>& ele_lens);
 
-    void makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename);
+    void makeTraceCatcher(u_int32_t pcap_header_len, u_int32_t eth_header_len, std::string filename, u_int32_t id);
     void pushPacketAggregatorInit(u_int32_t eth_header_len);
     void allocateID();
 

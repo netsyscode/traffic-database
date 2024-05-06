@@ -47,6 +47,17 @@ void IndexGenerator::run(){
         std::cerr << "Index generator error: run without threadID!" << std::endl;
         return;
     }
+
+    // pthread_t threadId = pthread_self();
+
+    // // 创建 CPU 集合，并将指定核心加入集合中
+    // cpu_set_t cpuset;
+    // CPU_ZERO(&cpuset);
+    // CPU_SET(32+this->threadID, &cpuset);
+
+    // // // 设置线程的 CPU 亲和性
+    // int result = pthread_setaffinity_np(threadId, sizeof(cpu_set_t), &cpuset);
+
     printf("Index generator log: thread %u  run.\n",this->threadID);
     //std::cout << "Index generator log: thread " << this->threadID << " run." << std::endl;
     this->stop = false;

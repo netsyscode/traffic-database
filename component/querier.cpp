@@ -828,6 +828,16 @@ bool Querier::runUnit(){
     return true;
 }
 void Querier::run(){
+    // pthread_t threadId = pthread_self();
+
+    // // 创建 CPU 集合，并将指定核心加入集合中
+    // cpu_set_t cpuset;
+    // CPU_ZERO(&cpuset);
+    // CPU_SET(5, &cpuset);
+
+    // // // 设置线程的 CPU 亲和性
+    // int result = pthread_setaffinity_np(threadId, sizeof(cpu_set_t), &cpuset);
+
     std::cout << "Querier log: query begin, enter your request below (q for QUIT)." <<std::endl;
     std::string filename;
     std::string expression;

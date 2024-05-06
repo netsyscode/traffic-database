@@ -131,6 +131,7 @@ void StorageMonitor::store(TruncateGroup& tg){
     }
     pointerFile.seekp(this->pointer_offset,std::ios::beg);
     std::string pointer = (tg.oldPacketPointer->outputToChar());
+    // printf("Storage monitor log: pointer size of %u\n",pointer.size());
     pointerFile.write(pointer.c_str(),pointer.size());
     this->pointer_offset += pointer.size();
     pointerFile.close();
@@ -248,6 +249,17 @@ void StorageMonitor::init(InitData init_data){
     std::cout << "Storage monitor log: init." << std::endl;
 }
 void StorageMonitor::run(){
+
+    // pthread_t threadId = pthread_self();
+
+    // // 创建 CPU 集合，并将指定核心加入集合中
+    // cpu_set_t cpuset;
+    // CPU_ZERO(&cpuset);
+    // CPU_SET(4, &cpuset);
+
+    // // // 设置线程的 CPU 亲和性
+    // int result = pthread_setaffinity_np(threadId, sizeof(cpu_set_t), &cpuset);
+
     if(this->pcap_header_len == 0){
         std::cerr << "Storage monitor error: run without init!" << std::endl;
         return;

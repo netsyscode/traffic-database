@@ -104,6 +104,17 @@ void MultiThreadController::init(InitData init_data){
     std::cout << "Controller log: init." << std::endl;
 }
 void MultiThreadController::run(){
+
+    // pthread_t threadId = pthread_self();
+
+    // // 创建 CPU 集合，并将指定核心加入集合中
+    // cpu_set_t cpuset;
+    // CPU_ZERO(&cpuset);
+    // CPU_SET(2, &cpuset);
+
+    // // // 设置线程的 CPU 亲和性
+    // int result = pthread_setaffinity_np(threadId, sizeof(cpu_set_t), &cpuset);
+
     if(this->memoryMonitorPointer == nullptr){
         std::cerr << "Controller error: run without init." << std::endl;
         return;

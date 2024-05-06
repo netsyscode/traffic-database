@@ -46,6 +46,7 @@ public:
         if(this->writeThreads.size() || this->readThreads.size()){
             std::cout << "Ring buffer warning: it is used by certain thread." <<std::endl;
         }
+        // printf("Ring Buffer log: destroy with %lu - %lu nodes.\n",this->writePos_.load(),this->readPos_.load());
         delete[] buffer_;
     }
     bool addWriteThread(ThreadPointer* thread){
@@ -61,7 +62,7 @@ public:
         thread->pause_ = false;
         this->writeThreads.push_back(thread);
         lock.unlock();
-        this->has_begin = true;
+        // this->has_begin = true;
         return true;
     }
     bool ereaseWriteThread(ThreadPointer* thread){
@@ -75,6 +76,7 @@ public:
                 // printf("Ring Buffer log: ereaseWriteThread %u.\n",thread->id);
                 // std::cout << "Ring Buffer log: ereaseWriteThread " << thread->id <<std::endl;
                 lock.unlock();
+                this->has_begin = true;
                 return true;
             }
         }
