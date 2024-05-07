@@ -55,6 +55,7 @@ class Querier{
 
     u_int64_t startTime;
     u_int64_t endTime;
+    u_int64_t packet_count;
 
     const std::string index_name[FLOW_META_INDEX_NUM] = {
         "./data/index/pcap.pcap_srcip_idx",

@@ -161,11 +161,13 @@ void StorageMonitor::store(TruncateGroup& tg){
     data_header* first_packet_header = (data_header*)(tg.packetBuffer->getPointer(first_packet_offset));
     data_header* last_packet_header = (data_header*)(tg.packetBuffer->getPointer(last_packet_offset));
 
-    meta.data_end = last_packet_offset + last_packet_header->caplen;
+    meta.data_end = last_packet_offset + last_packet_header->caplen + sizeof(data_header);
 
+    // printf("Storage monitor log: start time:%u.%u, end time:%u.%u.\n");
     meta.time_start = ((u_int64_t)(first_packet_header->ts_h) << sizeof(u_int32_t)*8) + (u_int64_t)(first_packet_header->ts_l);
     meta.time_end = ((u_int64_t)(last_packet_header->ts_h) << sizeof(u_int32_t)*8) + (u_int64_t)(last_packet_header->ts_l);
 
+    // printf("Storage monitor log: start time:%llu, end time:%llu.\n",meta.time_start,meta.time_end);
     this->storageMetas->push_back(meta);
     // std::cout << "Storage monitor log: store finish." << std::endl;
 }

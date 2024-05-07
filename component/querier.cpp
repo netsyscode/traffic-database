@@ -720,6 +720,7 @@ std::list<Answer> Querier::searchExpression(std::list<std::string> exp_list){
     return left_list;
 }
 void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
+    this->packet_count = 0;
     std::ofstream outputFile(this->outputFilename, std::ios::binary);
     std::ifstream pointerFile(this->pointer_name,std::ios::binary);
     std::ifstream dataFile(this->data_name,std::ios::binary);
@@ -777,6 +778,7 @@ void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
 
                 u_int64_t ti = ((u_int64_t)(pheader->ts_h) << 32) + (u_int64_t)(pheader->ts_l);
                 if( ti >= this->startTime && ti <= this->endTime){
+                    this->packet_count++;
                     outputFile.write(data_ele,sizeof(data_header)+pheader->caplen);
                 }
                 // std::cout << "packet len: " << sizeof(data_header)+pheader->caplen << std::endl;
@@ -811,7 +813,7 @@ bool Querier::runUnit(){
     auto start = std::chrono::high_resolution_clock::now();
     
     std::list<std::string> exp_list = this->decomposeExpression();
-    std::cout << this->expression <<std::endl;
+    // std::cout << this->expression <<std::endl;
     if(exp_list.size()==0){
         std::cerr<<"Querier error: run with wrong expression!" << std::endl;
         return false;
@@ -820,11 +822,9 @@ bool Querier::runUnit(){
     auto end = std::chrono::high_resolution_clock::now();
     this->outputPacketToFile(flow_header_list);
 
-    
-
     u_int64_t duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
-    printf("Querier log: query done, with %llu us.\n",duration);
+    printf("Querier log: query done, find %llu packets with %llu us.\n",this->packet_count,duration);
     return true;
 }
 void Querier::run(){
@@ -849,16 +849,19 @@ void Querier::run(){
         if(filename == "q"){
             break;
         }
-        std::getline(std::cin, expression);
-        if(expression == "q"){
-            break;
-        }
-        // std::getline(std::cin, start_time);
+        std::getline(std::cin, start_time);
+        std::cout << start_time <<std::endl;
         if(start_time == "q"){
             break;
         }
-        // std::getline(std::cin, end_time);
+        std::getline(std::cin, end_time);
+        std::cout << end_time <<std::endl;
         if(end_time == "q"){
+            break;
+        }
+        std::getline(std::cin, expression);
+        std::cout << expression <<std::endl;
+        if(expression == "q"){
             break;
         }
         this->input(expression,filename,start_time,end_time);
