@@ -83,6 +83,9 @@ class Querier{
     std::list<Answer> getPointerByFlowMetaIndex(AtomKey key);
     std::list<Answer> getPointerByFlowMetaRange(AtomKey startKey,AtomKey endKey);
     std::list<Answer> searchExpression(std::list<std::string> exp_list);
+    char* mmapFile(int fileFD, u_int64_t fileSize);
+    void closeFile(int fileFD, char* buffer, u_int64_t fileSize);
+    u_int64_t getFileSize(int fileFD);
     void outputPacketToFile(std::list<Answer> flowHeadList);
     bool runUnit();
 public:

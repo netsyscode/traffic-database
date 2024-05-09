@@ -719,25 +719,73 @@ std::list<Answer> Querier::searchExpression(std::list<std::string> exp_list){
     }
     return left_list;
 }
+char* Querier::mmapFile(int fileFD, u_int64_t fileSize){
+    if(fileFD == -1){
+        printf("Querier error: openFile failed while open!\n");
+        return nullptr;
+    }
+    char* buffer = static_cast<char*>(mmap(nullptr, fileSize, PROT_READ, MAP_PRIVATE, fileFD, 0));
+    if (buffer == MAP_FAILED) {
+        printf("Querier error: openFile failed while mmap!\n");
+        close(fileFD);
+        return nullptr;
+    }
+    return buffer;
+}
+void Querier::closeFile(int fileFD, char* buffer, u_int64_t fileSize){
+    if(fileFD == -1){
+        printf("Querier warning: closeFile without open file.\n");
+        return;
+    }
+    if(munmap(buffer, fileSize) == -1) {
+        printf("Querier warning: closeFile failed while munmap.\n");
+    }
+    if(close(fileFD)==-1){
+        printf("Querier warning: closeFile failed while close.\n");
+    }
+}
+u_int64_t Querier::getFileSize(int fileFD){
+    if(fileFD == -1){
+        printf("Querier error: openFile failed while open!\n");
+        return 0;
+    }
+    struct stat fileStat;
+    if (fstat(fileFD, &fileStat) == -1) {
+        printf("Mmap buffer error: openFile failed while fstat!\n");
+        close(fileFD);
+        return false;
+    }
+    return (u_int64_t)(fileStat.st_size);
+}
 void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
     this->packet_count = 0;
     std::ofstream outputFile(this->outputFilename, std::ios::binary);
-    std::ifstream pointerFile(this->pointer_name,std::ios::binary);
-    std::ifstream dataFile(this->data_name,std::ios::binary);
+    // std::ifstream pointerFile(this->pointer_name,std::ios::binary);
+    // std::ifstream dataFile(this->data_name,std::ios::binary);
+    // int outputFd = open(this->outputFilename.c_str(), O_RDONLY);
+    int pointerFd = open(this->pointer_name.c_str(), O_RDONLY);
+    int dataFd = open(this->data_name.c_str(), O_RDONLY);
     if (!outputFile.is_open()) {
         std::cerr << "Querier error: outputPacketToFile to non-exist file name " << this->outputFilename << "!" << std::endl;
         return;
     }
-    if (!pointerFile.is_open()) {
+    // if (!pointerFile.is_open()) {
+    if (pointerFd == -1) {
         std::cerr << "Querier error: outputPacketToFile to non-exist file name " << this->pointer_name << "!" << std::endl;
         return;
     }
-    if (!dataFile.is_open()) {
+    // if (!dataFile.is_open()) {
+    if (dataFd == -1) {
         std::cerr << "Querier error: outputPacketToFile to non-exist file name " << this->data_name << "!" << std::endl;
         return;
     }
     outputFile.write(this->pcapHeader.c_str(),this->pcapHeader.size());
 
+    u_int64_t pointerSize = this->getFileSize(pointerFd);
+    u_int64_t dataSize = this->getFileSize(dataFd);
+
+    char* pointerBuffer = this->mmapFile(pointerFd,pointerSize);
+    char* dataBuffer = this->mmapFile(dataFd,dataSize);
 
     for(auto answer:flowHeadList){
         if(answer.pointers.size()==0){
@@ -746,15 +794,20 @@ void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
         u_int32_t block_id = answer.block_id;
         u_int32_t pointer_len = (*(this->storageMetas))[block_id].pointer_end - (*(this->storageMetas))[block_id].pointer_offset;
         u_int32_t data_len = (*(this->storageMetas))[block_id].data_end - (*(this->storageMetas))[block_id].data_offset;
-        char* pointer_buffer = new char[pointer_len];
-        char* data_buffer = new char[data_len];
+        // char* pointer_buffer = new char[pointer_len];
+        // char* data_buffer = new char[data_len];
+        char* pointer_buffer = nullptr;
+        char* data_buffer = nullptr;
 
         // std::cout << "pointer_offset: " << (*(this->storageMetas))[block_id].pointer_offset << " pointer_end: " << (*(this->storageMetas))[block_id].pointer_end << std::endl;
     
-        pointerFile.seekg((*(this->storageMetas))[block_id].pointer_offset, std::ios::beg);
-        pointerFile.read(pointer_buffer,pointer_len);
-        dataFile.seekg((*(this->storageMetas))[block_id].data_offset, std::ios::beg);
-        dataFile.read(data_buffer,data_len);
+        // pointerFile.seekg((*(this->storageMetas))[block_id].pointer_offset, std::ios::beg);
+        // pointerFile.read(pointer_buffer,pointer_len);
+        pointer_buffer = pointerBuffer + (*(this->storageMetas))[block_id].pointer_offset;
+
+        // dataFile.seekg((*(this->storageMetas))[block_id].data_offset, std::ios::beg);
+        // dataFile.read(data_buffer,data_len);
+        data_buffer = dataBuffer + (*(this->storageMetas))[block_id].data_offset;
         ArrayListNode<u_int32_t>* pointers = (ArrayListNode<u_int32_t>*)pointer_buffer;
 
         u_int32_t pos = 0;
@@ -788,10 +841,12 @@ void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
                 if(next == 0) break;
             }
         }
-        delete[] pointer_buffer;
-        delete[] data_buffer;
+        // delete[] pointer_buffer;
+        // delete[] data_buffer;
     }
     outputFile.close();
+    this->closeFile(pointerFd,pointerBuffer,pointerSize);
+    this->closeFile(dataFd,dataBuffer,dataSize);
 }
 void Querier::input(std::string expression, std::string outputFilename, std::string start_time, std::string end_time){
     this->expression = expression;
@@ -819,8 +874,9 @@ bool Querier::runUnit(){
         return false;
     }
     std::list<Answer> flow_header_list = this->searchExpression(exp_list);
-    auto end = std::chrono::high_resolution_clock::now();
+    
     this->outputPacketToFile(flow_header_list);
+    auto end = std::chrono::high_resolution_clock::now();
 
     u_int64_t duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
