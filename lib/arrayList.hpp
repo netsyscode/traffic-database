@@ -26,9 +26,8 @@ class ArrayList{
     // std::atomic_bool warning;
     bool warning;
     std::atomic_uint32_t nodeNum; // now number of nodes, only increase
-    // u_int32_t nodeNum; // now number of nodes, only increase
 
-    std::atomic_uint32_t readThreadCount; // read + write thread count
+    std::atomic_uint32_t readThreadCount;
     std::atomic_uint32_t writeThreadCount;
     bool hasBegin;
     std::vector<ThreadPointer*> readThreads;
@@ -53,53 +52,19 @@ public:
         delete[] array;
         delete[] idArray;
     }
-    // add node to the tail, and return the tail, make sure only one thread can use this function
-    // u_int32_t addNodeOneThread(T value, u_int8_t id){
-    //     if(this->nodeNum >= this->maxLength){
-    //         // std::cerr << "Array list error: addNodeOneThread overflow the buffer!" <<std::endl;
-    //         printf("Array list error: addNodeOneThread overflow the buffer: %u-%u!\n",this->nodeNum,this->maxLength);
-    //         return std::numeric_limits<uint32_t>::max();
-    //     }
-
-    //     u_int32_t now_num = this->nodeNum; // nodeNum is a boundary variable, it can only change after writing end
-    //     this->idArray[now_num] = id;
-    //     this->array[now_num].value = value;
-    //     this->array[now_num].next = std::numeric_limits<uint32_t>::max();
-    //     if(now_num >= this->warningLength){
-    //         this->warning = true;
-    //     }
-    //     this->nodeNum++;
-    //     // std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
-    //     // for(auto t:this->readThreads){
-    //     //     t->cv_.notify_one();
-    //     // }
-    //     // rlock.unlock();
-    //     return now_num;
-    // }
-    u_int32_t addNodeMultiThread(T value, u_int8_t id, u_int32_t num){
-        if(this->idArray[num]){
-            return num + 1;
-        }
-        // u_int32_t now_num = this->nodeNum++;
+    u_int32_t addNodeMultiThread(T value, u_int8_t id){
+        u_int32_t num = num++;
         if(num >= this->maxLength){
-            // std::cerr << "Array list error: addNodeOneThread overflow the buffer!" <<std::endl;
-            printf("Array list error: addNodeOneThread overflow the buffer: %u-%u!\n",this->nodeNum.load(),this->maxLength);
+            printf("Array list error: addNodeOneThread overflow the buffer: %u-%u!\n",num,this->maxLength);
             return std::numeric_limits<uint32_t>::max();
         }
-
         this->array[num].value = value;
         this->array[num].next = std::numeric_limits<uint32_t>::max();
         this->idArray[num] = id == 0? 1 : id;
         if(num >= this->warningLength){
             this->warning = true;
         }
-        // this->nodeNum.compare_exchange_strong(now_num,now_num + 1);
-        // std::shared_lock<std::shared_mutex> rlock(this->readThreadsMutex);
-        // for(auto t:this->readThreads){
-        //     t->cv_.notify_one();
-        // }
-        // rlock.unlock();
-        return num + 1;
+        return num;
     }
     //change next of pos, make sure only one thread use it or each thread change in different pos.
     bool changeNextOneThread(u_int32_t pos, u_int32_t next){
@@ -178,8 +143,6 @@ public:
             data.err = 1;
             return data;
         }
-
-        // if(pos < this->nodeNum && this->idArray[pos]!=0){
         if(this->idArray[pos]!=0){
             data.data = this->idArray[pos];
             return data;
@@ -200,10 +163,7 @@ public:
             return data;
         }
 
-        // std::unique_lock<std::mutex> lock(thread->mutex_);
-        // thread->cv_.wait(lock, [&pos,this,thread] { return pos < this->nodeNum || thread->stop_ || thread->pause_; });
         while (true){
-            // if((pos < this->nodeNum && this->idArray[pos]!=0) || thread->stop_ || thread->pause_){
             if(this->idArray[pos]!=0 || thread->stop_ || (pos > this->warningLength && thread->pause_) || (this->hasBegin && this->writeThreadCount == 0 && thread->pause_)){
                 break;
             }
@@ -214,7 +174,6 @@ public:
             data.err = 3;
             return data;
         }
-        // if(pos < this->nodeNum && this->idArray[pos]!=0){
         if(this->idArray[pos]!=0){
             data.data = this->idArray[pos];
             return data;

@@ -1,7 +1,7 @@
 #ifndef PACKETAGGREGATOR_HPP_
 #define PACKETAGGREGATOR_HPP_
 // #include "../lib/shareBuffer.hpp"
-#include "../lib/mmapBuffer.hpp"
+#include "../lib/fileBuffer.hpp"
 #include "../lib/arrayList.hpp"
 #include "../lib/ringBuffer.hpp"
 #include "../lib/util.hpp"
@@ -42,8 +42,7 @@ class PacketAggregator{
 
     // shared memory
     // read only
-    // ShareBuffer* packetBuffer;
-    MmapBuffer* packetBuffer;
+    std::vector<FileBuffer
     // read and write to next
     ArrayList<u_int32_t>* packetPointer;
     // write only, default should be srcip(4B), dstip(4B), srcport(2B), dstport(2B)

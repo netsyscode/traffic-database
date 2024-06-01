@@ -39,7 +39,7 @@ class StorageMonitor{
         "./data/index/pcap.pcap_dstport_idx",
     };
     const std::string pointer_name = "./data/index/pcap.pcappt";
-    const std::string data_name = "./data/index/pcap.pcap";
+    // const std::string data_name = "./data/index/pcap.pcap";
 
     u_int32_t index_offset[FLOW_META_INDEX_NUM];
     u_int32_t pointer_offset;

@@ -233,11 +233,11 @@ void StorageMonitor::init(InitData init_data){
     }
     pointerFile.clear();
     pointerFile.close();
-    unlink(this->data_name.c_str());
-    if (link(init_data.filename.c_str(), this->data_name.c_str()) == -1) {
-        printf("Storage monitor error: symlink error!\n");
-        return;
-    }
+    // unlink(this->data_name.c_str());
+    // if (link(init_data.filename.c_str(), this->data_name.c_str()) == -1) {
+    //     printf("Storage monitor error: symlink error!\n");
+    //     return;
+    // }
     // std::ofstream dataFile(this->data_name, std::ios::binary);
     // if (!dataFile.is_open()) {
     //     std::cerr << "Storage monitor error: store to non-exist file name " << this->data_name << "!" << std::endl;

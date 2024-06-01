@@ -11,6 +11,11 @@ struct data_header{
     u_int32_t len;
 };
 
+struct packet{
+    data_header* header;
+    char* data;
+};
+
 struct ip_header{
 #ifdef WORKS_BIGENDIAN
     u_int8_t ip_version:4,    /*version:4*/

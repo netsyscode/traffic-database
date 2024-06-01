@@ -48,6 +48,7 @@ public:
         }
         // printf("Ring Buffer log: destroy with %lu - %lu nodes.\n",this->writePos_.load(),this->readPos_.load());
         delete[] buffer_;
+        delete[] signalBuffer_;
     }
     bool addWriteThread(ThreadPointer* thread){
         std::unique_lock<std::shared_mutex> lock(this->writeThreadsMutex);
