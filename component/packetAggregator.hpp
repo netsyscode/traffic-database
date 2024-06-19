@@ -42,9 +42,10 @@ class PacketAggregator{
 
     // shared memory
     // read only
-    std::vector<FileBuffer
+    std::vector<FileBuffer*>* packetBuffers;
     // read and write to next
-    ArrayList<u_int32_t>* packetPointer;
+    // ArrayList<u_int32_t>* packetPointer;
+    ArrayList<u_int64_t>* packetPointer;
     // write only, default should be srcip(4B), dstip(4B), srcport(2B), dstport(2B)
     std::vector<RingBuffer*>* flowMetaIndexBuffers;
 
@@ -68,7 +69,7 @@ class PacketAggregator{
     u_int64_t duration_time;
 
     u_int32_t readFromPacketPointer();
-    char* readFromPacketBuffer(u_int32_t offset);
+    char* readFromPacketBuffer(u_int64_t offset);
     FlowMetadata parsePacket(const char* packet);
     //return <last packet(max for first packet), is_in_old_packet_pointer>
     std::pair<u_int32_t,bool> addPacketToMap(FlowMetadata meta, u_int32_t pos);
@@ -79,12 +80,12 @@ class PacketAggregator{
     void truncate();
 public:
     // PacketAggregator(u_int32_t eth_header_len, ShareBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers, std::condition_variable* monitor_cv):eth_header_len(eth_header_len){
-    PacketAggregator(u_int32_t eth_header_len, MmapBuffer* packetBuffer, ArrayList<u_int32_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers, std::condition_variable* monitor_cv):eth_header_len(eth_header_len){
+    PacketAggregator(u_int32_t eth_header_len, std::vector<FileBuffer*>* packetBuffers, ArrayList<u_int64_t>* packetPointer, std::vector<RingBuffer*>* flowMetaIndexBuffers, std::condition_variable* monitor_cv):eth_header_len(eth_header_len){
         this->oldAggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
         this->oldPacketPointer = nullptr;
         this->aggMap = std::unordered_map<FlowMetadata, Flow, FlowMetadata::hash>();
         this->IDSet = std::unordered_set<u_int8_t>();
-        this->packetBuffer = packetBuffer;
+        this->packetBuffers = packetBuffers;
         this->packetPointer = packetPointer;
         this->flowMetaIndexBuffers = flowMetaIndexBuffers;
         if(this->flowMetaIndexBuffers->size()!=FLOW_META_NUM){

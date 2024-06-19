@@ -53,7 +53,7 @@ public:
         delete[] idArray;
     }
     u_int32_t addNodeMultiThread(T value, u_int8_t id){
-        u_int32_t num = num++;
+        u_int32_t num = this->nodeNum++;
         if(num >= this->maxLength){
             printf("Array list error: addNodeOneThread overflow the buffer: %u-%u!\n",num,this->maxLength);
             return std::numeric_limits<uint32_t>::max();

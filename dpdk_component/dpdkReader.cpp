@@ -69,62 +69,55 @@ PacketMeta DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts){
     return meta;
 }
 
-u_int32_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
+u_int64_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
     if(!this->packetBuffer->writePointer(meta.data,meta.len)){
-        return std::numeric_limits<uint32_t>::max();
+        if(!this->packetBuffer->expandFile()){
+            return std::numeric_limits<uint32_t>::max();
+        }
+        if(!this->packetBuffer->writePointer(meta.data,meta.len)){
+            return std::numeric_limits<uint32_t>::max();
+        }
     }
     return (u_int32_t)(this->packetBuffer->getOffset() + this->packetBuffer->getLength());
 }
 
-u_int8_t DPDKReader::calPacketID(PacketMeta& meta){
-    PacketMetaTurple meta_turple;
-    ip_header* ip_protocol = (ip_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len);
-    int ip_header_length = ip_protocol->ip_header_length;
-    int ip_prot = ip_protocol->ip_protocol;
-    meta_turple.srcIP = htonl(ip_protocol->ip_source_address);
-    meta_turple.dstIP = htonl(ip_protocol->ip_destination_address);
+u_int64_t DPDKReader::calValue(u_int64_t _offset){
+    u_int64_t value = 0;
+    value |= this->port_id & 0xff;
+    value <<= 8;
+    value |= this->rx_id & 0xff;
+    value <<= 48;
+    value |= _offset & 0xffffffffffff;
+    return value;
+}
 
-    if(ip_prot == 6){
-        tcp_header* tcp_protocol = (tcp_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len + ip_header_length * 4);
-        meta_turple.srcPort = htons(tcp_protocol->tcp_source_port);
-        meta_turple.dstPort = htons(tcp_protocol->tcp_destination_port);
-    }else if(ip_prot == 17){
-        udp_header* udp_protocol = (udp_header*)(meta.data + sizeof(struct data_header) + this->eth_header_len + ip_header_length * 4);
-        meta_turple.srcPort = htons(udp_protocol->udp_source_port);
-        meta_turple.dstPort = htons(udp_protocol->udp_destination_port);
-    }else{
-        return 0;
+bool DPDKReader::writeIndexToRing(u_int64_t value, PacketMeta meta){
+    auto index_vec = get_index(meta,this->eth_header_len,value);
+    int i=0;
+    for(auto x:index_vec){
+        if(!(*(this->indexRings))[i]->put((void*)x)){
+            return false;
+        }
+        i++;
     }
-
-    u_int8_t id = hasher_32(meta_turple.srcIP)^hasher_32(meta_turple.dstIP)^
-                    hasher_16(meta_turple.srcPort)^hasher_16(meta_turple.dstPort);
-    return id;
-}
-    
-u_int32_t DPDKReader::writePacketToPacketPointer(u_int32_t _offset, u_int8_t id){
-    u_int64_t pos = (u_int64_t)(this->port_id);
-    pos <<= sizeof(u_int16_t)*8;
-    pos += (u_int64_t)(this->rx_id);
-    pos <<= sizeof(u_int32_t)*8;
-    pos += (u_int64_t)_offset;
-    return this->packetPointer->addNodeMultiThread(pos,id);
+    return true;
 }
 
-void DPDKReader::truncate(){
-    if(this->newpacketPointer == nullptr){
-        std::cerr << "DPDK Reader error: trancate without new memory!" << std::endl;
-        this->pause = false;
-        this->monitor_cv->notify_all();
-        return;
-    }
-    // this->packetBuffer = this->newPacketBuffer;
-    this->packetPointer = this->newpacketPointer;
-    // this->newPacketBuffer = nullptr;
-    this->newpacketPointer = nullptr;
-    // this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
-    this->pause = false;
-    this->monitor_cv->notify_all();
-}
+// void DPDKReader::truncate(){
+//     if(this->newpacketPointer == nullptr){
+//         std::cerr << "DPDK Reader error: trancate without new memory!" << std::endl;
+//         this->pause = false;
+//         this->monitor_cv->notify_all();
+//         return;
+//     }
+//     // this->packetBuffer = this->newPacketBuffer;
+//     this->packetPointer = this->newpacketPointer;
+//     // this->newPacketBuffer = nullptr;
+//     this->newpacketPointer = nullptr;
+//     // this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
+//     this->pause = false;
+//     this->monitor_cv->notify_all();
+// }
 
 int DPDKReader::run(){
     if(!this->fileInit()){
@@ -132,7 +125,7 @@ int DPDKReader::run(){
     }
     std::cout << "DPDK reader log: thread run." << std::endl;
     this->stop = false;
-    this->pause = false;
+    // this->pause = false;
     //align
     // this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
     
@@ -148,7 +141,7 @@ int DPDKReader::run(){
         ts = rte_rdtsc();
         nb_rx = this->dpdk->getRXBurst(bufs,this->port_id,this->rx_id);
         // nb_rx = rte_eth_rx_burst(this->port_id, this->rx_id, bufs, BURST_SIZE);
-        if(nb_rx == 0 && !(this->stop) && !(this->pause)){
+        if(nb_rx == 0 && !(this->stop)){
             continue;
         }
         int err = 0;
@@ -161,19 +154,18 @@ int DPDKReader::run(){
                 err = 1;
                 break;
             }
-            u_int32_t _offset = this->writePacketToPacketBuffer(meta);
+            u_int64_t _offset = this->writePacketToPacketBuffer(meta);
             if(_offset == std::numeric_limits<uint32_t>::max()){
                 std::cerr << "DPDK Reader error: packet buffer overflow!" << std::endl;
                 err = 1;
                 break;
             }
-            u_int8_t id = this->calPacketID(meta);
-            // u_int32_t nodeNum = this->writePacketToPacketPointer(_offset,id);
-            // if(nodeNum == std::numeric_limits<uint32_t>::max()){
-            //     std::cerr << "DPDK Reader error: packet pointer overflow!" << std::endl;
-            //     err = 1;
-            //     break;
-            // }
+            
+            u_int64_t value = this->calValue(_offset);
+            if(!this->writeIndexToRing(value,meta)){
+                printf("DPDK Reader error: write index to ring failed!\n");
+            }
+            delete meta.data;
         }
         nb_rx = 0;
         if(err){
@@ -189,6 +181,7 @@ int DPDKReader::run(){
         //     auto end_truncate = std::chrono::high_resolution_clock::now();
         //     truncate_time += std::chrono::duration_cast<std::chrono::microseconds>(end_truncate - start_truncate).count();
         // }
+        
         // if(this->packetBuffer->getWarning()){
         //     this->monitor_cv->notify_all();
         // }
@@ -214,11 +207,11 @@ void DPDKReader::asynchronousStop(){
     this->stop = true;
 }
 
-void DPDKReader::asynchronousPause(ArrayList<u_int64_t>* newpacketPointer){
-    this->newpacketPointer = newpacketPointer;
-    this->pause = true;
-}
+// void DPDKReader::asynchronousPause(ArrayList<u_int64_t>* newpacketPointer){
+//     this->newpacketPointer = newpacketPointer;
+//     this->pause = true;
+// }
 
-bool DPDKReader::getPause() const{
-    return this->pause;
-}
+// bool DPDKReader::getPause() const{
+//     return this->pause;
+// }

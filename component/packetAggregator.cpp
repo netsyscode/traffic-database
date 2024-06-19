@@ -32,8 +32,16 @@ u_int32_t PacketAggregator::readFromPacketPointer(){
     return this->packetPointer->getValue(this->readPos - 1,id_data.data);
 }
 
-char* PacketAggregator::readFromPacketBuffer(u_int32_t offset){
-    return this->packetBuffer->getPointer(offset);
+char* PacketAggregator::readFromPacketBuffer(u_int64_t offset){
+    u_int32_t _offset = (u_int32_t)(offset & 0xffffffff);
+    offset >>= sizeof(u_int32_t)*8;
+    u_int32_t file_id = (u_int32_t)(offset & 0xffffffff);
+    for(auto f:*(this->packetBuffers)){
+        if(f->getFileID()==file_id){
+            return f->getPointer(_offset);
+        }
+    }
+    return nullptr;
 }
 
 FlowMetadata PacketAggregator::parsePacket(const char* packet){

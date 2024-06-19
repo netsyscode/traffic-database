@@ -1,4 +1,4 @@
-#include "../component/dpdkReader.hpp"
+#include "../dpdk_component/dpdkReader.hpp"
 #include <vector>
 #include <iostream>
 #include <thread>

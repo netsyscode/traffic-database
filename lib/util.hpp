@@ -34,4 +34,10 @@ struct InitData{
     std::string pcap_header;
 };
 
+struct PacketPointerData{
+    std::string pcap;
+    u_int32_t file_id;
+    u_int64_t offset;
+};
+
 #endif

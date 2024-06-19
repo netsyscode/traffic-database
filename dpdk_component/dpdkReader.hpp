@@ -4,10 +4,12 @@
 #include <string>
 #include <fstream>
 #include <chrono>
-#include "../lib/fileBuffer.hpp"
-#include "../lib/header.hpp"
-#include "../lib/arrayList.hpp"
-#include "../lib/dpdk.hpp"
+#include <atomic>
+#include "../dpdk_lib/fileBuffer.hpp"
+#include "../dpdk_lib/header.hpp"
+#include "../dpdk_lib/util.hpp"
+#include "../dpdk_lib/dpdk.hpp"
+#include "../dpdk_lib/pointerRingBuffer.hpp"
 
 #include <rte_eal.h>
 #include <rte_ethdev.h>
@@ -19,11 +21,6 @@
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 512
 #define BURST_SIZE 32
-
-struct PacketMeta{
-    char* data;
-    u_int32_t len;
-};
 
 // read packet from pcap, equivalent like extractor, lower substitution of trace catcher
 class DPDKReader{
@@ -43,14 +40,15 @@ class DPDKReader{
     DPDK* dpdk;
 
     // write only
-    ArrayList<u_int64_t>* packetPointer;
+    std::vector<PointerRingBuffer*>* indexRings;
+    // ArrayList<u_int64_t>* packetPointer;
 
-    ArrayList<u_int64_t>* newpacketPointer;
+    // ArrayList<u_int64_t>* newpacketPointer;
 
     std::atomic_bool stop;
-    std::atomic_bool pause;
+    // std::atomic_bool pause;
 
-    std::condition_variable* monitor_cv;
+    // std::condition_variable* monitor_cv;
 
     u_int64_t duration_time;
 
@@ -59,24 +57,27 @@ class DPDKReader{
     //read packet of offset from file;
     PacketMeta readPacket(struct rte_mbuf *buf,u_int64_t ts);
     //write data to packet buffer (pay attention to aligning with file offset)
-    u_int32_t writePacketToPacketBuffer(PacketMeta& meta);
+    u_int64_t writePacketToPacketBuffer(PacketMeta& meta);
     //calculate id of packet
-    u_int8_t calPacketID(PacketMeta& meta);
+    // u_int8_t calPacketID(PacketMeta& meta);
     //write data to packet pointer
-    u_int32_t writePacketToPacketPointer(u_int32_t _offset, u_int8_t id);
+    // u_int32_t writePacketToPacketPointer(u_int32_t _offset, u_int8_t id);
+    u_int64_t calValue(u_int64_t _offset);
 
-    void truncate();
+    bool writeIndexToRing(u_int64_t value, PacketMeta meta);
+
+    // void truncate();
 public:
-    DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, ArrayList<u_int64_t>* packetPointer, std::condition_variable* monitor_cv, u_int16_t port_id, u_int16_t rx_id,u_int64_t capacity):
-    pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),dpdk(dpdk),packetPointer(packetPointer),port_id(port_id),rx_id(rx_id),capacityUnit(capacity){
+    DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, std::vector<PointerRingBuffer*>* rings, u_int16_t port_id, u_int16_t rx_id,u_int64_t capacity):
+    pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),dpdk(dpdk),indexRings(rings),port_id(port_id),rx_id(rx_id),capacityUnit(capacity){
         this->offset = pcap_header_len;
         this->stop = true;
-        this->pause = false;
-        this->monitor_cv = monitor_cv;
+        // this->pause = false;
+        // this->monitor_cv = monitor_cv;
 
         this->duration_time = 0;
 
-        this->newpacketPointer = nullptr;
+        // this->newpacketPointer = nullptr;
         this->packetBuffer = new FileBuffer((((u_int32_t)(this->port_id)) << 16) + (u_int32_t)(this->rx_id),this->capacityUnit);
         this->fileName = "./data/input/" + std::to_string(port_id) + "-" + std::to_string(rx_id) + ".pcap";
     }
@@ -87,8 +88,8 @@ public:
     
     int run();
     void asynchronousStop();
-    void asynchronousPause(ArrayList<u_int64_t>* newpacketPointer);
-    bool getPause() const;
+    // void asynchronousPause(ArrayList<u_int64_t>* newpacketPointer);
+    // bool getPause() const;
     static int launch(void *arg){
         return static_cast<DPDKReader*>(arg)->run();
     }
