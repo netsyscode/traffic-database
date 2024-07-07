@@ -78,7 +78,7 @@ u_int64_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
             return std::numeric_limits<uint32_t>::max();
         }
     }
-    return (u_int32_t)(this->packetBuffer->getOffset() + this->packetBuffer->getLength());
+    return (u_int32_t)(this->packetBuffer->getOffset() + this->packetBuffer->getLength()) - meta.len;
 }
 
 u_int64_t DPDKReader::calValue(u_int64_t _offset){
@@ -88,6 +88,7 @@ u_int64_t DPDKReader::calValue(u_int64_t _offset){
     value |= this->rx_id & 0xff;
     value <<= 48;
     value |= _offset & 0xffffffffffff;
+    // printf("offset:%llu.\n",_offset);
     return value;
 }
 

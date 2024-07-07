@@ -24,6 +24,10 @@ void Controller::threadsRun(){
     }
 }
 
+void Controller::queryThreadRun(){
+    this->querierThread = new std::thread(&Querier::run,this->querier);
+}
+
 void Controller::threadsStop(){
     for(auto r:this->readers){
         r->asynchronousStop();
@@ -120,6 +124,12 @@ void Controller::clear(){
         this->indexRings->clear();
         delete this->indexRings;
     }
+    if(this->querier!=nullptr){
+        delete this->querier;
+    }
+    if(this->querierThread!=nullptr){
+        delete this->querierThread;
+    }
 }
 
 void Controller::init(InitData init_data){
@@ -152,14 +162,18 @@ void Controller::init(InitData init_data){
     this->checker = new TruncateChecker(this->truncators);
 
     this->pcapHeader = init_data.pcap_header;
+
+    this->querier = new Querier(this->storageMetas,init_data.pcap_header);
 }
 
 void Controller::run(){
     std::cout << "Controller log: run." << std::endl;
     this->threadsRun();
 
-    printf("wait.\n");
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    this->queryThreadRun();
 
+    printf("wait.\n");
+    // std::this_thread::sleep_for(std::chrono::seconds(10));
+    this->querierThread->join();
     this->threadsStop();
 }

@@ -36,6 +36,7 @@ void Storage::run(){
         if(unit == nullptr){
             break;
         }
+        printf("get one.\n");
         this->store(unit);
         delete unit->index_map;
         delete unit;

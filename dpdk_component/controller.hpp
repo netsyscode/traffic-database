@@ -7,6 +7,7 @@
 #include "indexGenerator.hpp"
 #include "storage.hpp"
 #include "truncateChecker.hpp"
+#include "querier.hpp"
 
 struct InitData{
     u_int32_t index_ring_capacity;
@@ -38,7 +39,11 @@ private:
     TruncateChecker* checker;
     std::thread* checkThread;
 
+    Querier* querier;
+    std::thread* querierThread;
+
     void threadsRun();
+    void queryThreadRun();
     void threadsStop();
     void clear();
 
@@ -56,6 +61,8 @@ public:
         this->checker = nullptr;
         this->storageThread = nullptr;
         this->checkThread = nullptr;
+        this->querier = nullptr;
+        this->querierThread = nullptr;
     }
     ~Controller(){
         this->clear();
