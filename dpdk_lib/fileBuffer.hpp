@@ -137,7 +137,7 @@ public:
         }
         return this->buffer + (pos-this->offset);
     }
-    bool writePointer(char* data, u_int32_t len){
+    bool writePointer(const char* data, u_int32_t len){
         if(this->length + len > this->fileCapacity){
             u_int32_t tmp = this->fileCapacity - this->length;
             memcpy(this->buffer + this->length, data, tmp);

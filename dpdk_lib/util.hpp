@@ -18,7 +18,8 @@ enum IndexType{
 const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2};
 
 struct PacketMeta{
-    char* data;
+    data_header* header;
+    const char* data;
     u_int32_t len;
 };
 
@@ -41,14 +42,15 @@ inline std::vector<Index*> get_index(PacketMeta meta, u_int32_t eth_header_len,u
     for(int i=0;i<INDEX_NUM;++i){
         Index* index = new Index();
         index->value = value;
-        data_header* d_header = (data_header*)(meta.data);
+        // data_header* d_header = (data_header*)(meta.data);
+        data_header* d_header = meta.header;
         index->ts = d_header->ts_h;
         index->ts <<= sizeof(u_int32_t)*8;
         index->ts += d_header->ts_l;
         ret.push_back(index);
     }
 
-    ip_header* ip_protocol = (ip_header*)(meta.data + sizeof(struct data_header) + eth_header_len);
+    ip_header* ip_protocol = (ip_header*)(meta.data + eth_header_len);
     int ip_header_length = ip_protocol->ip_header_length;
     int ip_prot = ip_protocol->ip_protocol;
     u_int32_t srcip = htonl(ip_protocol->ip_source_address);
@@ -59,11 +61,11 @@ inline std::vector<Index*> get_index(PacketMeta meta, u_int32_t eth_header_len,u
     u_int16_t srcport,dstport;
 
     if(ip_prot == 6){
-        tcp_header* tcp_protocol = (tcp_header*)(meta.data + sizeof(struct data_header) + eth_header_len + ip_header_length * 4);
+        tcp_header* tcp_protocol = (tcp_header*)(meta.data + eth_header_len + ip_header_length * 4);
         srcport = htons(tcp_protocol->tcp_source_port);
         dstport = htons(tcp_protocol->tcp_destination_port);
     }else if(ip_prot == 17){
-        udp_header* udp_protocol = (udp_header*)(meta.data + sizeof(struct data_header) + eth_header_len + ip_header_length * 4);
+        udp_header* udp_protocol = (udp_header*)(meta.data + eth_header_len + ip_header_length * 4);
         srcport = htons(udp_protocol->udp_source_port);
         dstport = htons(udp_protocol->udp_destination_port);
     }else{

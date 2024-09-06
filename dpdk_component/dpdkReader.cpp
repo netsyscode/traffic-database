@@ -48,28 +48,30 @@ bool DPDKReader::fileInit(){
 
 PacketMeta DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts){
     PacketMeta meta = {
+        .header = new data_header,
         .data = nullptr,
         .len = 0,
     };
-    data_header header;
-    // struct timeval tv;
-    // gettimeofday(&tv, NULL);
-    header.len = rte_pktmbuf_pkt_len(buf);
-    header.caplen = rte_pktmbuf_data_len(buf);
-    header.ts_l = (u_int32_t)(ts & 0xFFFFFFFF);
-    header.ts_h = (u_int32_t)(ts >> 32);
+    meta.header->len = rte_pktmbuf_pkt_len(buf);
+    meta.header->caplen = rte_pktmbuf_data_len(buf);
+    meta.header->ts_l = (u_int32_t)(ts & 0xFFFFFFFF);
+    meta.header->ts_h = (u_int32_t)(ts >> 32);
 
-    meta.len = header.caplen + sizeof(struct data_header);
-    meta.data = new char[meta.len];
-    memcpy(meta.data, (char*)&header, sizeof(struct data_header));
-    memcpy(meta.data+sizeof(struct data_header), rte_pktmbuf_mtod(buf, const char *), header.caplen);
+    meta.len = meta.header->caplen;
+    // meta.data = new char[meta.len];
+    // memcpy(meta.data, (char*)&header, sizeof(struct data_header));
+    meta.data = rte_pktmbuf_mtod(buf, const char *);
+    // memcpy(meta.data+sizeof(struct data_header), rte_pktmbuf_mtod(buf, const char *), header.caplen);
 
-    rte_pktmbuf_free(buf);
+    // rte_pktmbuf_free(buf);
 
     return meta;
 }
 
 u_int64_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
+    if(!this->packetBuffer->writePointer((const char*)meta.header,sizeof(data_header))){
+        return std::numeric_limits<uint32_t>::max();
+    }
     if(!this->packetBuffer->writePointer(meta.data,meta.len)){
         // if(!this->packetBuffer->expandFile()){
         //     return std::numeric_limits<uint32_t>::max();
@@ -80,7 +82,7 @@ u_int64_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
         // }
         return std::numeric_limits<uint32_t>::max();
     }
-    return (u_int32_t)(this->packetBuffer->getOffset() + this->packetBuffer->getLength()) - meta.len;
+    return (u_int32_t)(this->packetBuffer->getOffset() + this->packetBuffer->getLength()) - meta.len - sizeof(data_header);
 }
 
 u_int64_t DPDKReader::calValue(u_int64_t _offset){
@@ -174,7 +176,8 @@ int DPDKReader::run(){
             // if(!this->writeIndexToRing(value,meta)){
             //     printf("DPDK Reader error: write index to ring failed!\n");
             // }
-            delete meta.data;
+            delete meta.header;
+            rte_pktmbuf_free(bufs[i]);
         }
         nb_rx = 0;
         if(err){
