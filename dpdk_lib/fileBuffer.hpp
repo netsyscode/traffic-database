@@ -49,6 +49,9 @@ public:
     void changeFileOffset(u_int32_t offset_){
         this->offset = offset_;
     }
+    void changeFileLength(u_int32_t len){
+        this->length = len;
+    }
     bool openFile(){
         if(this->fileFD != -1){
             printf("File buffer error: openFile with opened file!\n");
@@ -104,17 +107,15 @@ public:
             printf("File buffer warning: expandFile without open file.\n");
             return false;
         }
-        // struct stat fileStat;
-        // if (fstat(this->fileFD, &fileStat) == -1) {
-        //     printf("File buffer error: openFile failed while fstat!\n");
-        //     close(this->fileFD);
-        //     return false;
-        // }
+  
         if(munmap(this->buffer, this->fileCapacity) == -1) {
             printf("File buffer error: expandFile failed while munmap!\n");
             return false;
         }
-        this->offset = this->offset + this->length;
+
+        // this->offset = (this->length/1024 + 1)*1024 + this->offset;
+
+        this->offset = this->fileCapacity + this->offset;
         if (fallocate(this->fileFD, 0, this->offset, this->fileCapacity) == -1) {
             printf("File buffer error: expandFile failed while fallocate!\n");
             close(this->fileFD);
@@ -127,9 +128,10 @@ public:
             return false;
         }
         this->length = 0;
+        printf("File buffer log: expand succeed, offset is %llu.\n",this->offset);
         return true;
     }
-    char* getPointer(u_int64_t pos)const{
+    char* getPointer(u_int64_t pos)const{ // no use?
         if(pos >= this->offset + this->length){
             return nullptr;
         }
@@ -137,7 +139,14 @@ public:
     }
     bool writePointer(char* data, u_int32_t len){
         if(this->length + len > this->fileCapacity){
-            return false;
+            u_int32_t tmp = this->fileCapacity - this->length;
+            memcpy(this->buffer + this->length, data, tmp);
+            if(!this->expandFile()){
+                return false;
+            }
+            memcpy(this->buffer + this->length, data, len - tmp);
+            this->length = len - tmp;
+            return true;
         }
         memcpy(this->buffer + this->length,data,len);
         this->length += len;

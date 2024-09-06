@@ -71,12 +71,14 @@ PacketMeta DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts){
 
 u_int64_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
     if(!this->packetBuffer->writePointer(meta.data,meta.len)){
-        if(!this->packetBuffer->expandFile()){
-            return std::numeric_limits<uint32_t>::max();
-        }
-        if(!this->packetBuffer->writePointer(meta.data,meta.len)){
-            return std::numeric_limits<uint32_t>::max();
-        }
+        // if(!this->packetBuffer->expandFile()){
+        //     return std::numeric_limits<uint32_t>::max();
+        // }
+        // // this->packetBuffer->changeFileLength(this->pcap_header_len);
+        // if(!this->packetBuffer->writePointer(meta.data,meta.len)){
+            
+        // }
+        return std::numeric_limits<uint32_t>::max();
     }
     return (u_int32_t)(this->packetBuffer->getOffset() + this->packetBuffer->getLength()) - meta.len;
 }
@@ -130,13 +132,14 @@ int DPDKReader::run(){
     //align
     // this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
     
-    auto start = std::chrono::high_resolution_clock::now();
     u_int64_t truncate_time = 0;
 
     struct rte_mbuf *bufs[BURST_SIZE];
     int nb_rx;
     u_int64_t ts;
     u_int64_t pkt_count = 0;
+    auto start = std::chrono::high_resolution_clock::now();
+    bool has_start = false;
     
     while(true){
         ts = rte_rdtsc();
@@ -144,6 +147,10 @@ int DPDKReader::run(){
         // nb_rx = rte_eth_rx_burst(this->port_id, this->rx_id, bufs, BURST_SIZE);
         if(nb_rx == 0 && !(this->stop)){
             continue;
+        }
+        if(!has_start){
+            start = std::chrono::high_resolution_clock::now();
+            has_start=true;
         }
         int err = 0;
         for(int i=0;i<nb_rx;++i){
@@ -162,10 +169,11 @@ int DPDKReader::run(){
                 break;
             }
             
-            u_int64_t value = this->calValue(_offset);
-            if(!this->writeIndexToRing(value,meta)){
-                printf("DPDK Reader error: write index to ring failed!\n");
-            }
+            /* with index */
+            // u_int64_t value = this->calValue(_offset);
+            // if(!this->writeIndexToRing(value,meta)){
+            //     printf("DPDK Reader error: write index to ring failed!\n");
+            // }
             delete meta.data;
         }
         nb_rx = 0;

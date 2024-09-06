@@ -8,7 +8,7 @@
 #include <vector>
 #include <iostream>
 
-#define RX_RING_SIZE 1024
+#define RX_RING_SIZE 512
 #define TX_RING_SIZE 1024
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 512
@@ -65,6 +65,7 @@ class DPDK{
 
         ret = rte_eth_dev_info_get(port_id, &dev_info);
         if (ret != 0) {
+            printf("DPDK error: rte_eth_dev_info_get fail!\n");
             return false;
         }
         // printf("Supported RSS hash functions: 0x%" PRIx64 "\n", dev_info.flow_type_rss_offloads);
@@ -74,6 +75,7 @@ class DPDK{
         
         ret = rte_eth_dev_configure(port_id, this->nb_rx_queue, this->nb_tx_queue, &local_port_conf);
         if (ret < 0) {
+            printf("DPDK error: rte_eth_dev_configure fail!\n");
             return false;
         }
         // printf("rte_eth_dev_configure done with port_id %u, nb_rx %u, nb_tx %u.\n",port_id, this->nb_rx_queue,this->nb_tx_queue);
@@ -81,6 +83,7 @@ class DPDK{
             ret = rte_eth_rx_queue_setup(port_id, i, RX_RING_SIZE, rte_eth_dev_socket_id(port_id), &rx_conf, this->mbuf_pool);
             // printf("rte_eth_rx_queue_setup with ret %d.\n",ret);
             if (ret < 0) {
+                printf("DPDK error: rte_eth_rx_queue_setup while set up %u.\n",i);
                 return false;
             }
             
@@ -88,6 +91,7 @@ class DPDK{
         for(u_int16_t i = 0; i<this->nb_tx_queue; ++i){
             ret = rte_eth_tx_queue_setup(port_id, i, TX_RING_SIZE, rte_eth_dev_socket_id(port_id), NULL);
             if (ret < 0) {
+                printf("DPDK error: rte_eth_tx_queue_setup while set up %u.\n",i);
                 return false;
             }
         }
@@ -95,17 +99,20 @@ class DPDK{
         ret = rte_eth_dev_start(port_id);
 
         if (ret < 0) {
+            printf("DPDK error: rte_eth_dev_start fail!\n");
             return false;
         }
 
         ret = rte_eth_promiscuous_enable(port_id);
 
         if (ret < 0) {
+            printf("DPDK error: rte_eth_promiscuous_enable fail!\n");
             return false;
         }
 
         ret = rte_eth_macaddr_get(port_id,&(this->mac_vector[port_id]));
         if(ret < 0){
+            printf("DPDK error: rte_eth_macaddr_get fail!\n");
             return false;
         }
         return true;
