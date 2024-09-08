@@ -8,6 +8,7 @@
 #include "storage.hpp"
 #include "truncateChecker.hpp"
 #include "querier.hpp"
+#include "directStorage.hpp"
 
 struct InitData{
     u_int32_t index_ring_capacity;
@@ -30,6 +31,7 @@ private:
     PointerRingBuffer* storageRing;
     std::vector<StorageMeta>* storageMetas;
     DPDK* dpdk;
+    std::vector<MemoryBuffer*> buffers;
     
     std::vector<DPDKReader*> readers;
     std::vector<std::vector<IndexGenerator*>> indexGenerators;
@@ -38,6 +40,8 @@ private:
     std::thread* storageThread;
     TruncateChecker* checker;
     std::thread* checkThread;
+    DirectStorage* directStorage;
+    std::thread* directStorageThread;
 
     Querier* querier;
     std::thread* querierThread;
@@ -54,6 +58,7 @@ public:
         this->storageRing = nullptr;
         this->storageMetas = nullptr;
         this->dpdk = nullptr;
+        this->buffers = std::vector<MemoryBuffer*>();
         this->readers = std::vector<DPDKReader*>();
         this->indexGenerators = std::vector<std::vector<IndexGenerator*>>(INDEX_NUM,std::vector<IndexGenerator*>());
         this->indexGeneratorThreads = std::vector<std::vector<std::thread*>>(INDEX_NUM,std::vector<std::thread*>());
@@ -63,6 +68,8 @@ public:
         this->checkThread = nullptr;
         this->querier = nullptr;
         this->querierThread = nullptr;
+        this->directStorage = nullptr;
+        this->directStorageThread = nullptr;
     }
     ~Controller(){
         this->clear();

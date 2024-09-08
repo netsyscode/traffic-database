@@ -28,23 +28,23 @@ struct PacketMetaTurple{
     u_int16_t dstPort;
 };
 
-bool DPDKReader::fileInit(){
-    std::ofstream file(this->fileName, std::ios::app);
-    if (!file.is_open()) {
-        printf("DPDK reader error: fileInit failed while openning file!\n");
-        return false;
-    }
-    file.clear();
-    file.close();
-    this->packetBuffer->changeFileName(this->fileName);
-    this->packetBuffer->openFile();
-    this->packetBuffer->writePointer((char*)pcap_head,this->pcap_header_len);
-    // file.write((const char*)pcap_head,this->pcap_header_len);
-    // printf("offset:%u\n",this->pcap_header_len);
-    // file.close();
-    // this->packetBuffer->changeFileOffset(this->pcap_header_len);
-    return true;
-}
+// bool DPDKReader::fileInit(){
+//     std::ofstream file(this->fileName, std::ios::app);
+//     if (!file.is_open()) {
+//         printf("DPDK reader error: fileInit failed while openning file!\n");
+//         return false;
+//     }
+//     file.clear();
+//     file.close();
+//     this->packetBuffer->changeFileName(this->fileName);
+//     this->packetBuffer->openFile();
+//     this->packetBuffer->writePointer((char*)pcap_head,this->pcap_header_len);
+//     // file.write((const char*)pcap_head,this->pcap_header_len);
+//     // printf("offset:%u\n",this->pcap_header_len);
+//     // file.close();
+//     // this->packetBuffer->changeFileOffset(this->pcap_header_len);
+//     return true;
+// }
 
 PacketMeta DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts){
     PacketMeta meta = {
@@ -69,20 +69,23 @@ PacketMeta DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts){
 }
 
 u_int64_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
-    if(!this->packetBuffer->writePointer((const char*)meta.header,sizeof(data_header))){
-        return std::numeric_limits<uint32_t>::max();
-    }
-    if(!this->packetBuffer->writePointer(meta.data,meta.len)){
-        // if(!this->packetBuffer->expandFile()){
-        //     return std::numeric_limits<uint32_t>::max();
-        // }
-        // // this->packetBuffer->changeFileLength(this->pcap_header_len);
-        // if(!this->packetBuffer->writePointer(meta.data,meta.len)){
+    // if(!this->packetBuffer->writePointer((const char*)meta.header,sizeof(data_header))){
+    //     return std::numeric_limits<uint32_t>::max();
+    // }
+    this->packetBuffer->writePointer((const char*)meta.header,sizeof(data_header));
+    // if(!this->packetBuffer->writePointer(meta.data,meta.len)){
+    //     // if(!this->packetBuffer->expandFile()){
+    //     //     return std::numeric_limits<uint32_t>::max();
+    //     // }
+    //     // // this->packetBuffer->changeFileLength(this->pcap_header_len);
+    //     // if(!this->packetBuffer->writePointer(meta.data,meta.len)){
             
-        // }
-        return std::numeric_limits<uint32_t>::max();
-    }
-    return (u_int32_t)(this->packetBuffer->getOffset() + this->packetBuffer->getLength()) - meta.len - sizeof(data_header);
+    //     // }
+    //     return std::numeric_limits<uint32_t>::max();
+    // }
+    this->packetBuffer->writePointer(meta.data,meta.len);
+    /* TODO: need change to meet disk offset */
+    return (u_int32_t)(this->packetBuffer->getOffset() + this->packetBuffer->getBlockID() * this->packetBuffer->getSize()) - meta.len - sizeof(data_header);
 }
 
 u_int64_t DPDKReader::calValue(u_int64_t _offset){
@@ -125,9 +128,10 @@ bool DPDKReader::writeIndexToRing(u_int64_t value, PacketMeta meta){
 // }
 
 int DPDKReader::run(){
-    if(!this->fileInit()){
-        return -1;
-    }
+    // if(!this->fileInit()){
+    //     return -1;
+    // }
+    this->packetBuffer->writePointer((char*)pcap_head,this->pcap_header_len);
     std::cout << "DPDK reader log: thread run." << std::endl;
     this->stop = false;
     // this->pause = false;

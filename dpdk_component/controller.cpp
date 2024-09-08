@@ -12,6 +12,8 @@ void Controller::threadsRun(){
     //     }
     // }
 
+    this->directStorageThread = new std::thread(&DirectStorage::run, this->directStorage);
+
     unsigned lcore_id;
     u_int16_t queue_id = 0;
     RTE_LCORE_FOREACH_WORKER(lcore_id) {
@@ -37,6 +39,9 @@ void Controller::threadsStop(){
         rte_eal_wait_lcore(lcore_id);
         printf("lcore %u stop.\n",lcore_id);
     }
+
+    this->directStorage->asynchronousStop();
+    this->directStorageThread->join();
 
     // for(int i=0;i<INDEX_NUM;++i){
     //     (*(this->indexRings))[i]->asynchronousStop();
@@ -92,12 +97,24 @@ void Controller::clear(){
     //     this->indexGenerators.clear();
     //     this->indexGeneratorThreads.clear();
     // }
+    if(this->directStorageThread!=nullptr){
+        delete this->directStorageThread;
+        this->directStorageThread = nullptr;
+    }
     if(this->readers.size()!=0){
         for(u_int16_t i = 0;i<this->readers.size();++i){
             delete readers[i];
         }
         readers.clear();
     }
+    if(this->directStorage!=nullptr){
+        delete this->directStorage;
+        this->directStorage = nullptr;
+    }
+    for(u_int32_t i = 0;i<this->buffers.size();++i){
+        delete buffers[i];
+    }
+    this->buffers.clear();
     if(this->dpdk!=nullptr){
         delete this->dpdk;
         this->dpdk = nullptr;
@@ -142,10 +159,15 @@ void Controller::init(InitData init_data){
     // }
     // this->storageMetas = new std::vector<StorageMeta>[INDEX_NUM]();
     this->dpdk = new DPDK(init_data.nb_rx,1);
+    this->directStorage = new DirectStorage();
 
     for(u_int16_t i = 0;i<init_data.nb_rx;++i){
-        DPDKReader* reader = new DPDKReader(init_data.pcap_header_len,init_data.eth_header_len,dpdk,this->indexRings,0,i,init_data.file_capacity);
-        readers.push_back(reader);
+        std::string file_name = "./data/input/" + std::to_string(0) + "-" + std::to_string(i) + ".pcap";
+        MemoryBuffer* buffer = new MemoryBuffer(0,init_data.file_capacity,3,file_name);
+        this->buffers.push_back(buffer);
+        this->directStorage->addBuffer(buffer);
+        DPDKReader* reader = new DPDKReader(init_data.pcap_header_len,init_data.eth_header_len,dpdk,this->indexRings,0,i,init_data.file_capacity,buffer);
+        this->readers.push_back(reader);
     }
     printf("Detected logical cores: %u\n", rte_lcore_count());
 
@@ -173,7 +195,7 @@ void Controller::run(){
     // this->queryThreadRun();
 
     printf("wait.\n");
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     // this->querierThread->join();
     this->threadsStop();
 }

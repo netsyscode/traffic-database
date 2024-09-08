@@ -5,7 +5,8 @@
 #include <fstream>
 #include <chrono>
 #include <atomic>
-#include "../dpdk_lib/fileBuffer.hpp"
+// #include "../dpdk_lib/fileBuffer.hpp"
+#include "../dpdk_lib/memoryBuffer.hpp"
 #include "../dpdk_lib/header.hpp"
 #include "../dpdk_lib/util.hpp"
 #include "../dpdk_lib/dpdk.hpp"
@@ -16,7 +17,7 @@
 #include <rte_cycles.h>
 #include <rte_malloc.h>
 
-#define RX_RING_SIZE 1024
+// #define RX_RING_SIZE 512
 #define TX_RING_SIZE 1024
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 512
@@ -33,7 +34,8 @@ class DPDKReader{
     // u_int64_t fileLen;
 
     // write only
-    FileBuffer* packetBuffer;
+    // FileBuffer* packetBuffer;
+    MemoryBuffer* packetBuffer;
     u_int16_t port_id;
     u_int16_t rx_id;
     std::string fileName;
@@ -53,7 +55,7 @@ class DPDKReader{
     u_int64_t duration_time;
 
     //opne file
-    bool fileInit();
+    // bool fileInit();
     //read packet of offset from file;
     PacketMeta readPacket(struct rte_mbuf *buf,u_int64_t ts);
     //write data to packet buffer (pay attention to aligning with file offset)
@@ -68,7 +70,7 @@ class DPDKReader{
 
     // void truncate();
 public:
-    DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, std::vector<PointerRingBuffer*>* rings, u_int16_t port_id, u_int16_t rx_id,u_int64_t capacity):
+    DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, std::vector<PointerRingBuffer*>* rings, u_int16_t port_id, u_int16_t rx_id, u_int64_t capacity, MemoryBuffer* buffer):
     pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),dpdk(dpdk),indexRings(rings),port_id(port_id),rx_id(rx_id),capacityUnit(capacity){
         this->offset = pcap_header_len;
         this->stop = true;
@@ -78,12 +80,13 @@ public:
         this->duration_time = 0;
 
         // this->newpacketPointer = nullptr;
-        this->packetBuffer = new FileBuffer((((u_int32_t)(this->port_id)) << 16) + (u_int32_t)(this->rx_id),this->capacityUnit);
+        // this->packetBuffer = new FileBuffer((((u_int32_t)(this->port_id)) << 16) + (u_int32_t)(this->rx_id),this->capacityUnit);
+        this->packetBuffer = buffer;
         this->fileName = "./data/input/" + std::to_string(port_id) + "-" + std::to_string(rx_id) + ".pcap";
     }
     ~DPDKReader(){
-        this->packetBuffer->closeFile();
-        delete this->packetBuffer;
+        // this->packetBuffer->closeFile();
+        // delete this->packetBuffer;
     }
     
     int run();
