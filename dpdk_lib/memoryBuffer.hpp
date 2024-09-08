@@ -7,6 +7,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <atomic>
+#include <libaio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "util.hpp"
 
 #define PAGE_SIZE 1024
@@ -28,12 +31,12 @@ private:
     u_int64_t offset; // now written block offset
 
     void changeBlock(){
-        printf("change block.\n");
         while(this->block_flags[this->block_id]);
         this->block_flags[this->block_id] = true;
         this->block_id++;
         this->block_id %= this->total_block_num;
         this->offset = 0;
+        printf("MemoryBuffer log: change block id to %u.\n",block_id);
     }
     void changeFileOffset(){
         this->fileOffset += this->block_size;
@@ -99,13 +102,18 @@ public:
             printf("MemoryBuffer error: failed to pwrite!\n");
         }
         this->block_flags[id] = false;
+        printf("MemoryBuffer log: write id %u.\n",id);
         return true;
     }
     void directWriteFile(u_int32_t id){
+        if(id != this->block_id){
+            printf("MemoryBuffer error: write id %u is not final id!\n",id);
+        }
         ssize_t bytes_written = pwrite(this->fileFD, this->buffer_blocks[id], this->block_size, this->fileOffset);
         if (bytes_written == -1) {
             printf("MemoryBuffer error: failed to pwrite!\n");
         }
+        printf("MemoryBuffer log: write id %u.\n",id);
     }
     std::string getFileName()const{
         return this->fileName;

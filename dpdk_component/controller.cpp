@@ -163,7 +163,7 @@ void Controller::init(InitData init_data){
 
     for(u_int16_t i = 0;i<init_data.nb_rx;++i){
         std::string file_name = "./data/input/" + std::to_string(0) + "-" + std::to_string(i) + ".pcap";
-        MemoryBuffer* buffer = new MemoryBuffer(0,init_data.file_capacity,3,file_name);
+        MemoryBuffer* buffer = new MemoryBuffer(0,init_data.file_capacity,5,file_name);
         this->buffers.push_back(buffer);
         this->directStorage->addBuffer(buffer);
         DPDKReader* reader = new DPDKReader(init_data.pcap_header_len,init_data.eth_header_len,dpdk,this->indexRings,0,i,init_data.file_capacity,buffer);
@@ -195,7 +195,7 @@ void Controller::run(){
     // this->queryThreadRun();
 
     printf("wait.\n");
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    std::this_thread::sleep_for(std::chrono::seconds(8));
     // this->querierThread->join();
     this->threadsStop();
 }
