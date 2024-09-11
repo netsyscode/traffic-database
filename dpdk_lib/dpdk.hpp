@@ -5,6 +5,9 @@
 #include <rte_ethdev.h>
 #include <rte_cycles.h>
 #include <rte_malloc.h>
+#include <rte_bpf_ethdev.h>
+#include <rte_mbuf.h>
+#include <rte_flow.h>
 #include <vector>
 #include <iostream>
 
@@ -13,6 +16,42 @@
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 512
 #define BURST_SIZE 32
+
+static const struct rte_bpf_xsym bpf_xsym[] = {
+	{
+		.name = RTE_STR(stdout),
+		.type = RTE_BPF_XTYPE_VAR,
+		.var = {
+			.val = (void *)(uintptr_t)&stdout,
+			.desc = {
+				.type = RTE_BPF_ARG_PTR,
+				.size = sizeof(stdout),
+			},
+		},
+	},
+	{
+		.name = RTE_STR(rte_pktmbuf_dump),
+		.type = RTE_BPF_XTYPE_FUNC,
+		.func = {
+			.val = (uint64_t (*)(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t))rte_pktmbuf_dump,
+			.nb_args = 3,
+			.args = {
+				[0] = {
+					.type = RTE_BPF_ARG_RAW,
+					.size = sizeof(uintptr_t),
+				},
+				[1] = {
+					.type = RTE_BPF_ARG_PTR_MBUF,
+					.size = sizeof(struct rte_mbuf),
+				},
+				[2] = {
+					.type = RTE_BPF_ARG_RAW,
+					.size = sizeof(uint32_t),
+				},
+			},
+		},
+	},
+};
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
@@ -189,6 +228,31 @@ public:
     }
     u_int16_t getNbPorts()const{
         return this->nb_ports;
+    }
+    int loadBPF(u_int16_t port_id, u_int16_t rx_id, std::string fname){
+        int32_t rc;
+	    uint32_t flags;
+	    struct rte_bpf_prm prm;
+    	const char *sname;
+
+    	memset(&prm, 0, sizeof(prm));
+    	prm.xsym = bpf_xsym;
+    	prm.nb_xsym = RTE_DIM(bpf_xsym);
+        prm.prog_arg.type = RTE_BPF_ARG_PTR;
+	    prm.prog_arg.size = RTE_MBUF_DEFAULT_BUF_SIZE;
+        flags |= RTE_BPF_ETH_F_JIT;
+
+    	sname = ".text";
+
+    	rc = rte_bpf_eth_rx_elf_load(port_id, rx_id, &prm, fname.c_str(), sname, flags);
+        if(rc!=0){
+    		printf("%d:%s\n", rc, strerror(-rc));
+        }
+    	
+        return rc;
+    }
+    void unloadBPF(u_int16_t port_id, u_int16_t rx_id){
+        rte_bpf_eth_rx_unload(port_id, rx_id);
     }
     int getRXBurst(struct rte_mbuf **bufs, u_int16_t port_id, u_int16_t rx_id){
         if(port_id >= this->nb_ports || rx_id >= this->nb_rx_queue){

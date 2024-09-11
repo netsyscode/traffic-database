@@ -19,12 +19,15 @@ struct InitData{
     u_int32_t eth_header_len;
     u_int64_t file_capacity;
     u_int32_t index_thread_num;
+    u_int32_t direct_storage_thread_num;
     std::string pcap_header;
+    std::string bpf_prog_name;
 };
 
 class Controller{
 private:
     std::string pcapHeader;
+    std::string bpf_prog_name;
 
     std::vector<PointerRingBuffer*>* indexRings;
     std::vector<Truncator*>* truncators;
@@ -40,8 +43,8 @@ private:
     std::thread* storageThread;
     TruncateChecker* checker;
     std::thread* checkThread;
-    DirectStorage* directStorage;
-    std::thread* directStorageThread;
+    std::vector<DirectStorage*> directStorages;
+    std::vector<std::thread*> directStorageThreads;
 
     Querier* querier;
     std::thread* querierThread;
@@ -68,8 +71,8 @@ public:
         this->checkThread = nullptr;
         this->querier = nullptr;
         this->querierThread = nullptr;
-        this->directStorage = nullptr;
-        this->directStorageThread = nullptr;
+        this->directStorages = std::vector<DirectStorage*>();
+        this->directStorageThreads = std::vector<std::thread*>();
     }
     ~Controller(){
         this->clear();

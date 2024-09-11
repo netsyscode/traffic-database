@@ -6,6 +6,7 @@ bool DirectStorage::runUnit(){
         if(!this->buffers[i]->checkAndWriteFile(this->checkID[i])){
             continue;
         }
+        printf("test id: %u.\n",this->testID);
         change = true;
         this->checkID[i]++;
         this->checkID[i] %= this->buffers[i]->getNum();
@@ -23,6 +24,9 @@ int DirectStorage::run(){
         bool change = this->runUnit();
         if(!change && this->stop){
             break;
+        }
+        if(!change){
+            usleep(50000);
         }
     }
     for(u_int32_t i=0; i<this->buffers.size(); ++i){

@@ -10,12 +10,14 @@ private:
     std::vector<MemoryBuffer*> buffers;
     std::vector<u_int32_t> checkID;
     std::atomic_bool stop;
+    u_int32_t testID;
     bool runUnit();
 public:
-    DirectStorage(){
+    DirectStorage(u_int32_t id){
         this->buffers = std::vector<MemoryBuffer*>();
         this->checkID = std::vector<u_int32_t>();
         this->stop = false;
+        this->testID = id;
     }
     ~DirectStorage()=default;
     void addBuffer(MemoryBuffer* buffer);

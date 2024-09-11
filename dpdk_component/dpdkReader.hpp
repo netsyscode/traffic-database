@@ -17,6 +17,12 @@
 #include <rte_cycles.h>
 #include <rte_malloc.h>
 
+#include <stdint.h>
+#include <net/ethernet.h>
+#include <netinet/ip.h>
+#include <netinet/udp.h>
+#include <arpa/inet.h>
+
 // #define RX_RING_SIZE 512
 #define TX_RING_SIZE 1024
 #define NUM_MBUFS 8191
@@ -57,7 +63,7 @@ class DPDKReader{
     //opne file
     // bool fileInit();
     //read packet of offset from file;
-    PacketMeta readPacket(struct rte_mbuf *buf,u_int64_t ts);
+    void readPacket(struct rte_mbuf *buf,u_int64_t ts,PacketMeta* meta);
     //write data to packet buffer (pay attention to aligning with file offset)
     u_int64_t writePacketToPacketBuffer(PacketMeta& meta);
     //calculate id of packet

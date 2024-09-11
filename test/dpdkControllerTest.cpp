@@ -17,6 +17,8 @@ const u_int32_t pcap_header_len = 24;
 const u_int32_t eth_header_len = 14;
 const u_int64_t file_capacity = 1024*1024*1024;
 const u_int32_t index_thread_num = 1;
+const u_int32_t direct_storage_thread_num = 1;
+const std::string bpf_prog_name = "./bpf/t1.o";
 
 int main(){
     Controller* controller = new Controller();
@@ -29,7 +31,9 @@ int main(){
        .eth_header_len = eth_header_len,
        .file_capacity = file_capacity,
        .index_thread_num = index_thread_num,
+       .direct_storage_thread_num = direct_storage_thread_num,
        .pcap_header = std::string((char*)pcap_head,pcap_header_len),
+       .bpf_prog_name = bpf_prog_name,
     };
     controller->init(init_data);
     controller->run();

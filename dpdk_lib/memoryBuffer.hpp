@@ -26,7 +26,7 @@ private:
     u_int64_t fileOffset;
 
     char** buffer_blocks; // blocks
-    std::atomic_bool* block_flags; // true for dirty blocks
+    bool* block_flags; // true for dirty blocks
     u_int32_t block_id; // now written block id
     u_int64_t offset; // now written block offset
 
@@ -58,7 +58,7 @@ public:
         this->fileOffset = 0;
 
         this->buffer_blocks = new char*[block_num];
-        this->block_flags = new std::atomic_bool[block_num];
+        this->block_flags = new bool[block_num]();
         this->block_id = 0;
         this->offset = offset;
         for (u_int32_t i=0; i<this->total_block_num; ++i){
@@ -91,11 +91,11 @@ public:
         this->offset += len;
     }
     bool checkAndWriteFile(u_int32_t id){
-        if(id == this->block_id){
-            return false;
-        }
+        // if(id == this->block_id){
+        //     return false;
+        // }
         if(!this->block_flags[id]){
-            return true;
+            return false;
         }
         ssize_t bytes_written = pwrite(this->fileFD, this->buffer_blocks[id], this->block_size, this->fileOffset);
         if (bytes_written == -1) {

@@ -46,26 +46,46 @@ struct PacketMetaTurple{
 //     return true;
 // }
 
-PacketMeta DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts){
-    PacketMeta meta = {
-        .header = new data_header,
-        .data = nullptr,
-        .len = 0,
-    };
-    meta.header->len = rte_pktmbuf_pkt_len(buf);
-    meta.header->caplen = rte_pktmbuf_data_len(buf);
-    meta.header->ts_l = (u_int32_t)(ts & 0xFFFFFFFF);
-    meta.header->ts_h = (u_int32_t)(ts >> 32);
+// uint64_t
+// entry(void *pkt)
+// {
+// 	struct ether_header *ether_header = (struct ether_header *)pkt;
 
-    meta.len = meta.header->caplen;
+// 	if (ether_header->ether_type != htons(0x0800))
+// 		return 0;
+
+// 	struct iphdr *iphdr = (struct iphdr *)(ether_header + 1);
+// 	if (iphdr->protocol != 17 || (iphdr->frag_off & 0x1ffff) != 0 ||
+// 			iphdr->daddr != htonl(0x1020304))
+// 		return 0;
+
+// 	int hlen = iphdr->ihl * 4;
+// 	struct udphdr *udphdr = (struct udphdr *)iphdr + hlen;
+
+// 	if (udphdr->dest != htons(5000))
+// 		return 0;
+
+// 	return 1;
+// }
+
+void DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts, PacketMeta* meta){
+    // PacketMeta meta = {
+    //     .header = new data_header,
+    //     .data = nullptr,
+    //     .len = 0,
+    // };
+    meta->header->len = rte_pktmbuf_pkt_len(buf);
+    meta->header->caplen = rte_pktmbuf_data_len(buf);
+    meta->header->ts_l = (u_int32_t)(ts & 0xFFFFFFFF);
+    meta->header->ts_h = (u_int32_t)(ts >> 32);
+
+    meta->len = meta->header->caplen;
     // meta.data = new char[meta.len];
     // memcpy(meta.data, (char*)&header, sizeof(struct data_header));
-    meta.data = rte_pktmbuf_mtod(buf, const char *);
+    meta->data = rte_pktmbuf_mtod(buf, const char *);
     // memcpy(meta.data+sizeof(struct data_header), rte_pktmbuf_mtod(buf, const char *), header.caplen);
 
     // rte_pktmbuf_free(buf);
-
-    return meta;
 }
 
 u_int64_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
@@ -146,6 +166,11 @@ int DPDKReader::run(){
     u_int64_t pkt_count = 0;
     auto start = std::chrono::high_resolution_clock::now();
     bool has_start = false;
+    PacketMeta meta = {
+        .header = new data_header,
+        .data = nullptr,
+        .len = 0,
+    };
     
     while(true){
         ts = rte_rdtsc();
@@ -161,8 +186,9 @@ int DPDKReader::run(){
         int err = 0;
         for(int i=0;i<nb_rx;++i){
             pkt_count ++;
-            // printf("DPDK Reader log: get one.\n");
-            PacketMeta meta = this->readPacket(bufs[i],ts);
+            
+            this->readPacket(bufs[i],ts,&meta);
+            
             if(meta.data == nullptr){
                 std::cout << "DPDK Reader log: read over." << std::endl;
                 err = 1;
@@ -180,7 +206,8 @@ int DPDKReader::run(){
             // if(!this->writeIndexToRing(value,meta)){
             //     printf("DPDK Reader error: write index to ring failed!\n");
             // }
-            delete meta.header;
+            // delete meta.header;
+            meta.data = nullptr;
             rte_pktmbuf_free(bufs[i]);
         }
         nb_rx = 0;
