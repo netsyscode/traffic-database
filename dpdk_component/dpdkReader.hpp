@@ -5,12 +5,13 @@
 #include <fstream>
 #include <chrono>
 #include <atomic>
-// #include "../dpdk_lib/fileBuffer.hpp"
+
 #include "../dpdk_lib/memoryBuffer.hpp"
 #include "../dpdk_lib/header.hpp"
 #include "../dpdk_lib/util.hpp"
 #include "../dpdk_lib/dpdk.hpp"
 #include "../dpdk_lib/pointerRingBuffer.hpp"
+#include "../dpdk_lib/packetAggregator.hpp"
 
 #include <rte_eal.h>
 #include <rte_ethdev.h>
@@ -29,6 +30,14 @@
 #define MBUF_CACHE_SIZE 512
 #define BURST_SIZE 32
 
+// struct 
+
+struct PacketMeta{
+    array_list_header* header;
+    const char* data;
+    u_int32_t len;
+};
+
 // read packet from pcap, equivalent like extractor, lower substitution of trace catcher
 class DPDKReader{
     const u_int32_t pcap_header_len;
@@ -37,18 +46,19 @@ class DPDKReader{
     // std::string filename;
     u_int64_t offset;
     u_int64_t capacityUnit;
-    // u_int64_t fileLen;
 
     // write only
-    // FileBuffer* packetBuffer;
     MemoryBuffer* packetBuffer;
     u_int16_t port_id;
     u_int16_t rx_id;
     std::string fileName;
     DPDK* dpdk;
 
+    PacketAggregator* packetAggregator;
+
     // write only
     std::vector<PointerRingBuffer*>* indexRings;
+    
     // ArrayList<u_int64_t>* packetPointer;
 
     // ArrayList<u_int64_t>* newpacketPointer;
@@ -66,6 +76,8 @@ class DPDKReader{
     void readPacket(struct rte_mbuf *buf,u_int64_t ts,PacketMeta* meta);
     //write data to packet buffer (pay attention to aligning with file offset)
     u_int64_t writePacketToPacketBuffer(PacketMeta& meta);
+    FlowMetadata getFlowMetaData(PacketMeta& meta);
+
     //calculate id of packet
     // u_int8_t calPacketID(PacketMeta& meta);
     //write data to packet pointer
@@ -80,25 +92,17 @@ public:
     pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),dpdk(dpdk),indexRings(rings),port_id(port_id),rx_id(rx_id),capacityUnit(capacity){
         this->offset = pcap_header_len;
         this->stop = true;
-        // this->pause = false;
-        // this->monitor_cv = monitor_cv;
-
         this->duration_time = 0;
-
-        // this->newpacketPointer = nullptr;
-        // this->packetBuffer = new FileBuffer((((u_int32_t)(this->port_id)) << 16) + (u_int32_t)(this->rx_id),this->capacityUnit);
         this->packetBuffer = buffer;
         this->fileName = "./data/input/" + std::to_string(port_id) + "-" + std::to_string(rx_id) + ".pcap";
+        this->packetAggregator = new PacketAggregator(capacity, std::numeric_limits<uint64_t>::max());
     }
     ~DPDKReader(){
-        // this->packetBuffer->closeFile();
-        // delete this->packetBuffer;
+        delete this->packetAggregator;
     }
     
     int run();
     void asynchronousStop();
-    // void asynchronousPause(ArrayList<u_int64_t>* newpacketPointer);
-    // bool getPause() const;
     static int launch(void *arg){
         return static_cast<DPDKReader*>(arg)->run();
     }

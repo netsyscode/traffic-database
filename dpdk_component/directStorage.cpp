@@ -6,7 +6,7 @@ bool DirectStorage::runUnit(){
         if(!this->buffers[i]->checkAndWriteFile(this->checkID[i])){
             continue;
         }
-        printf("test id: %u.\n",this->testID);
+        // printf("test id: %u.\n",this->testID);
         change = true;
         this->checkID[i]++;
         this->checkID[i] %= this->buffers[i]->getNum();

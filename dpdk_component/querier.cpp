@@ -846,14 +846,14 @@ void Querier::outputPacketToFile(std::list<Answer> flowHeadList){
             u_int64_t offset = value & 0xffffffffffff;
 
             char* data_ele = data_buffer_list[in] + offset;
-            data_header* pheader = (data_header*)data_ele;
+            pcap_header* pheader = (pcap_header*)data_ele;
 
             printf("offset:%llu\n",offset);
 
             u_int64_t ti = ((u_int64_t)(pheader->ts_h) << 32) + (u_int64_t)(pheader->ts_l);
             if( ti >= this->startTime && ti <= this->endTime){
                 this->packet_count++;
-                outputFile.write(data_ele,sizeof(data_header)+pheader->caplen);
+                outputFile.write(data_ele,sizeof(pcap_header)+pheader->caplen);
                 printf("len:%u.\n",pheader->caplen);
             }
 

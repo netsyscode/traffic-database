@@ -21,91 +21,33 @@ u_int8_t hasher_16(u_int16_t value){
     return hashValue;
 }
 
-struct PacketMetaTurple{
-    u_int32_t srcIP;
-    u_int32_t dstIP;
-    u_int16_t srcPort;
-    u_int16_t dstPort;
-};
-
-// bool DPDKReader::fileInit(){
-//     std::ofstream file(this->fileName, std::ios::app);
-//     if (!file.is_open()) {
-//         printf("DPDK reader error: fileInit failed while openning file!\n");
-//         return false;
-//     }
-//     file.clear();
-//     file.close();
-//     this->packetBuffer->changeFileName(this->fileName);
-//     this->packetBuffer->openFile();
-//     this->packetBuffer->writePointer((char*)pcap_head,this->pcap_header_len);
-//     // file.write((const char*)pcap_head,this->pcap_header_len);
-//     // printf("offset:%u\n",this->pcap_header_len);
-//     // file.close();
-//     // this->packetBuffer->changeFileOffset(this->pcap_header_len);
-//     return true;
-// }
-
-// uint64_t
-// entry(void *pkt)
-// {
-// 	struct ether_header *ether_header = (struct ether_header *)pkt;
-
-// 	if (ether_header->ether_type != htons(0x0800))
-// 		return 0;
-
-// 	struct iphdr *iphdr = (struct iphdr *)(ether_header + 1);
-// 	if (iphdr->protocol != 17 || (iphdr->frag_off & 0x1ffff) != 0 ||
-// 			iphdr->daddr != htonl(0x1020304))
-// 		return 0;
-
-// 	int hlen = iphdr->ihl * 4;
-// 	struct udphdr *udphdr = (struct udphdr *)iphdr + hlen;
-
-// 	if (udphdr->dest != htons(5000))
-// 		return 0;
-
-// 	return 1;
-// }
-
 void DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts, PacketMeta* meta){
-    // PacketMeta meta = {
-    //     .header = new data_header,
-    //     .data = nullptr,
-    //     .len = 0,
-    // };
-    meta->header->len = rte_pktmbuf_pkt_len(buf);
-    meta->header->caplen = rte_pktmbuf_data_len(buf);
+    meta->header->flow_next_diff = std::numeric_limits<uint32_t>::max();
+    meta->header->caplen = rte_pktmbuf_data_len(buf) - this->eth_header_len;
     meta->header->ts_l = (u_int32_t)(ts & 0xFFFFFFFF);
     meta->header->ts_h = (u_int32_t)(ts >> 32);
 
     meta->len = meta->header->caplen;
-    // meta.data = new char[meta.len];
-    // memcpy(meta.data, (char*)&header, sizeof(struct data_header));
     meta->data = rte_pktmbuf_mtod(buf, const char *);
-    // memcpy(meta.data+sizeof(struct data_header), rte_pktmbuf_mtod(buf, const char *), header.caplen);
-
-    // rte_pktmbuf_free(buf);
 }
 
 u_int64_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
-    // if(!this->packetBuffer->writePointer((const char*)meta.header,sizeof(data_header))){
-    //     return std::numeric_limits<uint32_t>::max();
-    // }
-    this->packetBuffer->writePointer((const char*)meta.header,sizeof(data_header));
-    // if(!this->packetBuffer->writePointer(meta.data,meta.len)){
-    //     // if(!this->packetBuffer->expandFile()){
-    //     //     return std::numeric_limits<uint32_t>::max();
-    //     // }
-    //     // // this->packetBuffer->changeFileLength(this->pcap_header_len);
-    //     // if(!this->packetBuffer->writePointer(meta.data,meta.len)){
-            
-    //     // }
-    //     return std::numeric_limits<uint32_t>::max();
-    // }
-    this->packetBuffer->writePointer(meta.data,meta.len);
-    /* TODO: need change to meet disk offset */
-    return (u_int32_t)(this->packetBuffer->getOffset() + this->packetBuffer->getBlockID() * this->packetBuffer->getSize()) - meta.len - sizeof(data_header);
+    this->packetBuffer->writePointer((const char*)meta.header,sizeof(pcap_header));
+    this->packetBuffer->writePointer(meta.data + this->eth_header_len, meta.len);
+    return (u_int32_t)(this->packetBuffer->getFileOffset() + this->packetBuffer->getOffset()) - meta.len - sizeof(pcap_header);
+}
+
+FlowMetadata DPDKReader::getFlowMetaData(PacketMeta& meta){
+    const struct ip_header* ip_protocol = (const struct ip_header *)(meta.data + this->eth_header_len);
+    const u_int16_t* sport = (const u_int16_t*)(meta.data + this->eth_header_len + ip_protocol->ip_header_length * 4);
+    const u_int16_t* dport = sport + 1;
+    FlowMetadata flow_meta = {
+        .sourceAddress = htonl(ip_protocol->ip_source_address),
+        .destinationAddress = htonl(ip_protocol->ip_destination_address),
+        .sourcePort = htons(*sport),
+        .destinationPort = htons(*dport),
+    };
+    return flow_meta;
 }
 
 u_int64_t DPDKReader::calValue(u_int64_t _offset){
@@ -120,43 +62,23 @@ u_int64_t DPDKReader::calValue(u_int64_t _offset){
 }
 
 bool DPDKReader::writeIndexToRing(u_int64_t value, PacketMeta meta){
-    auto index_vec = get_index(meta,this->eth_header_len,value);
-    int i=0;
-    for(auto x:index_vec){
-        if(!(*(this->indexRings))[i]->put((void*)x)){
-            return false;
-        }
-        i++;
-    }
+    // auto index_vec = get_index(meta,this->eth_header_len,value);
+    // int i=0;
+    // for(auto x:index_vec){
+    //     if(!(*(this->indexRings))[i]->put((void*)x)){
+    //         return false;
+    //     }
+    //     i++;
+    // }
     return true;
 }
 
-// void DPDKReader::truncate(){
-//     if(this->newpacketPointer == nullptr){
-//         std::cerr << "DPDK Reader error: trancate without new memory!" << std::endl;
-//         this->pause = false;
-//         this->monitor_cv->notify_all();
-//         return;
-//     }
-//     // this->packetBuffer = this->newPacketBuffer;
-//     this->packetPointer = this->newpacketPointer;
-//     // this->newPacketBuffer = nullptr;
-//     this->newpacketPointer = nullptr;
-//     // this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
-//     this->pause = false;
-//     this->monitor_cv->notify_all();
-// }
-
 int DPDKReader::run(){
-    // if(!this->fileInit()){
-    //     return -1;
-    // }
+    // pcap file header
     this->packetBuffer->writePointer((char*)pcap_head,this->pcap_header_len);
+
     std::cout << "DPDK reader log: thread run." << std::endl;
     this->stop = false;
-    // this->pause = false;
-    //align
-    // this->packetBuffer->writeOneThread((const char*)pcap_head,this->pcap_header_len);
     
     u_int64_t truncate_time = 0;
 
@@ -167,7 +89,7 @@ int DPDKReader::run(){
     auto start = std::chrono::high_resolution_clock::now();
     bool has_start = false;
     PacketMeta meta = {
-        .header = new data_header,
+        .header = new array_list_header,
         .data = nullptr,
         .len = 0,
     };
@@ -175,7 +97,7 @@ int DPDKReader::run(){
     while(true){
         ts = rte_rdtsc();
         nb_rx = this->dpdk->getRXBurst(bufs,this->port_id,this->rx_id);
-        // nb_rx = rte_eth_rx_burst(this->port_id, this->rx_id, bufs, BURST_SIZE);
+        
         if(nb_rx == 0 && !(this->stop)){
             continue;
         }
@@ -194,12 +116,25 @@ int DPDKReader::run(){
                 err = 1;
                 break;
             }
+
             u_int64_t _offset = this->writePacketToPacketBuffer(meta);
-            if(_offset == std::numeric_limits<uint32_t>::max()){
+            if(_offset == std::numeric_limits<uint64_t>::max()){
                 std::cerr << "DPDK Reader error: packet buffer overflow!" << std::endl;
                 err = 1;
                 break;
             }
+
+            FlowMetadata flow_meta = this->getFlowMetaData(meta);
+            u_int64_t last = this->packetAggregator->addPacket(flow_meta,_offset,ts);
+            if(last != std::numeric_limits<uint64_t>::max()){
+                // printf("%llu\n",last);
+                u_int32_t diff = (u_int32_t)(_offset - last);
+                this->packetBuffer->writeBefore((const char*)(&diff),sizeof(diff),last);
+            }
+
+            // const HeaderInfo* info = (const HeaderInfo*)meta.data;
+
+            // printf("packet offset: %llu, l3 offset: %u, l4 offset: %u.\n",_offset,info->l3_offset,info->l4_offset);
             
             /* with index */
             // u_int64_t value = this->calValue(_offset);

@@ -4,16 +4,30 @@
 
 /*从字符串直接转换为header时，为大端序*/
 
-struct data_header{
+struct pcap_header{
     u_int32_t ts_h;
     u_int32_t ts_l;
     u_int32_t caplen;
     u_int32_t len;
 };
 
+struct array_list_header{
+    u_int32_t flow_next_diff;
+    u_int32_t ts_h;
+    u_int32_t ts_l;
+    u_int32_t caplen;
+};
+
 struct packet{
-    data_header* header;
+    pcap_header* header;
     char* data;
+};
+
+struct HeaderInfo{
+    u_int16_t l3_type;
+    u_int16_t l3_offset;
+    u_int8_t l4_type;
+    u_int32_t l4_offset;
 };
 
 struct ip_header{

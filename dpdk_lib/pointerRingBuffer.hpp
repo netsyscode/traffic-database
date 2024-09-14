@@ -2,6 +2,7 @@
 #define POINTERRINGBUFFER_HPP_
 #include <iostream>
 #include <unistd.h>
+#include <atomic>
 #include "header.hpp"
 #include "util.hpp"
 
