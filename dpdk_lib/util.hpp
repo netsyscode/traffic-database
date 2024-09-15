@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include "header.hpp"
+#include "packetAggregator.hpp"
 
 #define INDEX_NUM IndexType::TOTAL
 
@@ -18,17 +19,16 @@ enum IndexType{
 const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2};
 
 struct Index{
-    std::string key;
+    FlowMetadata meta;
     u_int64_t value;
-    u_int64_t ts;
 };
 
 const std::string index_name[INDEX_NUM] = {
-        "./data/index/pcap.pcap_srcip_idx",
-        "./data/index/pcap.pcap_dstip_idx",
-        "./data/index/pcap.pcap_srcport_idx",
-        "./data/index/pcap.pcap_dstport_idx",
-    };
+    "./data/index/pcap.pcap_srcip_idx",
+    "./data/index/pcap.pcap_dstip_idx",
+    "./data/index/pcap.pcap_srcport_idx",
+    "./data/index/pcap.pcap_dstport_idx",
+};
 
 // srcip dstip srcport dstport
 // inline std::vector<Index*> get_index(PacketMeta meta, u_int32_t eth_header_len,u_int64_t value){

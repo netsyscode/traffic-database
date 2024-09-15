@@ -57,39 +57,26 @@ class DPDKReader{
     PacketAggregator* packetAggregator;
 
     // write only
-    std::vector<PointerRingBuffer*>* indexRings;
-    
-    // ArrayList<u_int64_t>* packetPointer;
-
-    // ArrayList<u_int64_t>* newpacketPointer;
+    // std::vector<PointerRingBuffer*>* indexRings;
+    PointerRingBuffer* indexRing;
 
     std::atomic_bool stop;
-    // std::atomic_bool pause;
-
-    // std::condition_variable* monitor_cv;
 
     u_int64_t duration_time;
 
-    //opne file
-    // bool fileInit();
     //read packet of offset from file;
     void readPacket(struct rte_mbuf *buf,u_int64_t ts,PacketMeta* meta);
     //write data to packet buffer (pay attention to aligning with file offset)
     u_int64_t writePacketToPacketBuffer(PacketMeta& meta);
     FlowMetadata getFlowMetaData(PacketMeta& meta);
 
-    //calculate id of packet
-    // u_int8_t calPacketID(PacketMeta& meta);
-    //write data to packet pointer
-    // u_int32_t writePacketToPacketPointer(u_int32_t _offset, u_int8_t id);
     u_int64_t calValue(u_int64_t _offset);
 
-    bool writeIndexToRing(u_int64_t value, PacketMeta meta);
+    bool writeIndexToRing(u_int64_t value, FlowMetadata meta);
 
-    // void truncate();
 public:
-    DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, std::vector<PointerRingBuffer*>* rings, u_int16_t port_id, u_int16_t rx_id, u_int64_t capacity, MemoryBuffer* buffer):
-    pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),dpdk(dpdk),indexRings(rings),port_id(port_id),rx_id(rx_id),capacityUnit(capacity){
+    DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, PointerRingBuffer* ring, u_int16_t port_id, u_int16_t rx_id, u_int64_t capacity, MemoryBuffer* buffer):
+    pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),dpdk(dpdk),indexRing(ring),port_id(port_id),rx_id(rx_id),capacityUnit(capacity){
         this->offset = pcap_header_len;
         this->stop = true;
         this->duration_time = 0;

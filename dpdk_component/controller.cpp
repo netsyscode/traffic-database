@@ -29,9 +29,9 @@ void Controller::threadsRun(){
     }
 }
 
-void Controller::queryThreadRun(){
-    this->querierThread = new std::thread(&Querier::run,this->querier);
-}
+// void Controller::queryThreadRun(){
+//     this->querierThread = new std::thread(&Querier::run,this->querier);
+// }
 
 void Controller::threadsStop(){
     for(auto r:this->readers){
@@ -164,6 +164,7 @@ void Controller::clear(){
 }
 
 void Controller::init(InitData init_data){
+    this->indexRing =  new PointerRingBuffer(init_data.index_ring_capacity);
     // for(int i=0;i<INDEX_NUM;++i){
     //     (*(this->indexRings))[i] = new PointerRingBuffer(init_data.index_ring_capacity);
     // }
@@ -184,8 +185,7 @@ void Controller::init(InitData init_data){
         MemoryBuffer* buffer = new MemoryBuffer(0,init_data.file_capacity,5,file_name);
         this->buffers.push_back(buffer);
         this->directStorages[i%init_data.direct_storage_thread_num]->addBuffer(buffer);
-        // this->directStorage->addBuffer(buffer);
-        DPDKReader* reader = new DPDKReader(init_data.pcap_header_len,init_data.eth_header_len,dpdk,this->indexRings,0,i,init_data.file_capacity,buffer);
+        DPDKReader* reader = new DPDKReader(init_data.pcap_header_len,init_data.eth_header_len,dpdk,this->indexRing,0,i,init_data.file_capacity,buffer);
         this->readers.push_back(reader);
     }
 
