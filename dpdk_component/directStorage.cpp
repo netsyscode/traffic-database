@@ -32,6 +32,7 @@ int DirectStorage::run(){
     for(u_int32_t i=0; i<this->buffers.size(); ++i){
         this->buffers[i]->directWriteFile(this->checkID[i]);
     }
+    printf("Direct Storage log: thread quit.\n");
     return 0;
 }
 

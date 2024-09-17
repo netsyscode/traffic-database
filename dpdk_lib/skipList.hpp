@@ -9,6 +9,7 @@
 #include <mutex>
 #include <algorithm>
 #include <cstring>
+#include "zOrderTree.hpp"
 
 template <class KeyType, class ValueType>
 class SkipListNode{
@@ -66,6 +67,10 @@ class SkipList{
             u_int64_t* real_key= (u_int64_t*)&(key[0]);
             SkipListNode<u_int64_t,u_int64_t>* p = new SkipListNode<u_int64_t,u_int64_t>(*real_key,value,level);
             pointer = (void*)p;
+        }else if(this->keyLen == 12){
+            ZOrderIPv4* real_key= (ZOrderIPv4*)&(key[0]);
+            SkipListNode<ZOrderIPv4,u_int64_t>* p = new SkipListNode<ZOrderIPv4,u_int64_t>(*real_key,value,level);
+            pointer = (void*)p;
         }else{
             std::cerr << "Skip list error: newNode with undifined ele_len!" << std::endl;
         }
@@ -83,6 +88,9 @@ class SkipList{
             delete p;
         }else if(this->keyLen == 8){
             SkipListNode<u_int64_t,u_int64_t>* p = (SkipListNode<u_int64_t,u_int64_t>*)node;
+            delete p;
+        }else if(this->keyLen == 12){
+            SkipListNode<ZOrderIPv4,u_int64_t>* p = (SkipListNode<ZOrderIPv4,u_int64_t>*)node;
             delete p;
         }else{
             std::cerr << "Skip list error: deleteNode with undifined ele_len!" << std::endl;
@@ -102,6 +110,9 @@ class SkipList{
         }else if(this->keyLen == 8){
             SkipListNode<u_int64_t,u_int64_t>* p = (SkipListNode<u_int64_t,u_int64_t>*)node;
             pointer = (void*)(p->next[level]);
+        }else if(this->keyLen == 12){
+            SkipListNode<ZOrderIPv4,u_int64_t>* p = (SkipListNode<ZOrderIPv4,u_int64_t>*)node;
+            pointer = (void*)(p->next[level]);
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
         }
@@ -120,6 +131,9 @@ class SkipList{
         }else if(this->keyLen == 8){
             SkipListNode<u_int64_t,u_int64_t>* p = (SkipListNode<u_int64_t,u_int64_t>*)node;
             p->next[level] = (SkipListNode<u_int64_t,u_int64_t>*)next;
+        }else if(this->keyLen == 12){
+            SkipListNode<ZOrderIPv4,u_int64_t>* p = (SkipListNode<ZOrderIPv4,u_int64_t>*)node;
+            p->next[level] = (SkipListNode<ZOrderIPv4,u_int64_t>*)next;
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
         }
@@ -137,6 +151,9 @@ class SkipList{
             value = p->value;
         }else if(this->keyLen == 8){
             SkipListNode<u_int64_t,u_int64_t>* p = (SkipListNode<u_int64_t,u_int64_t>*)node;
+            value = p->value;
+        }else if(this->keyLen == 12){
+            SkipListNode<ZOrderIPv4,u_int64_t>* p = (SkipListNode<ZOrderIPv4,u_int64_t>*)node;
             value = p->value;
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
@@ -184,6 +201,16 @@ class SkipList{
                 return 1;
             }
             return 0;
+        }else if(this->keyLen == 12){
+            ZOrderIPv4* real_key= (ZOrderIPv4*)&(key[0]);
+            SkipListNode<ZOrderIPv4,u_int64_t>* p = (SkipListNode<ZOrderIPv4,u_int64_t>*)node;
+            if(p->key < *real_key){
+                return -1;
+            }
+            if(p->key > *real_key){
+                return 1;
+            }
+            return 0;
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
         }
@@ -202,6 +229,9 @@ class SkipList{
         }else if(this->keyLen == 8){
             SkipListNode<u_int64_t,u_int64_t>* p = (SkipListNode<u_int64_t,u_int64_t>*)node;
             p->mutex.lock();
+        }else if(this->keyLen == 12){
+            SkipListNode<ZOrderIPv4,u_int64_t>* p = (SkipListNode<ZOrderIPv4,u_int64_t>*)node;
+            p->mutex.lock();
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
         }
@@ -218,6 +248,9 @@ class SkipList{
             p->mutex.unlock();
         }else if(this->keyLen == 8){
             SkipListNode<u_int64_t,u_int64_t>* p = (SkipListNode<u_int64_t,u_int64_t>*)node;
+            p->mutex.unlock();
+        }else if(this->keyLen == 12){
+            SkipListNode<ZOrderIPv4,u_int64_t>* p = (SkipListNode<ZOrderIPv4,u_int64_t>*)node;
             p->mutex.unlock();
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
@@ -236,6 +269,9 @@ class SkipList{
             key = std::string((char*)&(p->key),this->keyLen);
         }else if(this->keyLen == 8){
             SkipListNode<u_int64_t,u_int64_t>* p = (SkipListNode<u_int64_t,u_int64_t>*)node;
+            key = std::string((char*)&(p->key),this->keyLen);
+        }else if(this->keyLen == 12){
+            SkipListNode<ZOrderIPv4,u_int64_t>* p = (SkipListNode<ZOrderIPv4,u_int64_t>*)node;
             key = std::string((char*)&(p->key),this->keyLen);
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
@@ -270,19 +306,20 @@ public:
     u_int32_t getWriteThreadCount()const{
         return this->writeThreadCount.load();
     }
-    // void addReadThread(){
-    //     this->readThreadCount++;
-    // }
-    // void ereaseReadThread(){
-    //     this->readThreadCount--;
-    // }
-    void insert(std::string key, u_int64_t value){
+    bool insert(std::string key, u_int64_t value, u_int64_t maxNode){
         // construct new node
         if(key.size()!=this->keyLen){
-            printf("Skip list error: insert with wrong key length %u-%u!\n",key.size(),this->keyLen);
+            printf("Skip list error: insert with wrong key length %lu-%u!\n",key.size(),this->keyLen);
             // std::cerr << "Skip list error: insert with wrong key length!" <<std::endl;
-            return;
+            return true;
         }
+
+        u_int64_t now_node_num = this->nodeNum++;
+        if(now_node_num > maxNode){
+            this->nodeNum--;
+            return false;
+        }
+
         int newLevel = randomLevel();
         void* newNode = this->newNode(key,value,newLevel);
 
@@ -315,8 +352,6 @@ public:
             }
         }
 
-        this->nodeNum++;
-
         u_int32_t curLevel = this->level.load();
         while (curLevel < newLevel) {// CAS update level
             if (this->level.compare_exchange_strong(curLevel, newLevel)) {
@@ -325,6 +360,7 @@ public:
                 curLevel = this->level.load();
             }
         }
+        return true;
     }
     std::list<u_int32_t> findByKey(std::string key){
         if(key.size()!=this->keyLen){
@@ -380,10 +416,10 @@ public:
         return this->nodeNum;
     }
     std::string outputToChar(){
-        if(this->writeThreadCount){
-            std::cerr << "Skip list error: it is used by certain w-thread." << std::endl;
-            return std::string();
-        }
+        // if(this->writeThreadCount){
+        //     std::cerr << "Skip list error: it is used by certain w-thread." << std::endl;
+        //     return std::string();
+        // }
         // std::cout << "Skip list log: outputToChar." <<std::endl;
         
         u_int64_t buffer_len = this->nodeNum * (this->keyLen + this->valueLen);
@@ -396,6 +432,22 @@ public:
             u_int64_t value = this->getValue(node);
             memcpy(&(data[offset]),&value,this->valueLen);
             offset += this->valueLen;
+        }
+        return data;
+    }
+    ZOrderIPv4Meta* outputToZOrderIPv4(){
+        // if(this->writeThreadCount){
+        //     std::cerr << "Skip list error: it is used by certain w-thread." << std::endl;
+        //     return nullptr;
+        // }
+        u_int64_t buffer_len = this->nodeNum;
+        ZOrderIPv4Meta* data = new ZOrderIPv4Meta[buffer_len];
+
+        u_int64_t offset = 0;
+        for(auto node = this->getNext(head,0); node!=nullptr; node = this->getNext(node,0)){
+            data[offset].zorder = *(ZOrderIPv4*)(this->getKey(node).c_str());
+            data[offset].value = this->getValue(node);
+            offset ++;
         }
         return data;
     }

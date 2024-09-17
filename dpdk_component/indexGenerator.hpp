@@ -2,54 +2,37 @@
 #define INDEXGENERATOR_HPP_
 #include <iostream>
 #include "../dpdk_lib/util.hpp"
-#include "../dpdk_lib/skipList.hpp"
-#include "../dpdk_lib/truncator.hpp"
+#include "../dpdk_lib/indexBuffer.hpp"
+#include "../dpdk_lib/pointerRingBuffer.hpp"
 
 class IndexGenerator{
-    const u_int32_t keyLen;
-
     // shared memory
     PointerRingBuffer* buffer;
-    SkipList* indexCache;
-    Truncator* truncator;
+    IndexBuffer* indexBuffer;
+
+    u_int32_t indexCacheCount;
+    u_int32_t cacheID;
 
     // thread member
     u_int32_t threadID;
     std::atomic_bool stop;
 
-    u_int64_t duration_time;
-
-    // we needn't think about  pause now -- just stop
-    // std::atomic_bool pause;
-
-    // RingBuffer* newBuffer;
-    // SkipList* newIndexCache;
-
-    // for old flows, but for flow index, NO need to be considered
-    // RingBuffer* oldBuffer;
-    // SkipList* oldIndexCache;
-
     Index* readIndexFromBuffer();
-    void putIndexToCache(const Index* index);
+    void putIndexToCache(Index* index);
 
-    // void truncate();
 public:
-    IndexGenerator(PointerRingBuffer* buffer, Truncator* truncator, u_int32_t keyLen):keyLen(keyLen){
+    IndexGenerator(PointerRingBuffer* buffer,IndexBuffer* indexBuffer){
         this->buffer = buffer;
-        this->truncator = truncator;
-        this->indexCache = truncator->indexMap;
-        this->indexCache->addWriteThread();
+        this->indexBuffer = indexBuffer;
+        this->indexCacheCount = indexBuffer->getCacheCount();
+        this->cacheID = 0;
         this->threadID = std::numeric_limits<uint32_t>::max();
         this->stop = true;
-        // this->pause = false;
-
-        this->duration_time = 0;
     }
     ~IndexGenerator(){}
     void setThreadID(u_int32_t threadID);
     void run();
     void asynchronousStop();
-    // void asynchronousPause(RingBuffer* newBuffer, SkipList* newIndexCache);
 };
 
 #endif

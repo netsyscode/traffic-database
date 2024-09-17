@@ -5,14 +5,14 @@
 #include <chrono>
 
 struct FlowMetadata{
-    u_int32_t sourceAddress;
-    u_int32_t destinationAddress;
+    std::string sourceAddress;
+    std::string destinationAddress;
     u_int16_t sourcePort;
     u_int16_t destinationPort;
     struct hash {
         size_t operator()(const FlowMetadata& f) const {
             return std::hash<u_int16_t>()(f.sourcePort) ^ std::hash<u_int16_t>()(f.destinationPort) ^
-                    std::hash<u_int32_t>()(f.sourceAddress) ^ std::hash<u_int32_t>()(f.destinationAddress);
+                    std::hash<std::string>()(f.sourceAddress) ^ std::hash<std::string>()(f.destinationAddress);
         }
     };
     bool operator==(const FlowMetadata& f) const {

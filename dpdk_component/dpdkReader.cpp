@@ -38,14 +38,26 @@ u_int64_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
 }
 
 FlowMetadata DPDKReader::getFlowMetaData(PacketMeta& meta){
-    const struct ip_header* ip_protocol = (const struct ip_header *)(meta.data + this->eth_header_len);
-    const u_int16_t* sport = (const u_int16_t*)(meta.data + this->eth_header_len + ip_protocol->ip_header_length * 4);
-    const u_int16_t* dport = sport + 1;
+    uint8_t version = (*(u_int8_t*)(meta.data + this->eth_header_len) >> 4) & 0x0F;
+    if(version == 4){
+        const struct ip_header* ip_protocol = (const struct ip_header *)(meta.data + this->eth_header_len);
+        const u_int16_t* sport = (const u_int16_t*)(meta.data + this->eth_header_len + ip_protocol->ip_header_length * 4);
+        const u_int16_t* dport = sport + 1;
+        u_int32_t srcip = htonl(ip_protocol->ip_source_address);
+        u_int32_t dstip = htonl(ip_protocol->ip_destination_address);
+        FlowMetadata flow_meta = {
+            .sourceAddress = std::string((char*)&srcip,sizeof(srcip)),
+            .destinationAddress = std::string((char*)&dstip,sizeof(dstip)),
+            .sourcePort = htons(*sport),
+            .destinationPort = htons(*dport),
+        };
+        return flow_meta;
+    }
     FlowMetadata flow_meta = {
-        .sourceAddress = htonl(ip_protocol->ip_source_address),
-        .destinationAddress = htonl(ip_protocol->ip_destination_address),
-        .sourcePort = htons(*sport),
-        .destinationPort = htons(*dport),
+        .sourceAddress = std::string(),
+        .destinationAddress = std::string(),
+        .sourcePort = 0,
+        .destinationPort = 0,
     };
     return flow_meta;
 }
@@ -61,10 +73,11 @@ u_int64_t DPDKReader::calValue(u_int64_t _offset){
     return value;
 }
 
-bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta){
+bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t ts){
     Index* index = new Index();
     index->meta = meta;
     index->value = value;
+    index->ts = ts;
     if(!this->indexRing->put((void*)index)){
         return false;
     }
@@ -123,6 +136,12 @@ int DPDKReader::run(){
             }
 
             FlowMetadata flow_meta = this->getFlowMetaData(meta);
+            if(flow_meta.sourceAddress.size() == 0){
+                printf("DPDK Reader error: Non-IP L3 protocol!\n");
+                meta.data = nullptr;
+                rte_pktmbuf_free(bufs[i]);
+                continue;
+            }
             u_int64_t last = this->packetAggregator->addPacket(flow_meta,_offset,ts);
             if(last != std::numeric_limits<uint64_t>::max()){
                 // printf("%llu\n",last);
@@ -131,7 +150,7 @@ int DPDKReader::run(){
             }else{
                 /* with index */
                 u_int64_t value = this->calValue(_offset);
-                if(!this->writeIndexToRing(value,flow_meta)){
+                if(!this->writeIndexToRing(value,flow_meta,ts)){
                     printf("DPDK Reader error: write index to ring failed!\n");
                 }
             }

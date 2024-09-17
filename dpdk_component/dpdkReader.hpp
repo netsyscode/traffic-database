@@ -72,7 +72,7 @@ class DPDKReader{
 
     u_int64_t calValue(u_int64_t _offset);
 
-    bool writeIndexToRing(u_int64_t value, FlowMetadata meta);
+    bool writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t ts);
 
 public:
     DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, PointerRingBuffer* ring, u_int16_t port_id, u_int16_t rx_id, u_int64_t capacity, MemoryBuffer* buffer):

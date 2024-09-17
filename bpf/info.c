@@ -56,6 +56,10 @@ entry(void *pkt)
 
 	struct iphdr *iphdr = (void *)(ether_header + 1);
 
+    if(iphdr->protocol != 6 && iphdr->protocol != 17){
+        return 0;
+    }
+
     info->l4_type = iphdr->protocol;
     info->l4_offset = iphdr->ihl * 4 + sizeof(struct ether_header);
 

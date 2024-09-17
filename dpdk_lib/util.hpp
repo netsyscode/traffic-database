@@ -20,7 +20,13 @@ const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2};
 
 struct Index{
     FlowMetadata meta;
+    u_int64_t ts;
     u_int64_t value;
+};
+
+struct HilbertMeta{
+    Index* index;
+    std::string hilbertValue;
 };
 
 const std::string index_name[INDEX_NUM] = {

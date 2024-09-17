@@ -94,6 +94,9 @@ public:
             free(this->buffer_blocks[i]);
         }
         close(this->fileFD);
+        delete[] this->write_flags;
+        delete[] this->block_flags;
+        delete[] this->buffer_blocks;
     }
     void writePointer(const char* data, u_int32_t len){
         if(this->offset + len > this->block_size){
@@ -109,7 +112,7 @@ public:
     }
     void writeBefore(const char* data, u_int32_t len, u_int64_t totalOffset){
         if(totalOffset + (u_int64_t)len > this->fileOffset + this->offset){
-            printf("MemoryBuffer error: wrong total offset %llu - %llu!\n", totalOffset, this->fileOffset);
+            printf("MemoryBuffer error: wrong total offset %lu - %lu!\n", totalOffset, this->fileOffset);
             return;
         }
         if(totalOffset > this->fileOffset){
