@@ -42,6 +42,9 @@ void IndexStorage::processSkipList(SkipList* list, u_int64_t ts){
         printf("IndexStorage error: failed to pwrite rtree!\n");
     }
     close(fileFD);
+
+    delete tree;
+    delete list;
 }
 bool IndexStorage::runUnit(){
     auto [list,ts] = this->buffer->getCache(this->checkID);
