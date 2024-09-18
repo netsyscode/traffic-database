@@ -1,4 +1,6 @@
 #include "dpdkReader.hpp"
+#include <regex>
+#include <random>
 
 const u_int8_t pcap_head[] = {0xd4,0xc3,0xb2,0xa1,0x02,0x00,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
                             0xff,0xff,0x00,0x00,0x01,0x00,0x00,0x00};
@@ -97,6 +99,7 @@ int DPDKReader::run(){
     int nb_rx;
     u_int64_t ts;
     u_int64_t pkt_count = 0;
+    u_int64_t index_count = 0;
     auto start = std::chrono::high_resolution_clock::now();
     bool has_start = false;
     PacketMeta meta = {
@@ -153,6 +156,7 @@ int DPDKReader::run(){
                 if(!this->writeIndexToRing(value,flow_meta,ts)){
                     printf("DPDK Reader error: write index to ring failed!\n");
                 }
+                index_count++;
             }
 
             // printf("packet offset: %llu, l3 offset: %u, l4 offset: %u.\n",_offset,info->l3_offset,info->l4_offset);
@@ -172,9 +176,86 @@ int DPDKReader::run(){
     auto end = std::chrono::high_resolution_clock::now();
 
     this->duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    printf("DPDK Reader log: thread quit, during %llu us with %llu packets.\n",this->duration_time,pkt_count);
+    printf("DPDK Reader log: thread quit, during %llu us with %llu packets and %llu indexes.\n",this->duration_time,pkt_count,index_count);
     return 0;
 }
+
+// struct TestIndex{
+//     u_int32_t srcip;
+//     u_int32_t dstip;
+//     u_int16_t srcport;
+//     u_int16_t dstport;
+// };
+
+// uint32_t ipToUint32(const std::string& ip) {
+//     uint32_t result = 0;
+//     inet_pton(AF_INET, ip.c_str(), &result); // 将IP转换为无符号整型
+//     return ntohl(result); // 将网络字节序转换为主机字节序
+// }
+
+// int DPDKReader::run(){
+//     std::string filename = "./data/source/flow.txt";
+//     std::ifstream infile(filename);
+//     std::string line;
+
+//     std::vector<TestIndex> vec = std::vector<TestIndex>();
+
+//     if (!infile.is_open()) {
+//         std::cerr << "Error opening file: " << filename << std::endl;
+//         return  -1;
+//     }
+
+//     std::regex flowRegex(R"(\('([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)',\s*(\d+),\s*'([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)',\s*(\d+)\):\s*(\d+))");
+//     std::smatch match;
+
+//     u_int32_t count = 0;
+
+//     while (std::getline(infile, line)) {
+//         if (std::regex_search(line, match, flowRegex) && match.size() == 6) {
+//             std::string srcIp = match[1];
+//             uint16_t srcPort = static_cast<uint16_t>(std::stoi(match[2]));
+//             std::string dstIp = match[3];
+//             uint16_t dstPort = static_cast<uint16_t>(std::stoi(match[4]));
+//             size_t len = static_cast<size_t>(std::stoull(match[5]));
+
+//             uint32_t srcIpInt = ipToUint32(srcIp);
+//             uint32_t dstIpInt = ipToUint32(dstIp);
+
+//             TestIndex id = {
+//                 .srcip = srcIpInt,
+//                 .dstip = dstIpInt,
+//                 .srcport = srcPort,
+//                 .dstport = dstPort,
+//             };
+//             vec.push_back(id);
+
+//         }else {
+//             std::cerr << "Line format error: " << line << std::endl;
+//         }
+//     }
+//     infile.close();
+//     auto start = std::chrono::high_resolution_clock::now();
+//     u_int64_t id_count = 0;
+//     for(auto id:vec){
+//         FlowMetadata flow_meta = {
+//             .sourceAddress = std::string((char*)&id.srcip,sizeof(u_int32_t)),
+//             .destinationAddress = std::string((char*)&id.dstip,sizeof(u_int32_t)),
+//             .sourcePort = id.srcport,
+//             .destinationPort = id.dstport,
+//         };
+//         if(!this->writeIndexToRing(id_count,flow_meta,0)){
+//             printf("DPDK Reader error: write index to ring failed!\n");
+//         }
+//         id_count ++;
+//         if(id_count >= 800000){
+//             break;
+//         }
+//     }
+//     auto end = std::chrono::high_resolution_clock::now();
+//     this->duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+//     printf("DPDK Reader log: thread quit, during %llu us with %llu indexes.\n",this->duration_time,id_count);
+//     return 0;
+// }
 
 void DPDKReader::asynchronousStop(){
     this->stop = true;

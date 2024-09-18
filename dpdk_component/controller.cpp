@@ -196,7 +196,18 @@ void Controller::clear(){
 
 void Controller::init(InitData init_data){
     this->indexRing =  new PointerRingBuffer(init_data.index_ring_capacity);
-    this->indexBuffer = new IndexBuffer(5,sizeof(ZOrderIPv4)*8,sizeof(ZOrderIPv4),sizeof(u_int64_t),init_data.max_node);
+
+    std::vector<SkipListMeta> metas = std::vector<SkipListMeta>();
+    for(auto len:flowMetaEleLens){
+        SkipListMeta meta = {
+            .keyLen = len,
+            .valueLen = sizeof(u_int64_t),
+            .maxLvl = len*8,
+        };
+        metas.push_back(meta);
+    }
+
+    this->indexBuffer = new IndexBuffer(5,metas,init_data.max_node);
 
     this->dpdk = new DPDK(init_data.nb_rx,1);
     
@@ -211,7 +222,7 @@ void Controller::init(InitData init_data){
     }
 
     for(u_int32_t i=0;i<init_data.index_thread_num;++i){
-        IndexGenerator* ig = new IndexGenerator(this->indexRing,this->indexBuffer);
+        IndexGenerator* ig = new IndexGenerator(this->indexRing,this->indexBuffer,i);
         this->indexGenerators.push_back(ig);
     }
 

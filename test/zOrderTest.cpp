@@ -164,26 +164,26 @@ void buildOneDim(){
 
     std::cout << "read done" << std::endl;
 
-    std::string fileName = "./data/index/test.pcap_srcip_idx";
     std::string data = srcip_list.outputToChar();
+    std::string fileName = "./data/index/test.pcap_srcip_idx";
     int fileFD = open(fileName.c_str(), O_WRONLY | O_CREAT, 0644);
     ssize_t bytes_written = write(fileFD,data.c_str(),data.size());
     close(fileFD);
 
+    data = dstip_list.outputToChar();
     fileName = "./data/index/test.pcap_dstip_idx";
-    data = srcip_list.outputToChar();
     fileFD = open(fileName.c_str(), O_WRONLY | O_CREAT, 0644);
     bytes_written = write(fileFD,data.c_str(),data.size());
     close(fileFD);
 
-    fileName = "./data/index/test.pcap_srcport_idx";
     data = srcport_list.outputToChar();
+    fileName = "./data/index/test.pcap_srcport_idx";
     fileFD = open(fileName.c_str(), O_WRONLY | O_CREAT, 0644);
     bytes_written = write(fileFD,data.c_str(),data.size());
     close(fileFD);
 
-    fileName = "./data/index/test.pcap_dstport_idx";
     data = dstport_list.outputToChar();
+    fileName = "./data/index/test.pcap_dstport_idx";
     fileFD = open(fileName.c_str(), O_WRONLY | O_CREAT, 0644);
     bytes_written = write(fileFD,data.c_str(),data.size());
     close(fileFD);
@@ -240,7 +240,8 @@ void queryZOrder(std::vector<TestIndex>& vec){
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-    
+    u_int64_t duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("time:%lu\n",duration_time);
 }
 
 std::vector<TestIndex> readIndex(){
@@ -303,11 +304,121 @@ void writeVec(std::vector<TestIndex>& vec){
     outfile.close();
 }
 
+template <class KeyType>
+std::list<u_int64_t> binarySearch(char* index, u_int32_t index_len, KeyType key){
+    std::list<u_int64_t> ret = std::list<u_int64_t>();
+    u_int32_t ele_len = sizeof(KeyType) + sizeof(u_int64_t);
+    u_int32_t left = 0;
+    u_int32_t right = index_len/ele_len;
+
+    while (left < right) {
+        u_int32_t mid = left + (right - left) / 2;
+
+        KeyType key_mid = *(KeyType*)(index + mid * ele_len);
+        if (key_mid < key) {
+            left = mid + 1;
+        } else {
+            right = mid;
+        }
+    }
+    for(;left<index_len/ele_len;left++){
+        KeyType key_now = *(KeyType*)(index + left * ele_len);
+        if(key_now != key){
+            break;
+        }
+        u_int64_t value = *(u_int64_t*)(index + left * ele_len + sizeof(KeyType));
+        ret.push_back(value);
+    }
+    return ret;
+}
+
+void intersect(std::list<u_int64_t>& la, std::list<u_int64_t>& lb){
+    la.sort();
+    lb.sort();
+    auto ita = la.begin();
+    auto itb = lb.begin();
+    while (ita != la.end() && itb != lb.end()) {
+        if (*ita < *itb) {
+            ita = la.erase(ita);
+        } else if (*ita > *itb) {
+            ++itb;
+        } else {
+            ++ita;
+            ++itb;
+        }
+    }
+    la.erase(ita,la.end());
+}
+
+void queryOneDim(std::vector<TestIndex>& vec){
+    std::string srcip_filename = "./data/index/test.pcap_srcip_idx";
+    std::string dstip_filename = "./data/index/test.pcap_dstip_idx";
+    std::string srcport_filename = "./data/index/test.pcap_srcport_idx";
+    std::string dstport_filename = "./data/index/test.pcap_dstport_idx";
+
+    std::string srcip_list = std::string();
+    srcip_list.resize(1631762*12);
+    std::string dstip_list = std::string();
+    dstip_list.resize(1631762*12);
+    std::string srcport_list = std::string();
+    srcport_list.resize(1631762*10);
+    std::string dstport_list = std::string();
+    dstport_list.resize(1631762*10);
+
+
+    std::ifstream srcip_infile(srcip_filename);
+    srcip_infile.read(&srcip_list[0], srcip_list.size());
+    srcip_infile.close();
+
+    std::ifstream dstip_infile(dstip_filename);
+    dstip_infile.read(&dstip_list[0], dstip_list.size());
+    dstip_infile.close();
+
+    std::ifstream srcport_infile(srcport_filename);
+    srcport_infile.read(&srcport_list[0], srcip_list.size());
+    srcport_infile.close();
+
+    std::ifstream dstport_infile(dstport_filename);
+    dstport_infile.read(&dstport_list[0], dstip_list.size());
+    dstport_infile.close();
+
+    auto start = std::chrono::high_resolution_clock::now();
+    for(auto id:vec){
+        auto srcip_ret = binarySearch(&srcip_list[0],srcip_list.size(),id.srcip);
+        auto dstip_ret = binarySearch(&dstip_list[0],dstip_list.size(),id.dstip);
+        auto srcport_ret = binarySearch(&srcport_list[0],srcport_list.size(),id.srcport);
+        auto dstport_ret = binarySearch(&dstport_list[0],dstport_list.size(),id.dstport);
+        intersect(srcip_ret,dstip_ret);
+        intersect(srcip_ret,srcport_ret);
+        intersect(srcip_ret,dstport_ret);
+        // printf("%zu\n",srcip_ret.size());
+        // printf("%lu\n",*srcip_ret.begin());
+        // break;
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    u_int64_t duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("time:%lu\n",duration_time);
+}
+
 int main(){
     // SkipList* skipList = new SkipList(sizeof(ZOrderIPv4)*8,sizeof(ZOrderIPv4),sizeof(u_int64_t));
     // readFile(skipList);
     // std::cout << "read done" << std::endl;
     // writeFile(skipList);
+
+    // std::vector<TestIndex> vec = std::vector<TestIndex>();
+    // vec.resize(1631762);
+    // std::ifstream infile("./data/index/test.vec", std::ios::binary);
+    // if (!infile.is_open()) {
+    //     std::cerr << "Error opening file: " << "./data/index/test.vec" << std::endl;
+    // }
+    // infile.read(reinterpret_cast<char*>(vec.data()), vec.size()*sizeof(ZOrderIPv4));
+    // infile.close();
+    // std::cout << "read done" << std::endl;
+    // queryZOrder(vec);
+
+    // buildOneDim();
 
     std::vector<TestIndex> vec = std::vector<TestIndex>();
     vec.resize(1631762);
@@ -318,6 +429,6 @@ int main(){
     infile.read(reinterpret_cast<char*>(vec.data()), vec.size()*sizeof(ZOrderIPv4));
     infile.close();
     std::cout << "read done" << std::endl;
-    queryZOrder(vec);
+    queryOneDim(vec);
     return 0;
 }

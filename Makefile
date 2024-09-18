@@ -6,23 +6,24 @@ CC := clang++
 COMPILE_OPT := -std=c++17
 INC = -I$(LIB_PATH)
 
-TARGET = zOrderTest
-TEST_SRCS = zOrderTest.cpp
-COMPONENT_SRCS = 
+TARGET = dpdkControllerTest
+TEST_SRCS = dpdkControllerTest.cpp
+# COMPONENT_SRCS = controller.cpp dpdkReader.cpp indexGenerator.cpp storage.cpp truncateChecker.cpp querier.cpp directStorage.cpp
+COMPONENT_SRCS = controller.cpp dpdkReader.cpp directStorage.cpp indexGenerator.cpp indexStorage.cpp 
 SRCS = $(addprefix $(TEST_PATH), $(TEST_SRCS)) $(addprefix $(COMPONENT_PATH), $(COMPONENT_SRCS))
 # TEST_OBJS = $(TEST_SRCS:.cpp=.o)
 # COMPONENT_OBJS = $(COMPONENT_SRCS:.cpp=.o)
 OBJS = $(addprefix $(BUILD_PATH), $(SRCS:.cpp=.o))
 
-# PKGCONF ?= pkg-config
-# ifneq ($(shell $(PKGCONF) --exists libdpdk && echo 0),0)
-# $(error "no installation of DPDK found")
-# endif
+PKGCONF ?= pkg-config
+ifneq ($(shell $(PKGCONF) --exists libdpdk && echo 0),0)
+$(error "no installation of DPDK found")
+endif
 
-# PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
-# COMPILE_OPT += -O3 $(shell $(PKGCONF) --cflags libdpdk)
-# COMPILE_OPT += -DALLOW_EXPERIMENTAL_API
-# LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
+PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
+COMPILE_OPT += -O3 $(shell $(PKGCONF) --cflags libdpdk)
+COMPILE_OPT += -DALLOW_EXPERIMENTAL_API
+LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 
 all: clean $(TARGET)
 

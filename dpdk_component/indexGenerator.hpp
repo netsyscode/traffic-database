@@ -17,17 +17,20 @@ class IndexGenerator{
     u_int32_t threadID;
     std::atomic_bool stop;
 
+    u_int64_t duration_time;
+
     Index* readIndexFromBuffer();
     void putIndexToCache(Index* index);
 
 public:
-    IndexGenerator(PointerRingBuffer* buffer,IndexBuffer* indexBuffer){
+    IndexGenerator(PointerRingBuffer* buffer,IndexBuffer* indexBuffer, u_int32_t threadID){
         this->buffer = buffer;
         this->indexBuffer = indexBuffer;
         this->indexCacheCount = indexBuffer->getCacheCount();
         this->cacheID = 0;
-        this->threadID = std::numeric_limits<uint32_t>::max();
+        this->threadID = threadID;
         this->stop = true;
+        this->duration_time = 0;
     }
     ~IndexGenerator(){}
     void setThreadID(u_int32_t threadID);
