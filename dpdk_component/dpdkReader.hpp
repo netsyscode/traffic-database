@@ -57,8 +57,8 @@ class DPDKReader{
     PacketAggregator* packetAggregator;
 
     // write only
-    // std::vector<PointerRingBuffer*>* indexRings;
-    PointerRingBuffer* indexRing;
+    std::vector<PointerRingBuffer*>* indexRings;
+    // PointerRingBuffer* indexRing;
 
     std::atomic_bool stop;
 
@@ -75,8 +75,8 @@ class DPDKReader{
     bool writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t ts);
 
 public:
-    DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, PointerRingBuffer* ring, u_int16_t port_id, u_int16_t rx_id, u_int64_t capacity, MemoryBuffer* buffer):
-    pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),dpdk(dpdk),indexRing(ring),port_id(port_id),rx_id(rx_id),capacityUnit(capacity){
+    DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, std::vector<PointerRingBuffer*>* rings, u_int16_t port_id, u_int16_t rx_id, u_int64_t capacity, MemoryBuffer* buffer):
+    pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),dpdk(dpdk),indexRings(rings),port_id(port_id),rx_id(rx_id),capacityUnit(capacity){
         this->offset = pcap_header_len;
         this->stop = true;
         this->duration_time = 0;

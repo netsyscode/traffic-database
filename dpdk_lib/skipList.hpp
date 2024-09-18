@@ -306,21 +306,21 @@ public:
     u_int32_t getWriteThreadCount()const{
         return this->writeThreadCount.load();
     }
-    void insert(std::string key, u_int64_t value){
+    bool insert(std::string key, u_int64_t value, u_int64_t maxNode){
         // construct new node
         if(key.size()!=this->keyLen){
             printf("Skip list error: insert with wrong key length %lu-%u!\n",key.size(),this->keyLen);
             // std::cerr << "Skip list error: insert with wrong key length!" <<std::endl;
-            return;
+            return true;
         }
 
         // printf("put one.\n");
         
-        // u_int64_t now_node_num = this->nodeNum++;
-        // if(now_node_num > maxNode){
-        //     this->nodeNum--;
-        //     return false;
-        // }
+        u_int64_t now_node_num = this->nodeNum++;
+        if(now_node_num > maxNode){
+            this->nodeNum--;
+            return false;
+        }
 
         int newLevel = randomLevel();
         void* newNode = this->newNode(key,value,newLevel);
@@ -354,7 +354,7 @@ public:
             }
         }
 
-        this->nodeNum++;
+        // this->nodeNum++;
 
         u_int32_t curLevel = this->level.load();
         while (curLevel < newLevel) {// CAS update level
@@ -364,7 +364,7 @@ public:
                 curLevel = this->level.load();
             }
         }
-        return;
+        return true;
     }
     std::list<u_int32_t> findByKey(std::string key){
         if(key.size()!=this->keyLen){

@@ -32,8 +32,8 @@ private:
     std::string pcapHeader;
     std::string bpf_prog_name;
 
-    PointerRingBuffer* indexRing;
-    IndexBuffer* indexBuffer;
+    std::vector<PointerRingBuffer*>* indexRings;
+    std::vector<IndexBuffer*>* indexBuffers;
 
     DPDK* dpdk;
     std::vector<MemoryBuffer*> buffers;
@@ -62,8 +62,8 @@ private:
 
 public:
     Controller(){
-        this->indexRing = nullptr;
-        this->indexBuffer = nullptr;
+        this->indexRings = new std::vector<PointerRingBuffer*>();
+        this->indexBuffers = new std::vector<IndexBuffer*>();
         // this->truncators = new std::vector<Truncator*>(INDEX_NUM,nullptr);
         // this->storageRing = nullptr;
         // this->storageMetas = nullptr;

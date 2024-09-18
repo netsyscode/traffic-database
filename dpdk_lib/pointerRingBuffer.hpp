@@ -84,13 +84,13 @@ public:
 
         while(!this->signalBuffer_[pos]){
             if(this->stop){
-                break;
+                return nullptr;
             }
         } // wait util writed
 
-        if(this->stop){
-            return nullptr;
-        }
+        // if(!this->stop){
+        //     return nullptr;
+        // }
 
         void* data = this->pointers[pos];
         this->signalBuffer_[pos] = false;

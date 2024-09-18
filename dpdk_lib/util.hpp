@@ -18,10 +18,18 @@ enum IndexType{
 
 const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2};
 
-struct Index{
+struct IndexTMP{
     FlowMetadata meta;
     u_int64_t ts;
     u_int64_t value;
+};
+
+struct Index{
+    u_int64_t key;
+    u_int64_t value;
+    u_int64_t ts;
+    u_int8_t id;
+    u_int8_t len;
 };
 
 struct HilbertMeta{

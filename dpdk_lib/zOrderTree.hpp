@@ -54,7 +54,7 @@ public:
     u_int32_t mid;
     u_int32_t high;
     ZOrderIPv4(){}
-    ZOrderIPv4(Index* index){
+    ZOrderIPv4(IndexTMP* index){
         this->low = this->computeZOrder(index->meta.sourcePort,index->meta.destinationPort);
         u_int64_t tmp = this->computeZOrder(*(u_int32_t*)(index->meta.sourceAddress.c_str()), *(u_int32_t*)(index->meta.destinationAddress.c_str()));
         this->mid = tmp & 0xffffffff;

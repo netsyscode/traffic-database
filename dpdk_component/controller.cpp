@@ -46,7 +46,9 @@ void Controller::threadsStop(){
         printf("lcore %u stop.\n",lcore_id);
     }
 
-    this->indexRing->asynchronousStop();
+    for(auto ir:*this->indexRings){
+        ir->asynchronousStop();
+    }
     for(u_int32_t i=0;i<this->indexGenerators.size();++i){
         this->indexGenerators[i]->asynchronousStop();
         this->indexGeneratorThreads[i]->join();
@@ -178,13 +180,25 @@ void Controller::clear(){
     //     this->truncators->clear();
     //     delete this->truncators;
     // }
-    if(this->indexRing!=nullptr){
-        delete this->indexRing;
-        this->indexRing = nullptr;
+    if(this->indexRings!=nullptr){
+        for(auto ib:(*(this->indexRings))){
+            if(ib!=nullptr){
+                delete ib;
+                ib = nullptr;
+            }
+        }
+        delete this->indexRings;
+        this->indexRings = nullptr;
     }
-    if(this->indexBuffer!=nullptr){
-        delete this->indexBuffer;
-        this->indexBuffer = nullptr;
+    if(this->indexBuffers != nullptr){
+        for(auto ib:(*(this->indexBuffers))){
+            if(ib!=nullptr){
+                delete ib;
+                ib = nullptr;
+            }
+        }
+        delete this->indexBuffers;
+        this->indexBuffers = nullptr;
     }
     // if(this->querier!=nullptr){
     //     delete this->querier;
@@ -195,7 +209,10 @@ void Controller::clear(){
 }
 
 void Controller::init(InitData init_data){
-    this->indexRing =  new PointerRingBuffer(init_data.index_ring_capacity);
+    for(u_int32_t i=0;i<flowMetaEleLens.size();++i){
+        PointerRingBuffer* ir =  new PointerRingBuffer(init_data.index_ring_capacity);
+        this->indexRings->push_back(ir);
+    }
 
     std::vector<SkipListMeta> metas = std::vector<SkipListMeta>();
     for(auto len:flowMetaEleLens){
@@ -207,7 +224,10 @@ void Controller::init(InitData init_data){
         metas.push_back(meta);
     }
 
-    this->indexBuffer = new IndexBuffer(5,metas,init_data.max_node);
+    for(u_int32_t i=0;i<flowMetaEleLens.size();++i){
+        IndexBuffer* ib = new IndexBuffer(5,metas[i],init_data.max_node);
+        (*(this->indexBuffers)).push_back(ib);
+    }
 
     this->dpdk = new DPDK(init_data.nb_rx,1);
     
@@ -217,12 +237,12 @@ void Controller::init(InitData init_data){
     }
 
     for(u_int32_t i=0;i<init_data.index_storage_thread_num;++i){
-        IndexStorage* indexStorage = new IndexStorage(this->indexBuffer);
+        IndexStorage* indexStorage = new IndexStorage((*(this->indexBuffers))[i%flowMetaEleLens.size()],i%flowMetaEleLens.size());
         this->indexStorages.push_back(indexStorage);
     }
 
     for(u_int32_t i=0;i<init_data.index_thread_num;++i){
-        IndexGenerator* ig = new IndexGenerator(this->indexRing,this->indexBuffer,i);
+        IndexGenerator* ig = new IndexGenerator((*(this->indexRings))[i%flowMetaEleLens.size()],this->indexBuffers,(*(this->indexBuffers))[0]->getCacheCount(),i);
         this->indexGenerators.push_back(ig);
     }
 
@@ -231,7 +251,7 @@ void Controller::init(InitData init_data){
         MemoryBuffer* buffer = new MemoryBuffer(0,init_data.file_capacity,5,file_name);
         this->buffers.push_back(buffer);
         this->directStorages[i%init_data.direct_storage_thread_num]->addBuffer(buffer);
-        DPDKReader* reader = new DPDKReader(init_data.pcap_header_len,init_data.eth_header_len,dpdk,this->indexRing,0,i,init_data.file_capacity,buffer);
+        DPDKReader* reader = new DPDKReader(init_data.pcap_header_len,init_data.eth_header_len,dpdk,this->indexRings,0,i,init_data.file_capacity,buffer);
         this->readers.push_back(reader);
     }
 
@@ -261,7 +281,7 @@ void Controller::run(){
             printf("Controller error: load bpf fail at %u\n",i);
         }
     }
-    std::this_thread::sleep_for(std::chrono::seconds(4));
+    // std::this_thread::sleep_for(std::chrono::seconds(4));
     // for(u_int16_t i=0; i<this->readers.size(); ++i){
     //     this->dpdk->unloadBPF(0, i);
     // }

@@ -69,12 +69,13 @@ bool IndexStorage::runUnit(){
     if(list == nullptr){
         return false;
     }
-    auto sk_lists = list->getCache();
-    u_int32_t id = 0;
-    for(auto sk:sk_lists){
-        processSkipList(sk,ts,id);
-        id++;
-    }
+    processSkipList(list,ts,this->bufferID);
+    // auto sk_lists = list->getCache();
+    // u_int32_t id = 0;
+    // for(auto sk:sk_lists){
+    //     processSkipList(sk,ts,id);
+    //     id++;
+    // }
     printf("Index Storage log: write id %u.\n",this->checkID);
     this->checkID ++;
     this->checkID %= this->cacheCount;
@@ -99,12 +100,13 @@ void IndexStorage::run(){
         return;
     }
     printf("Index Storage log: direct write id %u.\n",this->checkID);
-    auto sk_lists = list->getCache();
-    u_int32_t id = 0;
-    for(auto sk:sk_lists){
-        processSkipList(sk,ts,id);
-        id++;
-    }
+    processSkipList(list,ts,this->bufferID);
+    // auto sk_lists = list->getCache();
+    // u_int32_t id = 0;
+    // for(auto sk:sk_lists){
+    //     processSkipList(sk,ts,id);
+    //     id++;
+    // }
     printf("Index Storage log: thread quit.\n");
     return;
 }

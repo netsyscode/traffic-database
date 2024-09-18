@@ -77,12 +77,45 @@ u_int64_t DPDKReader::calValue(u_int64_t _offset){
 
 bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t ts){
     Index* index = new Index();
-    index->meta = meta;
+    index->key = *(u_int32_t*)(meta.sourceAddress.c_str());
     index->value = value;
     index->ts = ts;
-    if(!this->indexRing->put((void*)index)){
+    index->id = 0;
+    index->len = 4;
+    if(!(*(this->indexRings))[0]->put((void*)index)){
         return false;
     }
+
+    index = new Index();
+    index->key =  *(u_int32_t*)(meta.destinationAddress.c_str());
+    index->value = value;
+    index->ts = ts;
+    index->id = 1;
+    index->len = 4;
+    if(!(*(this->indexRings))[1]->put((void*)index)){
+        return false;
+    }
+
+    index = new Index();
+    index->key = meta.sourcePort;
+    index->value = value;
+    index->ts = ts;
+    index->id = 2;
+    index->len = 2;
+    if(!(*(this->indexRings))[2]->put((void*)index)){
+        return false;
+    }
+
+    index = new Index();
+    index->key = meta.destinationPort;
+    index->value = value;
+    index->ts = ts;
+    index->id = 3;
+    index->len = 2;
+    if(!(*(this->indexRings))[3]->put((void*)index)){
+        return false;
+    }
+
     return true;
 }
 
@@ -236,19 +269,26 @@ int DPDKReader::run(){
 //     infile.close();
 //     auto start = std::chrono::high_resolution_clock::now();
 //     u_int64_t id_count = 0;
-//     for(auto id:vec){
-//         FlowMetadata flow_meta = {
-//             .sourceAddress = std::string((char*)&id.srcip,sizeof(u_int32_t)),
-//             .destinationAddress = std::string((char*)&id.dstip,sizeof(u_int32_t)),
-//             .sourcePort = id.srcport,
-//             .destinationPort = id.dstport,
-//         };
-//         if(!this->writeIndexToRing(id_count,flow_meta,0)){
-//             printf("DPDK Reader error: write index to ring failed!\n");
-//         }
-//         id_count ++;
-//         if(id_count >= 800000){
-//             break;
+//     for(u_int32_t i = 0;i<2;++i){
+//         for(auto id:vec){
+            
+//             FlowMetadata flow_meta = {
+//                 .sourceAddress = std::string((char*)&id.srcip,sizeof(u_int32_t)),
+//                 .destinationAddress = std::string((char*)&id.dstip,sizeof(u_int32_t)),
+//                 .sourcePort = id.srcport,
+//                 .destinationPort = id.dstport,
+//             };
+//             id.srcip++;
+//             id.dstip++;
+//             id.srcport++;
+//             id.dstport++;
+//             if(!this->writeIndexToRing(id_count,flow_meta,0)){
+//                 printf("DPDK Reader error: write index to ring failed!\n");
+//             }
+//             id_count ++;
+//             // if(id_count >= 800000){
+//             //     break;
+//             // }
 //         }
 //     }
 //     auto end = std::chrono::high_resolution_clock::now();
