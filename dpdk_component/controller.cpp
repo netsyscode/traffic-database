@@ -4,6 +4,9 @@ void Controller::threadsRun(){
     // this->storageThread = new std::thread(&Storage::run,this->storage);
 
     // this->checkThread = new std::thread(&TruncateChecker::run,this->checker);
+    // std::thread t = std::thread(&DPDKReader::run,readers[0]);
+
+    // sleep(3);
 
     for(auto s:this->indexStorages){
         std::thread* indexStorageThread = new std::thread(&IndexStorage::run, s);
@@ -30,6 +33,9 @@ void Controller::threadsRun(){
             rte_exit(EXIT_FAILURE, "Error launching lcore %u\n", lcore_id);
         }
     }
+    
+    // readers[0]->asynchronousStop();
+    // t.join();
 }
 
 // void Controller::queryThreadRun(){
@@ -209,10 +215,17 @@ void Controller::clear(){
 }
 
 void Controller::init(InitData init_data){
-    for(u_int32_t i=0;i<flowMetaEleLens.size();++i){
-        PointerRingBuffer* ir =  new PointerRingBuffer(init_data.index_ring_capacity);
-        this->indexRings->push_back(ir);
-    }
+    // this->bindCore(2);
+
+    // for(u_int32_t i=0;i<flowMetaEleLens.size();++i){
+    //     PointerRingBuffer* ir =  new PointerRingBuffer(init_data.index_ring_capacity);
+    //     this->indexRings->push_back(ir);
+    // }
+
+    // for(u_int32_t i=0;i<flowMetaEleLens.size();++i){
+    PointerRingBuffer* ir =  new PointerRingBuffer(init_data.index_ring_capacity);
+    this->indexRings->push_back(ir);
+    // }
 
     std::vector<SkipListMeta> metas = std::vector<SkipListMeta>();
     for(auto len:flowMetaEleLens){
@@ -242,7 +255,7 @@ void Controller::init(InitData init_data){
     }
 
     for(u_int32_t i=0;i<init_data.index_thread_num;++i){
-        IndexGenerator* ig = new IndexGenerator((*(this->indexRings))[i%flowMetaEleLens.size()],this->indexBuffers,(*(this->indexBuffers))[0]->getCacheCount(),i);
+        IndexGenerator* ig = new IndexGenerator((*(this->indexRings))[0],this->indexBuffers,(*(this->indexBuffers))[0]->getCacheCount(),i*2+4);
         this->indexGenerators.push_back(ig);
     }
 
@@ -268,7 +281,31 @@ void Controller::init(InitData init_data){
     // this->querier = new Querier(this->storageMetas,init_data.pcap_header);
 }
 
+void Controller::bindCore(u_int32_t cpu){
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu, &cpuset);
+
+    pthread_t thread = pthread_self();
+
+    int set_result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0) {
+        std::cerr << "Error setting thread affinity: " << set_result << std::endl;
+    }
+
+    // 确认设置是否成功
+    CPU_ZERO(&cpuset);
+    pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+
+    if (CPU_ISSET(cpu, &cpuset)) {
+        printf("Controller log: %lu bind to cpu %d.\n",thread,cpu);
+    } else {
+        printf("Controller warning: %lu failed to bind to cpu %d!\n",thread,cpu);
+    }
+}
+
 void Controller::run(){
+
     std::cout << "Controller log: run." << std::endl;
     this->threadsRun();
 

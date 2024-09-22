@@ -18,9 +18,9 @@ void IndexGenerator::putIndexToCache(Index* index){
     
 
     while(true){
-        if(index->id != 0){
-            break;
-        }
+        // if(index->id != 0){
+        //     break;
+        // }
         std::string key;
         if(index->len == 2){
             u_int32_t keyInt = (u_int16_t)(index->key);
@@ -57,8 +57,32 @@ void IndexGenerator::putIndexToCache(Index* index){
 void IndexGenerator::setThreadID(u_int32_t threadID){
     this->threadID = threadID;
 }
+void IndexGenerator::bindCore(u_int32_t cpu){
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu, &cpuset);
+
+    pthread_t thread = pthread_self();
+
+    int set_result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0) {
+        std::cerr << "Error setting thread affinity: " << set_result << std::endl;
+    }
+
+    // 确认设置是否成功
+    CPU_ZERO(&cpuset);
+    pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+
+    if (CPU_ISSET(cpu, &cpuset)) {
+        printf("Index generator log: %lu bind to cpu %d.\n",thread,cpu);
+    } else {
+        printf("Index generator warning: %lu failed to bind to cpu %d!\n",thread,cpu);
+    }
+}
 void IndexGenerator::run(){
     printf("Index generator log: thread run.\n");
+
+    this->bindCore(this->threadID);
 
     this->stop = false;
 

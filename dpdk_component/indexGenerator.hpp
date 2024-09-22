@@ -21,6 +21,7 @@ class IndexGenerator{
 
     Index* readIndexFromBuffer();
     void putIndexToCache(Index* index);
+    void bindCore(u_int32_t cpu);
 
 public:
     IndexGenerator(PointerRingBuffer* buffer,std::vector<IndexBuffer*>* indexBuffers, u_int32_t indexCacheCount, u_int32_t threadID){

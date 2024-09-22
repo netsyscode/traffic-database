@@ -92,7 +92,7 @@ bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t 
     index->ts = ts;
     index->id = 1;
     index->len = 4;
-    if(!(*(this->indexRings))[1]->put((void*)index)){
+    if(!(*(this->indexRings))[0]->put((void*)index)){
         return false;
     }
 
@@ -102,7 +102,7 @@ bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t 
     index->ts = ts;
     index->id = 2;
     index->len = 2;
-    if(!(*(this->indexRings))[2]->put((void*)index)){
+    if(!(*(this->indexRings))[0]->put((void*)index)){
         return false;
     }
 
@@ -112,7 +112,7 @@ bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t 
     index->ts = ts;
     index->id = 3;
     index->len = 2;
-    if(!(*(this->indexRings))[3]->put((void*)index)){
+    if(!(*(this->indexRings))[0]->put((void*)index)){
         return false;
     }
 

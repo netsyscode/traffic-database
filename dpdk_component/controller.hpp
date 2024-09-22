@@ -60,6 +60,8 @@ private:
     void threadsStop();
     void clear();
 
+    void bindCore(u_int32_t cpu);
+
 public:
     Controller(){
         this->indexRings = new std::vector<PointerRingBuffer*>();
