@@ -18,6 +18,14 @@ struct array_list_header{
     u_int32_t caplen;
 };
 
+struct compress_header{
+    u_int32_t flow_next_diff;
+    u_int32_t ts_h;
+    u_int32_t ts_l;
+    u_int16_t caplen;
+    u_int16_t compress_flag;
+};
+
 struct packet{
     pcap_header* header;
     char* data;

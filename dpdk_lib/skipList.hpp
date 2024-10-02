@@ -10,6 +10,14 @@
 #include <algorithm>
 #include <cstring>
 #include "zOrderTree.hpp"
+#include "bloomFilter.hpp"
+
+#pragma pack(1)
+struct PreIndex{
+    u_int8_t pre;
+    u_int32_t offset;
+};
+#pragma pack()
 
 template <class KeyType, class ValueType>
 class SkipListNode{
@@ -446,6 +454,119 @@ public:
             memcpy(&(data[offset]),&value,this->valueLen);
             offset += this->valueLen;
         }
+        return data;
+    }
+    std::string outputToCharCompressed(){
+        std::string data = std::string();
+        BloomFilter filter = BloomFilter(this->nodeNum, 3);
+
+        std::vector<std::string> layers = std::vector<std::string>(this->keyLen,std::string());
+        std::vector<u_int32_t> new_node_count = std::vector<u_int32_t>(this->keyLen,0);
+
+        std::string values = std::string(this->nodeNum * this->valueLen,0);
+        u_int32_t value_offset = 0;
+
+        std::string last_key = std::string();
+
+        bool new_pre = true;
+
+        for(auto node = this->getNext(head,0); node!=nullptr; node = this->getNext(node,0)){
+            std::string key = this->getKey(node);
+            if(key == last_key){
+                u_int64_t value = this->getValue(node);
+                memcpy(&(values[value_offset]),&value,this->valueLen);
+                value_offset += this->valueLen;
+                new_pre = false;
+                continue;
+            }
+            last_key = key;
+            filter.insert(key);
+
+            // for(auto c:key){
+            //     printf("%02x",(u_int8_t)c);
+            // }
+            // printf("\n");
+
+            for(u_int8_t i = 0; i< key.size(); ++i){
+                
+                u_int8_t pre = key[key.size() - i - 1];
+
+                // printf("%02x\n",(u_int8_t)pre);
+
+                if(new_pre){
+                    // only one node
+                    if (new_node_count[i]==1 && i != key.size()-1){
+                        u_int32_t off = 0x80000000;
+                        off += *(u_int32_t*)(&(layers[key.size()-1][layers[key.size()-1].size()-sizeof(off)]));
+                        memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
+                        for(u_int8_t j=i+1;j<key.size(); ++j){
+                            layers[j].resize(layers[j].length()-sizeof(PreIndex));
+                            new_node_count[j] = 0;
+                        }
+                    }
+
+                    layers[i].push_back(pre);
+                    u_int32_t offset = (i == key.size() - 1)? value_offset/this->valueLen : layers[i+1].size()/sizeof(PreIndex);
+                    layers[i] += std::string((char*)&offset,sizeof(u_int32_t));
+                    // printf("layer: %u, offset: %u\n",i,offset);
+                    new_node_count[i] = 1;
+                    new_pre = true;
+                }else{
+                    u_int8_t last_pre = layers[i][layers[i].size()-sizeof(PreIndex)];
+                    if (last_pre == pre){
+                        new_node_count[i]++;
+                        continue;
+                    }
+
+                    // only one node
+                    if (new_node_count[i]==1 && i != key.size()-1){
+                        u_int32_t off = 0x80000000;
+                        off += *(u_int32_t*)(&(layers[key.size()-1][layers[key.size()-1].size()-sizeof(off)]));
+                        memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
+                        for(u_int8_t j=i+1;j<key.size(); ++j){
+                            layers[j].resize(layers[j].length()-sizeof(PreIndex));
+                            new_node_count[j] = 0;
+                        }
+                    }
+
+                    layers[i].push_back(pre);
+                    u_int32_t offset = (i == key.size() - 1)? value_offset/this->valueLen : layers[i+1].size()/sizeof(PreIndex);
+                    layers[i] += std::string((char*)&offset,sizeof(u_int32_t));
+                    // printf("layer: %u, offset: %u\n",i,offset);
+                    new_node_count[i] = 1;
+                    new_pre = true;
+                }
+            }
+            u_int64_t value = this->getValue(node);
+            memcpy(&(values[value_offset]),&value,this->valueLen);
+            value_offset += this->valueLen;
+            new_pre = false;
+        }
+
+        for(u_int8_t i = 0; i< this->keyLen; ++i){
+            if (new_node_count[i]==1 && i != this->keyLen - 1){
+                u_int32_t off = 0x80000000;
+                off += *(u_int32_t*)(&(layers[this->keyLen - 1][layers[this->keyLen-1].size()-sizeof(off)]));
+                memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
+                for(u_int8_t j=i+1;j<this->keyLen; ++j){
+                    layers[j].resize(layers[j].length()-sizeof(PreIndex));
+                }
+                break;
+            }
+        }
+
+        data += std::string((char*)&this->nodeNum,sizeof(u_int32_t));
+        data += filter.bitArray;
+        for(auto layer:layers){
+            u_int32_t len = layer.size();
+            // printf("len: %u\n",len);
+            data += std::string((char*)&len,sizeof(u_int32_t));
+        }
+        for(auto layer:layers){
+            data+=layer;
+        }
+        data+=values;
+
         return data;
     }
     ZOrderIPv4Meta* outputToZOrderIPv4(){
