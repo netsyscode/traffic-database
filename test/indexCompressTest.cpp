@@ -10,24 +10,25 @@ struct TestIndex{
 };
 
 int main(){
-    // SkipList* sk = new SkipList(sizeof(u_int32_t)*8,sizeof(u_int32_t),sizeof(u_int64_t));
-    // u_int32_t key[3] = {0xcbc2b4b0, 0xcbc2b78a, 0xcbc40a85};
+    // SkipList* sk = new SkipList(sizeof(u_int64_t)*8,sizeof(u_int64_t),sizeof(u_int64_t));
+    // u_int64_t key[3] = {0xcbc2b4b0, 0xcbc2b78a, 0xcbc40a85};
     // u_int64_t value[3] = {0,1,2};
-    // sk->insert(std::string((char*)&key[0],sizeof(u_int32_t)),value[0],std::numeric_limits<uint64_t>::max());
-    // sk->insert(std::string((char*)&key[2],sizeof(u_int32_t)),value[1],std::numeric_limits<uint64_t>::max());
-    // sk->insert(std::string((char*)&key[1],sizeof(u_int32_t)),value[2],std::numeric_limits<uint64_t>::max());
-    // sk->insert(std::string((char*)&key[2],sizeof(u_int32_t)),value[2],std::numeric_limits<uint64_t>::max());
-    // sk->insert(std::string((char*)&key[1],sizeof(u_int32_t)),value[1],std::numeric_limits<uint64_t>::max());
+    // sk->insert(std::string((char*)&key[0],sizeof(u_int64_t)),value[0],std::numeric_limits<uint64_t>::max());
+    // sk->insert(std::string((char*)&key[2],sizeof(u_int64_t)),value[1],std::numeric_limits<uint64_t>::max());
+    // sk->insert(std::string((char*)&key[1],sizeof(u_int64_t)),value[2],std::numeric_limits<uint64_t>::max());
+    // sk->insert(std::string((char*)&key[2],sizeof(u_int64_t)),value[2],std::numeric_limits<uint64_t>::max());
+    // sk->insert(std::string((char*)&key[1],sizeof(u_int64_t)),value[1],std::numeric_limits<uint64_t>::max());
 
-    // std::string ret = sk->outputToCharCompressed();
+    // // std::string ret = sk->outputToCharCompressed();
+    // std::string ret = sk->outputToCharCompressedInt();
 
     // for(auto c:ret){
     //     printf("%02x",(u_int8_t)c);
     // }
     // printf("\n");
 
-    SkipList* sk = new SkipList(sizeof(ZOrderIPv4)*8,sizeof(ZOrderIPv4),sizeof(u_int64_t));
-    // SkipList* sk = new SkipList(sizeof(u_int32_t)*8,sizeof(u_int32_t),sizeof(u_int64_t));
+    // SkipList* sk = new SkipList(sizeof(ZOrderIPv4)*8,sizeof(ZOrderIPv4),sizeof(u_int64_t));
+    SkipList* sk = new SkipList(sizeof(u_int32_t)*8,sizeof(u_int32_t),sizeof(u_int64_t));
 
     std::vector<TestIndex> vec = std::vector<TestIndex>();
     vec.resize(1631762);
@@ -54,18 +55,22 @@ int main(){
         count++;
         ZOrderIPv4 zorder(&index);
         std::string id = std::string();
-        id += index.meta.destinationAddress;
-        id += index.meta.sourceAddress;
         id += std::string((char*)&index.meta.sourcePort,sizeof(index.meta.sourcePort));
         id += std::string((char*)&index.meta.destinationPort,sizeof(index.meta.destinationPort));
-        sk->insert(std::string((char*)&zorder,sizeof(zorder)),index.value,std::numeric_limits<uint64_t>::max());
+        id += index.meta.destinationAddress;
+        id += index.meta.sourceAddress;
+        
+        // sk->insert(std::string((char*)&zorder,sizeof(zorder)),index.value,std::numeric_limits<uint64_t>::max());
         // sk->insert(id,index.value,std::numeric_limits<uint64_t>::max());
-        // sk->insert(std::string((char*)&index.meta.sourcePort,sizeof(index.meta.sourcePort)),index.value,std::numeric_limits<uint64_t>::max());
+        sk->insert(index.meta.sourceAddress,index.value,std::numeric_limits<uint64_t>::max());
     }
     printf("insert done.\n");
 
     auto start = std::chrono::high_resolution_clock::now();
-    std::string ret = sk->outputToCharCompressed();
+    // std::string ret = sk->outputToCharCompressed();
+
+    // std::string ret = sk->outputToCharCompressedInt();
+    std::string ret = sk->outputToCharCompact();
     // std::string ret = sk->outputToChar();
     auto end = std::chrono::high_resolution_clock::now();
     auto duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();

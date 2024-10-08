@@ -12,9 +12,18 @@
 #include "zOrderTree.hpp"
 #include "bloomFilter.hpp"
 
+#define PRE_TYPE u_int16_t
+
 #pragma pack(1)
 struct PreIndex{
     u_int8_t pre;
+    u_int32_t offset;
+};
+#pragma pack()
+
+#pragma pack(1)
+struct PreIndexInt{
+    PRE_TYPE pre;
     u_int32_t offset;
 };
 #pragma pack()
@@ -455,6 +464,148 @@ public:
             offset += this->valueLen;
         }
         return data;
+    }
+    std::string outputToCharCompact(){
+        std::string data = std::string();
+        std::string values = std::string(this->nodeNum * this->valueLen,0);
+        u_int32_t offset = 0;
+        std::string last_key = std::string();
+        for(auto node = this->getNext(head,0); node!=nullptr; node = this->getNext(node,0)){
+            auto key = this->getKey(node);
+            if(last_key != key){
+                data += key;
+                data += std::string((char*)&offset,sizeof(offset));
+                last_key = key;
+            }
+            u_int64_t value = this->getValue(node);
+            memcpy(&(values[offset*this->valueLen]),&value,this->valueLen);
+            offset ++;
+        }
+        data += values;
+        return data;
+    }
+    std::string outputToCharCompressedInt(){
+        const u_int32_t slice_len = sizeof(PRE_TYPE);
+        const u_int32_t key_l = this->keyLen/slice_len;
+        std::string data = std::string();
+        BloomFilter filter = BloomFilter(this->nodeNum, 3);
+
+        std::vector<std::string> layers = std::vector<std::string>(key_l,std::string());
+        std::vector<u_int32_t> new_node_count = std::vector<u_int32_t>(key_l,0);
+
+        std::string values = std::string(this->nodeNum * this->valueLen,0);
+        u_int32_t value_offset = 0;
+
+        std::string last_key = std::string();
+
+        bool new_pre = true;
+
+        for(auto node = this->getNext(head,0); node!=nullptr; node = this->getNext(node,0)){
+            std::string key = this->getKey(node);
+            if(key == last_key){
+                u_int64_t value = this->getValue(node);
+                memcpy(&(values[value_offset]),&value,this->valueLen);
+                value_offset += this->valueLen;
+                new_pre = false;
+                continue;
+            }
+            last_key = key;
+            filter.insert(key);
+
+            // for(auto c:key){
+            //     printf("%02x",(u_int8_t)c);
+            // }
+            // printf("\n");
+
+            PRE_TYPE* key_int = (PRE_TYPE*)(&key[0]);
+            
+
+            for(u_int8_t i = 0; i< key_l; ++i){
+                
+                // u_int8_t pre = key[key.size() - i - 1];
+                PRE_TYPE pre = key_int[key_l - i - 1];
+
+                // printf("%02x\n",(u_int8_t)pre);
+
+                if(new_pre){
+                    // only one node
+                    if (new_node_count[i]==1 && i != key_l-1){
+                        u_int32_t off = 0x80000000;
+                        off += *(u_int32_t*)(&(layers[key_l-1][layers[key_l-1].size()-sizeof(off)]));
+                        memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
+                        for(u_int8_t j=i+1;j<key_l; ++j){
+                            layers[j].resize(layers[j].length()-sizeof(PreIndexInt));
+                            new_node_count[j] = 0;
+                        }
+                    }
+
+                    // layers[i].push_back(pre);
+                    layers[i] += std::string((char*)&pre,sizeof(pre));
+                    u_int32_t offset = (i == key_l - 1)? value_offset/this->valueLen : layers[i+1].size()/sizeof(PreIndexInt);
+                    layers[i] += std::string((char*)&offset,sizeof(u_int32_t));
+                    // printf("layer: %u, offset: %u\n",i,offset);
+                    new_node_count[i] = 1;
+                    new_pre = true;
+                }else{
+                    // u_int8_t last_pre = layers[i][layers[i].size()-sizeof(PreIndexInt)];
+                    PRE_TYPE last_pre = *(PRE_TYPE*)&(layers[i][layers[i].size()-sizeof(PreIndexInt)]);
+                    if (last_pre == pre){
+                        new_node_count[i]++;
+                        continue;
+                    }
+
+                    // only one node
+                    if (new_node_count[i]==1 && i != key_l-1){
+                        u_int32_t off = 0x80000000;
+                        off += *(u_int32_t*)(&(layers[key_l-1][layers[key_l-1].size()-sizeof(off)]));
+                        memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
+                        for(u_int8_t j=i+1;j<key_l; ++j){
+                            layers[j].resize(layers[j].length()-sizeof(PreIndexInt));
+                            new_node_count[j] = 0;
+                        }
+                    }
+
+                    // layers[i].push_back(pre);
+                    layers[i] += std::string((char*)&pre,sizeof(pre));
+                    u_int32_t offset = (i == key_l - 1)? value_offset/this->valueLen : layers[i+1].size()/sizeof(PreIndexInt);
+                    layers[i] += std::string((char*)&offset,sizeof(u_int32_t));
+                    // printf("layer: %u, offset: %u\n",i,offset);
+                    new_node_count[i] = 1;
+                    new_pre = true;
+                }
+            }
+            u_int64_t value = this->getValue(node);
+            memcpy(&(values[value_offset]),&value,this->valueLen);
+            value_offset += this->valueLen;
+            new_pre = false;
+        }
+
+        for(u_int8_t i = 0; i< key_l; ++i){
+            if (new_node_count[i]==1 && i != key_l - 1){
+                u_int32_t off = 0x80000000;
+                off += *(u_int32_t*)(&(layers[key_l - 1][layers[key_l-1].size()-sizeof(off)]));
+                memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
+                for(u_int8_t j=i+1;j<key_l; ++j){
+                    layers[j].resize(layers[j].length()-sizeof(PreIndexInt));
+                }
+                break;
+            }
+        }
+
+        data += std::string((char*)&this->nodeNum,sizeof(u_int32_t));
+        data += filter.bitArray;
+        for(auto layer:layers){
+            u_int32_t len = layer.size();
+            // printf("len: %u\n",len);
+            data += std::string((char*)&len,sizeof(u_int32_t));
+        }
+        for(auto layer:layers){
+            data+=layer;
+        }
+        data+=values;
+
+        return data;
+
     }
     std::string outputToCharCompressed(){
         std::string data = std::string();
