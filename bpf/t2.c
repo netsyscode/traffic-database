@@ -9,7 +9,8 @@
  * (RTE_MBUF_F_RX_VLAN_PKT | RTE_MBUF_F_RX_VLAN_STRIPPED).
  * Doesn't touch contents of packet data.
  * To compile:
- * clang -O2 -target bpf -Wno-int-to-void-pointer-cast -c t2.c
+ * clang -O2 -emit-llvm -S t2.c
+ * llc -march=bpf -filetype=obj t2.ll
  *
  * NOTE: if DPDK is not installed system-wide, add compiler flag with path
  * to DPDK rte_mbuf.h file, e.g. "clang -I/path/to/dpdk/headers -O2 ..."
@@ -26,8 +27,11 @@ entry(void *pkt)
 	struct rte_mbuf *mb;
 
 	mb = pkt;
-	mb->vlan_tci = 0;
-	mb->ol_flags &= ~(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED);
+	mb->dynfield1[0] = 0xff;
+
+	
+	// mb->vlan_tci = 0;
+	// mb->ol_flags &= ~(RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED);
 
 	return 1;
 }

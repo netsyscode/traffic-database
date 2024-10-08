@@ -65,21 +65,26 @@ void IndexStorage::processSkipList(SkipList* list, u_int64_t ts, u_int32_t id){
     // delete list;
 }
 bool IndexStorage::runUnit(){
-    auto [list,ts] = this->buffer->getCache(this->checkID);
-    if(list == nullptr){
-        return false;
+    bool has_change = false;
+    for(u_int32_t i=0;i<this->buffers.size();++i){
+        auto [list,ts] = this->buffers[i]->getCache(this->checkIDs[i]);
+        if(list == nullptr){
+            continue;
+        }
+        has_change = true;
+        processSkipList(list,ts,this->bufferIDs[i]);
+
+        printf("Index Storage log: write id %u.\n",this->checkIDs[i]);
+        this->checkIDs[i] ++;
+        this->checkIDs[i] %= this->cacheCounts[i];
     }
-    processSkipList(list,ts,this->bufferID);
-    // auto sk_lists = list->getCache();
-    // u_int32_t id = 0;
-    // for(auto sk:sk_lists){
-    //     processSkipList(sk,ts,id);
-    //     id++;
-    // }
-    printf("Index Storage log: write id %u.\n",this->checkID);
-    this->checkID ++;
-    this->checkID %= this->cacheCount;
-    return true;
+    return has_change;
+}
+void IndexStorage::addBuffer(IndexBuffer* buffer, u_int32_t buffer_id){
+    this->buffers.push_back(buffer);
+    this->bufferIDs.push_back(buffer_id);
+    this->checkIDs.push_back(0);
+    this->cacheCounts.push_back(buffer->getCacheCount());
 }
 void IndexStorage::run(){
     this->stop = false;
@@ -92,21 +97,18 @@ void IndexStorage::run(){
             usleep(500000);
         }
     }
-    auto [list,ts] = this->buffer->directGetCache(this->checkID);
-    if(list == nullptr){
-        return;
+
+    for(u_int32_t i=0;i<this->buffers.size();++i){
+        auto [list,ts] = this->buffers[i]->directGetCache(this->checkIDs[i]);
+        if(list == nullptr){
+            continue;
+        }
+        if(list->getNodeNum()==0){
+            continue;
+        }
+        printf("Index Storage log: direct write id %u.\n",this->checkIDs[i]);
+        processSkipList(list,ts,this->bufferIDs[i]);
     }
-    if(list->getNodeNum()==0){
-        return;
-    }
-    printf("Index Storage log: direct write id %u.\n",this->checkID);
-    processSkipList(list,ts,this->bufferID);
-    // auto sk_lists = list->getCache();
-    // u_int32_t id = 0;
-    // for(auto sk:sk_lists){
-    //     processSkipList(sk,ts,id);
-    //     id++;
-    // }
     printf("Index Storage log: thread quit.\n");
     return;
 }

@@ -6,17 +6,7 @@ Index* IndexGenerator::readIndexFromBuffer(){
     return index;
 }
 void IndexGenerator::putIndexToCache(Index* index){
-    // std::vector<std::string> keys = std::vector<std::string>();
-
-    // auto start = std::chrono::high_resolution_clock::now();
-    // keys.push_back(index->meta.sourceAddress);
-    // keys.push_back(index->meta.destinationAddress);
-    // keys.push_back(std::string((char*)&index->meta.sourcePort,sizeof(index->meta.sourcePort)));
-    // keys.push_back(std::string((char*)&index->meta.destinationPort,sizeof(index->meta.destinationPort)));
-
-    // auto end = std::chrono::high_resolution_clock::now();
     
-
     while(true){
         // if(index->id != 0){
         //     break;

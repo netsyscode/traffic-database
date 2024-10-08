@@ -24,6 +24,7 @@ const u_int8_t pcap_head[] = {0xd4,0xc3,0xb2,0xa1,0x02,0x00,0x04,0x00,0x00,0x00,
 // }
 
 void DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts, PacketMeta* meta){
+    printf("tag:%03x\n",buf->dynfield1[0]);
     meta->header->flow_next_diff = std::numeric_limits<uint32_t>::max();
     meta->header->caplen = rte_pktmbuf_data_len(buf) - this->eth_header_len;
     meta->header->ts_l = (u_int32_t)(ts & 0xFFFFFFFF);

@@ -238,9 +238,16 @@ public:
     	memset(&prm, 0, sizeof(prm));
     	prm.xsym = bpf_xsym;
     	prm.nb_xsym = RTE_DIM(bpf_xsym);
-        prm.prog_arg.type = RTE_BPF_ARG_PTR;
-	    prm.prog_arg.size = RTE_MBUF_DEFAULT_BUF_SIZE;
-        flags |= RTE_BPF_ETH_F_JIT;
+
+        prm.prog_arg.type = RTE_BPF_ARG_PTR_MBUF;
+        prm.prog_arg.size = sizeof(struct rte_mbuf);
+        prm.prog_arg.buf_size = RTE_MBUF_DEFAULT_BUF_SIZE;
+
+        // prm.prog_arg.type = RTE_BPF_ARG_PTR;
+	    // prm.prog_arg.size = RTE_MBUF_DEFAULT_BUF_SIZE;
+        // flags |= RTE_BPF_ETH_F_JIT;
+    
+        
 
     	sname = ".text";
 

@@ -227,6 +227,19 @@ void Controller::init(InitData init_data){
     this->indexRings->push_back(ir);
     // }
 
+    this->dpdk = new DPDK(init_data.nb_rx,1);
+    
+    for(u_int32_t i=0;i<init_data.direct_storage_thread_num;++i){
+        DirectStorage* directStorage = new DirectStorage(i);
+        this->directStorages.push_back(directStorage);
+    }
+
+    for(u_int32_t i=0;i<init_data.index_storage_thread_num;++i){
+        // IndexStorage* indexStorage = new IndexStorage((*(this->indexBuffers))[i%flowMetaEleLens.size()],i%flowMetaEleLens.size());
+        IndexStorage* indexStorage = new IndexStorage();
+        this->indexStorages.push_back(indexStorage);
+    }
+
     std::vector<SkipListMeta> metas = std::vector<SkipListMeta>();
     for(auto len:flowMetaEleLens){
         SkipListMeta meta = {
@@ -239,19 +252,8 @@ void Controller::init(InitData init_data){
 
     for(u_int32_t i=0;i<flowMetaEleLens.size();++i){
         IndexBuffer* ib = new IndexBuffer(5,metas[i],init_data.max_node);
+        this->indexStorages[i%init_data.index_storage_thread_num]->addBuffer(ib,i);
         (*(this->indexBuffers)).push_back(ib);
-    }
-
-    this->dpdk = new DPDK(init_data.nb_rx,1);
-    
-    for(u_int32_t i=0;i<init_data.direct_storage_thread_num;++i){
-        DirectStorage* directStorage = new DirectStorage(i);
-        this->directStorages.push_back(directStorage);
-    }
-
-    for(u_int32_t i=0;i<init_data.index_storage_thread_num;++i){
-        IndexStorage* indexStorage = new IndexStorage((*(this->indexBuffers))[i%flowMetaEleLens.size()],i%flowMetaEleLens.size());
-        this->indexStorages.push_back(indexStorage);
     }
 
     for(u_int32_t i=0;i<init_data.index_thread_num;++i){
@@ -312,7 +314,7 @@ void Controller::run(){
     // this->queryThreadRun();
 
     printf("wait.\n");
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    
     for(u_int16_t i=0; i<this->readers.size(); ++i){
         if(this->dpdk->loadBPF(0, i, this->bpf_prog_name)){
             printf("Controller error: load bpf fail at %u\n",i);
@@ -322,7 +324,7 @@ void Controller::run(){
     // for(u_int16_t i=0; i<this->readers.size(); ++i){
     //     this->dpdk->unloadBPF(0, i);
     // }
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(4));
     
     // this->querierThread->join();
     this->threadsStop();
