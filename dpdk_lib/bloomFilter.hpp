@@ -12,6 +12,11 @@ public:
     BloomFilter(size_t size, size_t numHashFunctions) 
         : bitArray(size,0), k(numHashFunctions) {}
 
+    BloomFilter(char* data, u_int32_t len, size_t numHashFunctions){
+        this->bitArray = std::string(data,len);
+        this->k = numHashFunctions;
+    }
+
     // 插入元素
     void insert(const std::string& element) {
         for (size_t i = 0; i < k; ++i) {

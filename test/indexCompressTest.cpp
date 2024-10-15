@@ -1,5 +1,6 @@
 #include "../dpdk_lib/skipList.hpp"
 #include "../dpdk_lib/zOrderTree.hpp"
+#include "../dpdk_lib/indexBlock.hpp"
 #include <fstream>
 
 struct TestIndex{
@@ -8,6 +9,8 @@ struct TestIndex{
     u_int16_t srcport;
     u_int16_t dstport;
 };
+
+
 
 int main(){
     // SkipList* sk = new SkipList(sizeof(u_int64_t)*8,sizeof(u_int64_t),sizeof(u_int64_t));
@@ -27,8 +30,8 @@ int main(){
     // }
     // printf("\n");
 
-    // SkipList* sk = new SkipList(sizeof(ZOrderIPv4)*8,sizeof(ZOrderIPv4),sizeof(u_int64_t));
-    SkipList* sk = new SkipList(sizeof(u_int32_t)*8,sizeof(u_int32_t),sizeof(u_int64_t));
+    SkipList* sk = new SkipList(sizeof(ZOrderIPv4)*8,sizeof(ZOrderIPv4),sizeof(u_int64_t));
+    // SkipList* sk = new SkipList(sizeof(u_int32_t)*8,sizeof(u_int32_t),sizeof(u_int64_t));
 
     std::vector<TestIndex> vec = std::vector<TestIndex>();
     vec.resize(1631762);
@@ -41,7 +44,12 @@ int main(){
     std::cout << "read done" << std::endl;
 
     u_int64_t count = 0;
+    std::vector<ZOrderIPv4> keys = std::vector<ZOrderIPv4>();
+    // ZOrderIPv4 key;
     for(auto t:vec){
+        // if(count == 10){
+        //     break;
+        // }
         IndexTMP index = {
             .meta = {
                 .sourceAddress = std::string((char*)(&t.srcip),sizeof(t.srcip)),
@@ -54,28 +62,53 @@ int main(){
         };
         count++;
         ZOrderIPv4 zorder(&index);
+        keys.push_back(zorder);
+        // if (count == 10000){
+        //     key = zorder;
+        // }
         std::string id = std::string();
         id += std::string((char*)&index.meta.sourcePort,sizeof(index.meta.sourcePort));
         id += std::string((char*)&index.meta.destinationPort,sizeof(index.meta.destinationPort));
         id += index.meta.destinationAddress;
         id += index.meta.sourceAddress;
         
-        // sk->insert(std::string((char*)&zorder,sizeof(zorder)),index.value,std::numeric_limits<uint64_t>::max());
+        sk->insert(std::string((char*)&zorder,sizeof(zorder)),index.value,std::numeric_limits<uint64_t>::max());
         // sk->insert(id,index.value,std::numeric_limits<uint64_t>::max());
-        sk->insert(index.meta.sourceAddress,index.value,std::numeric_limits<uint64_t>::max());
+        // sk->insert(index.meta.sourceAddress,index.value,std::numeric_limits<uint64_t>::max());
     }
     printf("insert done.\n");
 
     auto start = std::chrono::high_resolution_clock::now();
     // std::string ret = sk->outputToCharCompressed();
 
-    // std::string ret = sk->outputToCharCompressedInt();
-    std::string ret = sk->outputToCharCompact();
+    std::string ret = sk->outputToCharCompressedInt();
+    // std::string ret = sk->outputToCharCompact();
     // std::string ret = sk->outputToChar();
     auto end = std::chrono::high_resolution_clock::now();
     auto duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     printf("time: %lu\n",duration_time);
     printf("%lu\n",ret.size());
 
+    IndexBlock block(sizeof(ZOrderIPv4),&ret[0],ret.size());
+    duration_time = 0;
+
+    // auto res = block.query(std::string((char*)&keys[311927],sizeof(ZOrderIPv4)));
+    // printf("len of ret: %zu, res:%lu.\n",res.size(),res.front());
+
+    count = 0;
+    for(auto key:keys){
+        start = std::chrono::high_resolution_clock::now();
+        auto res = block.query(std::string((char*)&key,sizeof(key)));
+        end = std::chrono::high_resolution_clock::now();
+        duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        if(res.size()!=1){
+            printf("id:%lu, len of ret: %zu, res:%lu.\n",count,res.size(),res.front());
+        }
+        count++;
+        // if(count == 10000){
+        //     break;
+        // }
+    }
+    printf("time: %lu\n",duration_time);
     return 0;
 }

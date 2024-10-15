@@ -12,7 +12,10 @@
 #include "zOrderTree.hpp"
 #include "bloomFilter.hpp"
 
-#define PRE_TYPE u_int16_t
+#define PRE_TYPE u_int32_t
+#define FILTER_K_LEN 3
+#define OFFSET_BIT 0x80000000
+#define OFFSET_MASK 0x7fffffff
 
 #pragma pack(1)
 struct PreIndex{
@@ -488,7 +491,7 @@ public:
         const u_int32_t slice_len = sizeof(PRE_TYPE);
         const u_int32_t key_l = this->keyLen/slice_len;
         std::string data = std::string();
-        BloomFilter filter = BloomFilter(this->nodeNum, 3);
+        BloomFilter filter = BloomFilter(this->nodeNum, FILTER_K_LEN);
 
         std::vector<std::string> layers = std::vector<std::string>(key_l,std::string());
         std::vector<u_int32_t> new_node_count = std::vector<u_int32_t>(key_l,0);
@@ -530,7 +533,7 @@ public:
                 if(new_pre){
                     // only one node
                     if (new_node_count[i]==1 && i != key_l-1){
-                        u_int32_t off = 0x80000000;
+                        u_int32_t off = OFFSET_BIT;
                         off += *(u_int32_t*)(&(layers[key_l-1][layers[key_l-1].size()-sizeof(off)]));
                         memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
                         for(u_int8_t j=i+1;j<key_l; ++j){
@@ -556,7 +559,7 @@ public:
 
                     // only one node
                     if (new_node_count[i]==1 && i != key_l-1){
-                        u_int32_t off = 0x80000000;
+                        u_int32_t off = OFFSET_BIT;
                         off += *(u_int32_t*)(&(layers[key_l-1][layers[key_l-1].size()-sizeof(off)]));
                         memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
                         for(u_int8_t j=i+1;j<key_l; ++j){
@@ -582,7 +585,7 @@ public:
 
         for(u_int8_t i = 0; i< key_l; ++i){
             if (new_node_count[i]==1 && i != key_l - 1){
-                u_int32_t off = 0x80000000;
+                u_int32_t off = OFFSET_BIT;
                 off += *(u_int32_t*)(&(layers[key_l - 1][layers[key_l-1].size()-sizeof(off)]));
                 memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
                 for(u_int8_t j=i+1;j<key_l; ++j){
@@ -647,7 +650,7 @@ public:
                 if(new_pre){
                     // only one node
                     if (new_node_count[i]==1 && i != key.size()-1){
-                        u_int32_t off = 0x80000000;
+                        u_int32_t off = OFFSET_BIT;
                         off += *(u_int32_t*)(&(layers[key.size()-1][layers[key.size()-1].size()-sizeof(off)]));
                         memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
                         for(u_int8_t j=i+1;j<key.size(); ++j){
@@ -671,7 +674,7 @@ public:
 
                     // only one node
                     if (new_node_count[i]==1 && i != key.size()-1){
-                        u_int32_t off = 0x80000000;
+                        u_int32_t off = OFFSET_BIT;
                         off += *(u_int32_t*)(&(layers[key.size()-1][layers[key.size()-1].size()-sizeof(off)]));
                         memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
                         for(u_int8_t j=i+1;j<key.size(); ++j){
@@ -696,7 +699,7 @@ public:
 
         for(u_int8_t i = 0; i< this->keyLen; ++i){
             if (new_node_count[i]==1 && i != this->keyLen - 1){
-                u_int32_t off = 0x80000000;
+                u_int32_t off = OFFSET_BIT;
                 off += *(u_int32_t*)(&(layers[this->keyLen - 1][layers[this->keyLen-1].size()-sizeof(off)]));
                 memcpy(&layers[i][layers[i].size()-sizeof(off)],&off,sizeof(off));
                 for(u_int8_t j=i+1;j<this->keyLen; ++j){
