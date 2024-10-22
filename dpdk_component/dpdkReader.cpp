@@ -150,6 +150,41 @@ bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t 
         return false;
     }
 
+    if (meta.sourceAddress.size() == 4){
+        index = new Index();
+        // index->key = meta.destinationPort;
+        QuarTurpleIPv4 ipv4Turple = {
+            .srcip = *(u_int32_t*)(meta.sourceAddress.c_str()),
+            .dstip = *(u_int32_t*)(meta.destinationAddress.c_str()),
+            .srcport = meta.sourcePort,
+            .dstport = meta.destinationPort,
+        };
+        index->key = std::string((char*)&(ipv4Turple),sizeof(ipv4Turple));
+        index->value = value;
+        index->ts = ts;
+        index->id = IndexType::QUARTURPLEIPv4;
+        index->len = sizeof(ipv4Turple);
+        if(!(*(this->indexRings))[0]->put((void*)index)){
+            return false;
+        }
+    }else{
+        index = new Index();
+        // index->key = meta.destinationPort;
+        QuarTurpleIPv6 ipv6Turple = {
+            .srcip = *(IPv6Address*)(meta.sourceAddress.c_str()),
+            .dstip = *(IPv6Address*)(meta.destinationAddress.c_str()),
+            .srcport = meta.sourcePort,
+            .dstport = meta.destinationPort,
+        };
+        index->key = std::string((char*)&(ipv6Turple),sizeof(ipv6Turple));
+        index->value = value;
+        index->ts = ts;
+        index->id = IndexType::QUARTURPLEIPv6;
+        index->len = sizeof(ipv6Turple);
+        if(!(*(this->indexRings))[0]->put((void*)index)){
+            return false;
+        }
+    }
     return true;
 }
 

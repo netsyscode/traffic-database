@@ -15,10 +15,10 @@ enum IndexType{
     DSTPORT,
     SRCIPv6,
     DSTIPv6,
+    QUARTURPLEIPv4,
+    QUARTURPLEIPv6,
     TOTAL,
 };
-
-const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2, 16, 16};
 
 struct IPv6Address{
     u_int64_t low;
@@ -60,6 +60,142 @@ struct IPv6Address{
         return !(*this < other);
     }
 };
+
+struct QuarTurpleIPv4{
+    u_int32_t srcip;
+    u_int32_t dstip;
+    u_int16_t srcport;
+    u_int16_t dstport;
+
+    bool operator<(const QuarTurpleIPv4& other) const {
+        if (srcip < other.srcip) {
+            return true;
+        } else if (srcip > other.srcip) {
+            return false;
+        }
+
+        if (dstip < other.dstip) {
+            return true;
+        } else if (dstip > other.dstip) {
+            return false;
+        }
+
+        if (srcport < other.srcport) {
+            return true;
+        } else if (srcport > other.srcport) {
+            return false;
+        }
+        // 如果高位相等，比较低位
+        return dstport < other.dstport;
+    }
+    // 重载比较运算符 ">"
+     bool operator>(const QuarTurpleIPv4& other) const {
+        if (srcip > other.srcip) {
+            return true;
+        } else if (srcip < other.srcip) {
+            return false;
+        }
+
+        if (dstip > other.dstip) {
+            return true;
+        } else if (dstip < other.dstip) {
+            return false;
+        }
+
+        if (srcport > other.srcport) {
+            return true;
+        } else if (srcport < other.srcport) {
+            return false;
+        }
+        // 如果高位相等，比较低位
+        return dstport > other.dstport;
+    }
+    // 重载比较运算符 "=="
+    bool operator==(const QuarTurpleIPv4& other) const {
+        return srcip == other.srcip && dstip == other.dstip && srcport == other.srcport && dstport == other.dstport;
+    }
+    // 重载比较运算符 "!="
+    bool operator!=(const QuarTurpleIPv4& other) const {
+        return !(*this == other);
+    }
+    // 重载比较运算符 "<="
+    bool operator<=(const QuarTurpleIPv4& other) const {
+        return !(*this > other);
+    }
+    // 重载比较运算符 ">="
+    bool operator>=(const QuarTurpleIPv4& other) const {
+        return !(*this < other);
+    }
+};
+
+struct QuarTurpleIPv6{
+    IPv6Address srcip;
+    IPv6Address dstip;
+    u_int16_t srcport;
+    u_int16_t dstport;
+
+    bool operator<(const QuarTurpleIPv6& other) const {
+        if (srcip < other.srcip) {
+            return true;
+        } else if (srcip > other.srcip) {
+            return false;
+        }
+
+        if (dstip < other.dstip) {
+            return true;
+        } else if (dstip > other.dstip) {
+            return false;
+        }
+
+        if (srcport < other.srcport) {
+            return true;
+        } else if (srcport > other.srcport) {
+            return false;
+        }
+        // 如果高位相等，比较低位
+        return dstport < other.dstport;
+    }
+    // 重载比较运算符 ">"
+     bool operator>(const QuarTurpleIPv6& other) const {
+        if (srcip > other.srcip) {
+            return true;
+        } else if (srcip < other.srcip) {
+            return false;
+        }
+
+        if (dstip > other.dstip) {
+            return true;
+        } else if (dstip < other.dstip) {
+            return false;
+        }
+
+        if (srcport > other.srcport) {
+            return true;
+        } else if (srcport < other.srcport) {
+            return false;
+        }
+        // 如果高位相等，比较低位
+        return dstport > other.dstport;
+    }
+    // 重载比较运算符 "=="
+    bool operator==(const QuarTurpleIPv6& other) const {
+        return srcip == other.srcip && dstip == other.dstip && srcport == other.srcport && dstport == other.dstport;
+    }
+    // 重载比较运算符 "!="
+    bool operator!=(const QuarTurpleIPv6& other) const {
+        return !(*this == other);
+    }
+    // 重载比较运算符 "<="
+    bool operator<=(const QuarTurpleIPv6& other) const {
+        return !(*this > other);
+    }
+    // 重载比较运算符 ">="
+    bool operator>=(const QuarTurpleIPv6& other) const {
+        return !(*this < other);
+    }
+};
+
+const std::vector<u_int32_t> flowMetaEleLens = {sizeof(u_int32_t), sizeof(u_int32_t), sizeof(u_int16_t), sizeof(u_int16_t), sizeof(IPv6Address), sizeof(IPv6Address),sizeof(QuarTurpleIPv4),sizeof(QuarTurpleIPv6)};
 
 struct IndexTMP{
     FlowMetadata meta;

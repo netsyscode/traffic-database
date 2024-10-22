@@ -95,6 +95,10 @@ class SkipList{
             IPv6Address* real_key= (IPv6Address*)&(key[0]);
             SkipListNode<IPv6Address,u_int64_t>* p = new SkipListNode<IPv6Address,u_int64_t>(*real_key,value,level);
             pointer = (void*)p;
+        }else if(this->keyLen == 40){
+            QuarTurpleIPv6* real_key= (QuarTurpleIPv6*)&(key[0]);
+            SkipListNode<QuarTurpleIPv6,u_int64_t>* p = new SkipListNode<QuarTurpleIPv6,u_int64_t>(*real_key,value,level);
+            pointer = (void*)p;
         }else{
             std::cerr << "Skip list error: newNode with undifined ele_len!" << std::endl;
         }
@@ -118,6 +122,9 @@ class SkipList{
             delete p;
         }else if(this->keyLen == 16){
             SkipListNode<IPv6Address,u_int64_t>* p = (SkipListNode<IPv6Address,u_int64_t>*)node;
+            delete p;
+        }else if(this->keyLen == 40){
+            SkipListNode<QuarTurpleIPv6,u_int64_t>* p = (SkipListNode<QuarTurpleIPv6,u_int64_t>*)node;
             delete p;
         }else{
             std::cerr << "Skip list error: deleteNode with undifined ele_len!" << std::endl;
@@ -143,6 +150,9 @@ class SkipList{
         }else if(this->keyLen == 16){
             SkipListNode<IPv6Address,u_int64_t>* p = (SkipListNode<IPv6Address,u_int64_t>*)node;
             pointer = (void*)(p->next[level]);
+        }else if(this->keyLen == 40){
+            SkipListNode<QuarTurpleIPv6,u_int64_t>* p = (SkipListNode<QuarTurpleIPv6,u_int64_t>*)node;
+            pointer = (void*)(p->next[level]);
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
         }
@@ -167,8 +177,11 @@ class SkipList{
         }else if(this->keyLen == 16){
             SkipListNode<IPv6Address,u_int64_t>* p = (SkipListNode<IPv6Address,u_int64_t>*)node;
             p->next[level] = (SkipListNode<IPv6Address,u_int64_t>*)next;
+        }else if(this->keyLen == 40){
+            SkipListNode<QuarTurpleIPv6,u_int64_t>* p = (SkipListNode<QuarTurpleIPv6,u_int64_t>*)node;
+            p->next[level] = (SkipListNode<QuarTurpleIPv6,u_int64_t>*)next;
         }else{
-            std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
+            std::cerr << "Skip list error: putNext with undifined ele_len!" << std::endl;
         }
     }
     u_int64_t getValue(void* node){
@@ -190,6 +203,9 @@ class SkipList{
             value = p->value;
         }else if(this->keyLen == 16){
             SkipListNode<IPv6Address,u_int64_t>* p = (SkipListNode<IPv6Address,u_int64_t>*)node;
+            value = p->value;
+        }else if(this->keyLen == 40){
+            SkipListNode<QuarTurpleIPv6,u_int64_t>* p = (SkipListNode<QuarTurpleIPv6,u_int64_t>*)node;
             value = p->value;
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
@@ -257,7 +273,18 @@ class SkipList{
                 return 1;
             }
             return 0;
-        }else{
+        }else if(this->keyLen == 40){
+            QuarTurpleIPv6* real_key= (QuarTurpleIPv6*)&(key[0]);
+            SkipListNode<QuarTurpleIPv6,u_int64_t>* p = (SkipListNode<QuarTurpleIPv6,u_int64_t>*)node;
+            if(p->key < *real_key){
+                return -1;
+            }
+            if(p->key > *real_key){
+                return 1;
+            }
+            return 0;
+        }
+        else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
         }
         return 0;
@@ -280,6 +307,9 @@ class SkipList{
             p->mutex.lock();
         }else if(this->keyLen == 16){
             SkipListNode<IPv6Address,u_int64_t>* p = (SkipListNode<IPv6Address,u_int64_t>*)node;
+            p->mutex.lock();
+        }else if(this->keyLen == 40){
+            SkipListNode<QuarTurpleIPv6,u_int64_t>* p = (SkipListNode<QuarTurpleIPv6,u_int64_t>*)node;
             p->mutex.lock();
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
@@ -304,6 +334,9 @@ class SkipList{
         }else if(this->keyLen == 16){
             SkipListNode<IPv6Address,u_int64_t>* p = (SkipListNode<IPv6Address,u_int64_t>*)node;
             p->mutex.unlock();
+        }else if(this->keyLen == 40){
+            SkipListNode<QuarTurpleIPv6,u_int64_t>* p = (SkipListNode<QuarTurpleIPv6,u_int64_t>*)node;
+            p->mutex.unlock();
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
         }
@@ -327,6 +360,9 @@ class SkipList{
             key = std::string((char*)&(p->key),this->keyLen);
         }else if(this->keyLen == 16){
             SkipListNode<IPv6Address,u_int64_t>* p = (SkipListNode<IPv6Address,u_int64_t>*)node;
+            key = std::string((char*)&(p->key),this->keyLen);
+        }else if(this->keyLen == 40){
+            SkipListNode<QuarTurpleIPv6,u_int64_t>* p = (SkipListNode<QuarTurpleIPv6,u_int64_t>*)node;
             key = std::string((char*)&(p->key),this->keyLen);
         }else{
             std::cerr << "Skip list error: getNext with undifined ele_len!" << std::endl;
