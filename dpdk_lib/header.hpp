@@ -2,6 +2,8 @@
 #define HEADER_H_
 #include <pcap.h>
 
+#define IPV6_HEADER_LEN 40
+
 /*从字符串直接转换为header时，为大端序*/
 
 struct pcap_header{

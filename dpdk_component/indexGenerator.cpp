@@ -11,19 +11,19 @@ void IndexGenerator::putIndexToCache(Index* index){
         // if(index->id != 0){
         //     break;
         // }
-        std::string key;
-        if(index->len == 2){
-            u_int32_t keyInt = (u_int16_t)(index->key);
-            key = std::string((char*)&(keyInt),index->len);
-        }else if(index->len == 4){
-            u_int32_t keyInt = (u_int32_t)(index->key);
-            key = std::string((char*)&(keyInt),index->len);
-        }else {
-            key = std::string();
-        }
+        // std::string key;
+        // if(index->len == 2){
+        //     // u_int32_t keyInt = (u_int16_t)(index->key);
+        //     // key = std::string((char*)&(keyInt),index->len);
+        // }else if(index->len == 4){
+        //     u_int32_t keyInt = (u_int32_t)(index->key);
+        //     key = std::string((char*)&(keyInt),index->len);
+        // }else {
+        //     key = std::string();
+        // }
         auto start = std::chrono::high_resolution_clock::now();
 
-        if((*(this->indexBuffers))[index->id]->insert(key,index->value,this->cacheID,index->ts,this->threadID)){
+        if((*(this->indexBuffers))[index->id]->insert(index->key,index->value,this->cacheID,index->ts,this->threadID)){
             auto end = std::chrono::high_resolution_clock::now();
             this->duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
             break;

@@ -21,6 +21,19 @@
 #include <rte_config.h>
 #include <rte_mbuf_core.h>
 
+struct Result{
+	uint8_t length;
+	uint32_t offset;
+};
+
+struct Result tcp_flags(char* ptr, uint32_t len, uint32_t proto){
+	struct Result result = { .length = 0, .offset = 0};
+	if (proto != 6){ return result;} // not tcp
+	result.length = 8; // length of flags
+	result.offset = 13; // position of flags
+	return result;
+}
+
 uint64_t
 entry(void *pkt)
 {

@@ -23,8 +23,19 @@ const u_int8_t pcap_head[] = {0xd4,0xc3,0xb2,0xa1,0x02,0x00,0x04,0x00,0x00,0x00,
 //     return hashValue;
 // }
 
+uint64_t swap_endianness(uint64_t value) {
+    return ((value >> 56) & 0x00000000000000FFULL) | // byte 0
+           ((value >> 40) & 0x000000000000FF00ULL) | // byte 1
+           ((value >> 24) & 0x00000000FF000000ULL) | // byte 2
+           ((value >> 8)  & 0x00FF000000000000ULL) | // byte 3
+           ((value << 8)  & 0xFF00000000000000ULL) | // byte 4
+           ((value << 24) & 0x0000FF0000000000ULL) | // byte 5
+           ((value << 40) & 0x000000FF00000000ULL) | // byte 6
+           ((value << 56) & 0x00000000000000FFULL);   // byte 7
+}
+
 void DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts, PacketMeta* meta){
-    printf("tag:%03x\n",buf->dynfield1[0]);
+    // printf("tag:%03x\n",buf->dynfield1[0]);
     meta->header->flow_next_diff = std::numeric_limits<uint32_t>::max();
     meta->header->caplen = rte_pktmbuf_data_len(buf) - this->eth_header_len;
     meta->header->ts_l = (u_int32_t)(ts & 0xFFFFFFFF);
@@ -55,6 +66,24 @@ FlowMetadata DPDKReader::getFlowMetaData(PacketMeta& meta){
             .destinationPort = htons(*dport),
         };
         return flow_meta;
+    }else if(version == 6){
+        const u_int16_t* sport = (const u_int16_t*)(meta.data + this->eth_header_len + IPV6_HEADER_LEN);
+        const u_int16_t* dport = sport + 1;
+        IPv6Address srcip = {
+            .high = swap_endianness(*(u_int64_t*)(meta.data + this->eth_header_len + 8)),
+            .low = swap_endianness(*(u_int64_t*)(meta.data + this->eth_header_len + 16)),
+        };
+        IPv6Address dstip = {
+            .high = swap_endianness(*(u_int64_t*)(meta.data + this->eth_header_len + 24)),
+            .low = swap_endianness(*(u_int64_t*)(meta.data + this->eth_header_len + 32)),
+        };
+        FlowMetadata flow_meta = {
+            .sourceAddress = std::string((char*)&srcip,sizeof(srcip)),
+            .destinationAddress = std::string((char*)&dstip,sizeof(dstip)),
+            .sourcePort = htons(*sport),
+            .destinationPort = htons(*dport),
+        };
+        return flow_meta;
     }
     FlowMetadata flow_meta = {
         .sourceAddress = std::string(),
@@ -78,41 +107,45 @@ u_int64_t DPDKReader::calValue(u_int64_t _offset){
 
 bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t ts){
     Index* index = new Index();
-    index->key = *(u_int32_t*)(meta.sourceAddress.c_str());
+    // index->key = *(u_int32_t*)(meta.sourceAddress.c_str());
+    index->key = meta.sourceAddress;
     index->value = value;
     index->ts = ts;
-    index->id = 0;
-    index->len = 4;
+    index->id = meta.sourceAddress.size() == 4? IndexType::SRCIP:IndexType::SRCIPv6;
+    index->len = meta.sourceAddress.size();
     if(!(*(this->indexRings))[0]->put((void*)index)){
         return false;
     }
 
     index = new Index();
-    index->key =  *(u_int32_t*)(meta.destinationAddress.c_str());
+    // index->key =  *(u_int32_t*)(meta.destinationAddress.c_str());
+    index->key = meta.destinationAddress;
     index->value = value;
     index->ts = ts;
-    index->id = 1;
-    index->len = 4;
+    index->id = meta.sourceAddress.size() == 4? IndexType::DSTIP:IndexType::DSTIPv6;
+    index->len = meta.sourceAddress.size();
     if(!(*(this->indexRings))[0]->put((void*)index)){
         return false;
     }
 
     index = new Index();
-    index->key = meta.sourcePort;
+    // index->key = meta.sourcePort;
+    index->key = std::string((char*)&(meta.sourcePort),sizeof(meta.sourcePort));
     index->value = value;
     index->ts = ts;
-    index->id = 2;
-    index->len = 2;
+    index->id = IndexType::SRCPORT;
+    index->len = sizeof(meta.sourcePort);
     if(!(*(this->indexRings))[0]->put((void*)index)){
         return false;
     }
 
     index = new Index();
-    index->key = meta.destinationPort;
+    // index->key = meta.destinationPort;
+    index->key = std::string((char*)&(meta.destinationPort),sizeof(meta.destinationPort));
     index->value = value;
     index->ts = ts;
-    index->id = 3;
-    index->len = 2;
+    index->id = IndexType::DSTPORT;
+    index->len = sizeof(meta.sourcePort);
     if(!(*(this->indexRings))[0]->put((void*)index)){
         return false;
     }

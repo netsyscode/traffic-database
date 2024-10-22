@@ -13,10 +13,53 @@ enum IndexType{
     DSTIP,
     SRCPORT,
     DSTPORT,
+    SRCIPv6,
+    DSTIPv6,
     TOTAL,
 };
 
-const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2};
+const std::vector<u_int32_t> flowMetaEleLens = {4, 4, 2, 2, 16, 16};
+
+struct IPv6Address{
+    u_int64_t low;
+    u_int64_t high;
+
+    bool operator<(const IPv6Address& other) const {
+        if (high < other.high) {
+            return true;
+        } else if (high > other.high) {
+            return false;
+        }
+        // 如果高位相等，比较低位
+        return low < other.low;
+    }
+    // 重载比较运算符 ">"
+    bool operator>(const IPv6Address& other) const {
+        if (high > other.high) {
+            return true;
+        } else if (high < other.high) {
+            return false;
+        }
+        // 如果高位相等，比较低位
+        return low > other.low;
+    }
+    // 重载比较运算符 "=="
+    bool operator==(const IPv6Address& other) const {
+        return high == other.high && low == other.low;
+    }
+    // 重载比较运算符 "!="
+    bool operator!=(const IPv6Address& other) const {
+        return !(*this == other);
+    }
+    // 重载比较运算符 "<="
+    bool operator<=(const IPv6Address& other) const {
+        return !(*this > other);
+    }
+    // 重载比较运算符 ">="
+    bool operator>=(const IPv6Address& other) const {
+        return !(*this < other);
+    }
+};
 
 struct IndexTMP{
     FlowMetadata meta;
@@ -25,7 +68,7 @@ struct IndexTMP{
 };
 
 struct Index{
-    u_int64_t key;
+    std::string key;
     u_int64_t value;
     u_int64_t ts;
     u_int8_t id;
