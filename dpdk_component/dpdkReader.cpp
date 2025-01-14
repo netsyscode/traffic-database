@@ -52,6 +52,8 @@ u_int64_t DPDKReader::writePacketToPacketBuffer(PacketMeta& meta){
 }
 
 FlowMetadata DPDKReader::getFlowMetaData(PacketMeta& meta){
+    // printf("pkt len:%u\n",meta.len);
+    this->byteLen += meta.len;
     uint8_t version = (*(u_int8_t*)(meta.data + this->eth_header_len) >> 4) & 0x0F;
     if(version == 4){
         const struct ip_header* ip_protocol = (const struct ip_header *)(meta.data + this->eth_header_len);
@@ -122,8 +124,8 @@ bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t 
     index->key = meta.destinationAddress;
     index->value = value;
     index->ts = ts;
-    index->id = meta.sourceAddress.size() == 4? IndexType::DSTIP:IndexType::DSTIPv6;
-    index->len = meta.sourceAddress.size();
+    index->id = meta.destinationAddress.size() == 4? IndexType::DSTIP:IndexType::DSTIPv6;
+    index->len = meta.destinationAddress.size();
     if(!(*(this->indexRings))[0]->put((void*)index)){
         return false;
     }
@@ -188,9 +190,35 @@ bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t 
     return true;
 }
 
+void DPDKReader::bindCore(u_int32_t cpu){
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu, &cpuset);
+
+    pthread_t thread = pthread_self();
+
+    int set_result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+    if (set_result != 0) {
+        std::cerr << "Error setting thread affinity: " << set_result << std::endl;
+    }
+
+    // 确认设置是否成功
+    CPU_ZERO(&cpuset);
+    pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+
+    if (CPU_ISSET(cpu, &cpuset)) {
+        printf("DPDK reader log: %lu bind to cpu %d.\n",thread,cpu);
+    } else {
+        printf("DPDK reader warning: %lu failed to bind to cpu %d!\n",thread,cpu);
+    }
+}
+
 int DPDKReader::run(){
     // pcap file header
+    
     this->packetBuffer->writePointer((char*)pcap_head,this->pcap_header_len);
+
+    this->bindCore(this->rx_id*2 + 72);
 
     std::cout << "DPDK reader log: thread run." << std::endl;
     this->stop = false;
@@ -278,7 +306,7 @@ int DPDKReader::run(){
     auto end = std::chrono::high_resolution_clock::now();
 
     this->duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    printf("DPDK Reader log: thread quit, during %llu us with %llu packets and %llu indexes.\n",this->duration_time,pkt_count,index_count);
+    printf("DPDK Reader log: thread quit, during %llu us with %llu packets, %llu Bytes, and %llu indexes.\n",this->duration_time,pkt_count,this->byteLen,index_count);
     return 0;
 }
 

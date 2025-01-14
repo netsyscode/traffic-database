@@ -215,17 +215,16 @@ void Controller::clear(){
 }
 
 void Controller::init(InitData init_data){
-    // this->bindCore(2);
+    this->bindCore(24);
 
     // for(u_int32_t i=0;i<flowMetaEleLens.size();++i){
     //     PointerRingBuffer* ir =  new PointerRingBuffer(init_data.index_ring_capacity);
     //     this->indexRings->push_back(ir);
     // }
 
-    // for(u_int32_t i=0;i<flowMetaEleLens.size();++i){
     PointerRingBuffer* ir =  new PointerRingBuffer(init_data.index_ring_capacity);
     this->indexRings->push_back(ir);
-    // }
+
 
     this->dpdk = new DPDK(init_data.nb_rx,1);
     
@@ -257,7 +256,8 @@ void Controller::init(InitData init_data){
     }
 
     for(u_int32_t i=0;i<init_data.index_thread_num;++i){
-        IndexGenerator* ig = new IndexGenerator((*(this->indexRings))[0],this->indexBuffers,(*(this->indexBuffers))[0]->getCacheCount(),i*2+4);
+        // IndexGenerator* ig = new IndexGenerator((*(this->indexRings))[0],this->indexBuffers,(*(this->indexBuffers))[0]->getCacheCount(),i*2+42);
+        IndexGenerator* ig = new IndexGenerator((*(this->indexRings))[0],this->indexBuffers,(*(this->indexBuffers))[0]->getCacheCount(),i*2+42);
         this->indexGenerators.push_back(ig);
     }
 
@@ -315,16 +315,20 @@ void Controller::run(){
 
     printf("wait.\n");
     
-    for(u_int16_t i=0; i<this->readers.size(); ++i){
-        if(this->dpdk->loadBPF(0, i, this->bpf_prog_name)){
-            printf("Controller error: load bpf fail at %u\n",i);
-        }
-    }
+    // for(u_int16_t i=0; i<this->readers.size(); ++i){
+    //     if(this->dpdk->loadBPF(0, i, this->bpf_prog_name)){
+    //         printf("Controller error: load bpf fail at %u\n",i);
+    //     }
+    // }
     // std::this_thread::sleep_for(std::chrono::seconds(4));
     // for(u_int16_t i=0; i<this->readers.size(); ++i){
     //     this->dpdk->unloadBPF(0, i);
     // }
-    std::this_thread::sleep_for(std::chrono::seconds(4));
+    // std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    char stop;
+
+    std::cin>>stop;
     
     // this->querierThread->join();
     this->threadsStop();

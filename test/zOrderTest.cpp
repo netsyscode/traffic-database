@@ -17,11 +17,11 @@ struct TestIndex{
 };
 
 // 将IPv4地址转换为32位无符号整型
-// uint32_t ipToUint32(const std::string& ip) {
-//     uint32_t result = 0;
-//     inet_pton(AF_INET, ip.c_str(), &result); // 将IP转换为无符号整型
-//     return ntohl(result); // 将网络字节序转换为主机字节序
-// }
+uint32_t ipToUint32(const std::string& ip) {
+    uint32_t result = 0;
+    inet_pton(AF_INET, ip.c_str(), &result); // 将IP转换为无符号整型
+    return ntohl(result); // 将网络字节序转换为主机字节序
+}
 
 // void readFile(SkipList* skipList){
 //     std::string filename = "./data/source/flow.txt";
@@ -304,20 +304,108 @@ struct TestIndex{
 //     outfile.close();
 // }
 
+void buildTurple(){
+    SkipList zorder_list(sizeof(QuarTurpleIPv4)*8,sizeof(QuarTurpleIPv4),sizeof(u_int64_t));
+   
+    std::string filename = "./data/source/flow.txt";
+    std::ifstream infile(filename);
+    std::string line;
+
+    if (!infile.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return;
+    }
+
+    std::regex flowRegex(R"(\('([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)',\s*(\d+),\s*'([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)',\s*(\d+)\):\s*(\d+))");
+    std::smatch match;
+
+    u_int32_t count = 0;
+
+    while (std::getline(infile, line)) {
+        if (std::regex_search(line, match, flowRegex) && match.size() == 6) {
+            std::string srcIp = match[1];
+            uint16_t srcPort = static_cast<uint16_t>(std::stoi(match[2]));
+            std::string dstIp = match[3];
+            uint16_t dstPort = static_cast<uint16_t>(std::stoi(match[4]));
+            size_t len = static_cast<size_t>(std::stoull(match[5]));
+
+            uint32_t srcIpInt = ipToUint32(srcIp);
+            uint32_t dstIpInt = ipToUint32(dstIp);
+
+            QuarTurpleIPv4 id = {
+                .srcip = srcIpInt,
+                .dstip = dstIpInt,
+                .srcport = srcPort,
+                .dstport = dstPort,
+            };
+
+            if(count == 0){
+                printf("%u,%u,%u,%u\n",id.srcip,id.dstip,id.srcport,id.dstport);
+            }
+
+            zorder_list.insert(std::string((char*)(&id),sizeof(id)),count,std::numeric_limits<uint64_t>::max());
+            // if(count>=1){
+            //     break;
+            // }
+            count++;
+        }else {
+            std::cerr << "Line format error: " << line << std::endl;
+        }
+    }
+
+    infile.close();
+
+    std::cout << "read done" << std::endl;
+
+    std::string data = zorder_list.outputToChar();
+    printf("data size:%zu\n",data.size());
+    std::string fileName = "./data/index/test.pcap_quarturple_idx";
+    int fileFD = open(fileName.c_str(), O_WRONLY | O_CREAT, 0644);
+    ssize_t bytes_written = write(fileFD,data.c_str(),data.size());
+    close(fileFD);
+
+    // data = dstip_list.outputToChar();
+    // fileName = "./data/index/test.pcap_dstip_idx";
+    // fileFD = open(fileName.c_str(), O_WRONLY | O_CREAT, 0644);
+    // bytes_written = write(fileFD,data.c_str(),data.size());
+    // close(fileFD);
+
+    // data = srcport_list.outputToChar();
+    // fileName = "./data/index/test.pcap_srcport_idx";
+    // fileFD = open(fileName.c_str(), O_WRONLY | O_CREAT, 0644);
+    // bytes_written = write(fileFD,data.c_str(),data.size());
+    // close(fileFD);
+
+    // data = dstport_list.outputToChar();
+    // fileName = "./data/index/test.pcap_dstport_idx";
+    // fileFD = open(fileName.c_str(), O_WRONLY | O_CREAT, 0644);
+    // bytes_written = write(fileFD,data.c_str(),data.size());
+    // close(fileFD);
+}
+
 template <class KeyType>
 std::list<u_int64_t> binarySearch(char* index, u_int32_t index_len, KeyType key){
     std::list<u_int64_t> ret = std::list<u_int64_t>();
     u_int32_t ele_len = sizeof(KeyType) + sizeof(u_int64_t);
+    // printf("ele:%u\n",ele_len);
     u_int32_t left = 0;
     u_int32_t right = index_len/ele_len;
 
     while (left < right) {
+        
         u_int32_t mid = left + (right - left) / 2;
+        // printf("mid:%u\n",mid);
 
         KeyType key_mid = *(KeyType*)(index + mid * ele_len);
+
+        // QuarTurpleIPv4 id = *(QuarTurpleIPv4*)(index + mid * ele_len);
+        // printf("%u,%u,%u,%u\n",id.srcip,id.dstip,id.srcport,id.dstport);
+
         if (key_mid < key) {
+            // printf("left\n");
             left = mid + 1;
         } else {
+            // printf("right\n");
             right = mid;
         }
     }
@@ -350,7 +438,7 @@ void intersect(std::list<u_int64_t>& la, std::list<u_int64_t>& lb){
     la.erase(ita,la.end());
 }
 
-void queryOneDim(std::vector<TestIndex>& vec){
+void queryOneDim(std::vector<QuarTurpleIPv4>& vec){
     std::string srcip_filename = "./data/index/test.pcap_srcip_idx";
     std::string dstip_filename = "./data/index/test.pcap_dstip_idx";
     std::string srcport_filename = "./data/index/test.pcap_srcport_idx";
@@ -366,6 +454,12 @@ void queryOneDim(std::vector<TestIndex>& vec){
     dstport_list.resize(1631762*10);
 
 
+    u_int64_t duration_time = 0;
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+    u_int64_t duration_one = 0;
+
+    start = std::chrono::high_resolution_clock::now();
     std::ifstream srcip_infile(srcip_filename);
     srcip_infile.read(&srcip_list[0], srcip_list.size());
     srcip_infile.close();
@@ -382,9 +476,23 @@ void queryOneDim(std::vector<TestIndex>& vec){
     dstport_infile.read(&dstport_list[0], dstip_list.size());
     dstport_infile.close();
 
+    end = std::chrono::high_resolution_clock::now();
+
+    duration_one = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    printf("open file:%llu\n",duration_one);
+
     u_int32_t count = 0;
-    auto start = std::chrono::high_resolution_clock::now();
+
+    
+    
     for(auto id:vec){
+        if(count < 380000){
+            count++;
+            continue;
+        }
+        start = std::chrono::high_resolution_clock::now();
+
         auto srcip_ret = binarySearch(&srcip_list[0],srcip_list.size(),id.srcip);
         auto dstip_ret = binarySearch(&dstip_list[0],dstip_list.size(),id.dstip);
         auto srcport_ret = binarySearch(&srcport_list[0],srcport_list.size(),id.srcport);
@@ -392,18 +500,166 @@ void queryOneDim(std::vector<TestIndex>& vec){
         intersect(srcip_ret,dstip_ret);
         intersect(srcip_ret,srcport_ret);
         intersect(srcip_ret,dstport_ret);
+        
+        end = std::chrono::high_resolution_clock::now();
+        // printf("ret:%u\n",srcip_ret.size());
+        duration_one = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+        duration_time += duration_one;
+        printf("%llu\n",duration_one);
         // printf("%zu\n",srcip_ret.size());
         // printf("%lu\n",*srcip_ret.begin());
         // break;
         count++;
-        if(count >= 10000){
+        if(count >= 390000){
             break;
         }
+        
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    u_int64_t duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    
+    // u_int64_t duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     printf("time:%lu\n",duration_time);
+}
+
+void queryTurple(std::vector<QuarTurpleIPv4>& vec){
+    std::string turple_filename = "./data/index/test.pcap_quarturple_idx";
+    // std::string dstip_filename = "./data/index/test.pcap_dstip_idx";
+    // std::string srcport_filename = "./data/index/test.pcap_srcport_idx";
+    // std::string dstport_filename = "./data/index/test.pcap_dstport_idx";
+
+    std::string turple_list = std::string();
+    turple_list.resize(1631762*(sizeof(QuarTurpleIPv4)+sizeof(u_int64_t)));
+    // turple_list.resize(2*(sizeof(QuarTurpleIPv4)+sizeof(u_int64_t)));
+    // std::string dstip_list = std::string();
+    // dstip_list.resize(1631762*12);
+    // std::string srcport_list = std::string();
+    // srcport_list.resize(1631762*10);
+    // std::string dstport_list = std::string();
+    // dstport_list.resize(1631762*10);
+
+
+    u_int64_t duration_time = 0;
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+    u_int64_t duration_one = 0;
+
+    start = std::chrono::high_resolution_clock::now();
+    std::ifstream turple_infile(turple_filename);
+    turple_infile.read(&turple_list[0], turple_list.size());
+    turple_infile.close();
+
+    // std::ifstream dstip_infile(dstip_filename);
+    // dstip_infile.read(&dstip_list[0], dstip_list.size());
+    // dstip_infile.close();
+
+    // std::ifstream srcport_infile(srcport_filename);
+    // srcport_infile.read(&srcport_list[0], srcip_list.size());
+    // srcport_infile.close();
+
+    // std::ifstream dstport_infile(dstport_filename);
+    // dstport_infile.read(&dstport_list[0], dstip_list.size());
+    // dstport_infile.close();
+
+    end = std::chrono::high_resolution_clock::now();
+
+    duration_one = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    printf("open file:%llu\n",duration_one);
+
+    u_int32_t count = 0;
+    
+    
+    for(auto id:vec){
+        if(count < 380000){
+            count++;
+            continue;
+        }
+        start = std::chrono::high_resolution_clock::now();
+        // printf("%u,%u,%u,%u\n",id.srcip,id.dstip,id.srcport,id.dstport);
+
+        auto ret = binarySearch(&turple_list[0],turple_list.size(),id);
+        // printf("ret:%u\n",ret.size());
+
+        // auto srcip_ret = binarySearch(&srcip_list[0],srcip_list.size(),id.srcip);
+        // auto dstip_ret = binarySearch(&dstip_list[0],dstip_list.size(),id.dstip);
+        // auto srcport_ret = binarySearch(&srcport_list[0],srcport_list.size(),id.srcport);
+        // auto dstport_ret = binarySearch(&dstport_list[0],dstport_list.size(),id.dstport);
+        // intersect(srcip_ret,dstip_ret);
+        // intersect(srcip_ret,srcport_ret);
+        // intersect(srcip_ret,dstport_ret);
+        end = std::chrono::high_resolution_clock::now();
+        // printf("ret:%u\n",ret.size());
+        duration_one = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+        duration_time += duration_one;
+        printf("%llu\n",duration_one);
+        // printf("%zu\n",srcip_ret.size());
+        // printf("%lu\n",*srcip_ret.begin());
+        // break;
+        count++;
+        if(count >= 390000){
+            break;
+        }
+        
+    }
+
+    
+    // u_int64_t duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("time:%lu\n",duration_time);
+}
+
+void construct(std::vector<QuarTurpleIPv4>& vec){
+    SkipList turple_list(sizeof(QuarTurpleIPv4)*8,sizeof(QuarTurpleIPv4),sizeof(u_int64_t));
+    SkipList srcip_list(sizeof(u_int32_t)*8,sizeof(u_int32_t),sizeof(u_int64_t));
+    SkipList dstip_list(sizeof(u_int32_t)*8,sizeof(u_int32_t),sizeof(u_int64_t));
+    SkipList srcport_list(sizeof(u_int16_t)*8,sizeof(u_int16_t),sizeof(u_int64_t));
+    SkipList dstport_list(sizeof(u_int16_t)*8,sizeof(u_int16_t),sizeof(u_int64_t));
+
+    u_int64_t duration_time = 0;
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+
+    start = std::chrono::high_resolution_clock::now();
+    for(auto id:vec){
+        turple_list.insert(std::string((char*)(&id),sizeof(id)),0,std::numeric_limits<uint64_t>::max());
+    }
+    end = std::chrono::high_resolution_clock::now();
+    duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("quarturple:%llu\n",duration_time);
+
+    start = std::chrono::high_resolution_clock::now();
+    for(auto id:vec){
+        srcip_list.insert(std::string((char*)(&id.srcip),sizeof(id.srcip)),0,std::numeric_limits<uint64_t>::max());
+        // dstip_list.insert(std::string((char*)(&id.dstip),sizeof(id.dstip)),0,std::numeric_limits<uint64_t>::max());
+        // srcport_list.insert(std::string((char*)(&id.srcport),sizeof(id.srcport)),0,std::numeric_limits<uint64_t>::max());
+        // dstport_list.insert(std::string((char*)(&id.dstport),sizeof(id.dstport)),0,std::numeric_limits<uint64_t>::max());
+    }
+    end = std::chrono::high_resolution_clock::now();
+    duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("srcip:%llu\n",duration_time);
+
+    start = std::chrono::high_resolution_clock::now();
+    for(auto id:vec){
+        dstip_list.insert(std::string((char*)(&id.dstip),sizeof(id.dstip)),0,std::numeric_limits<uint64_t>::max());
+    }
+    end = std::chrono::high_resolution_clock::now();
+    duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("dstip:%llu\n",duration_time);
+
+    start = std::chrono::high_resolution_clock::now();
+    for(auto id:vec){
+        srcport_list.insert(std::string((char*)(&id.srcport),sizeof(id.srcport)),0,std::numeric_limits<uint64_t>::max());
+    }
+    end = std::chrono::high_resolution_clock::now();
+    duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("srcport:%llu\n",duration_time);
+
+    start = std::chrono::high_resolution_clock::now();
+    for(auto id:vec){
+        dstport_list.insert(std::string((char*)(&id.dstport),sizeof(id.dstport)),0,std::numeric_limits<uint64_t>::max());
+    }
+    end = std::chrono::high_resolution_clock::now();
+    duration_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("dsrport:%llu\n",duration_time);
 }
 
 int main(){
@@ -423,17 +679,22 @@ int main(){
     // std::cout << "read done" << std::endl;
     // queryZOrder(vec);
 
-    // buildOneDim();
+    // buildTurple();
 
-    std::vector<TestIndex> vec = std::vector<TestIndex>();
+
+    std::vector<QuarTurpleIPv4> vec = std::vector<QuarTurpleIPv4>();
     vec.resize(1631762);
-    std::ifstream infile("./data/index/test.vec", std::ios::binary);
+    std::ifstream infile("./data/index/test_v4.vec", std::ios::binary);
     if (!infile.is_open()) {
         std::cerr << "Error opening file: " << "./data/index/test.vec" << std::endl;
     }
     infile.read(reinterpret_cast<char*>(vec.data()), vec.size()*sizeof(ZOrderIPv4));
     infile.close();
     std::cout << "read done" << std::endl;
-    queryOneDim(vec);
+    // printf("%u,%u,%u,%u\n",vec[0].srcip,vec[0].dstip,vec[0].srcport,vec[0].dstport);
+    // queryTurple(vec);
+    // queryOneDim(vec);
+
+    construct(vec);
     return 0;
 }

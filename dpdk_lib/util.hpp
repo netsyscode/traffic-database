@@ -62,10 +62,10 @@ struct IPv6Address{
 };
 
 struct QuarTurpleIPv4{
-    u_int32_t srcip;
-    u_int32_t dstip;
-    u_int16_t srcport;
     u_int16_t dstport;
+    u_int16_t srcport;
+    u_int32_t dstip;
+    u_int32_t srcip;
 
     bool operator<(const QuarTurpleIPv4& other) const {
         if (srcip < other.srcip) {
@@ -129,10 +129,10 @@ struct QuarTurpleIPv4{
 };
 
 struct QuarTurpleIPv6{
-    IPv6Address srcip;
-    IPv6Address dstip;
-    u_int16_t srcport;
     u_int16_t dstport;
+    u_int16_t srcport;
+    IPv6Address dstip;
+    IPv6Address srcip;
 
     bool operator<(const QuarTurpleIPv6& other) const {
         if (srcip < other.srcip) {

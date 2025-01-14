@@ -1,22 +1,54 @@
+// #include "../dpdk_lib/skipListUnlock.hpp"
 #include "../dpdk_lib/skipList.hpp"
-#include "../dpdk_lib/indexBuffer.hpp"
 #include "../dpdk_lib/pointerRingBuffer.hpp"
+
 #include <iostream>
 #include <random>
 
 #include <iostream>
 #include <random>
 #include <thread>
+#include <map>
 
 #define TEST_INDEX_NUM 1024*1024*4
-#define THREAD_NUM 8
-#define CPU_BEGIN 4
+#define THREAD_NUM 1
+#define CPU_BEGIN 6
 
-// SkipList* list;
-IndexBuffer* buffer;
-IndexBuffer* buffer2;
+struct KeyValue{
+    QuarTurpleIPv6 key;
+    u_int64_t value;
+    bool operator<(const KeyValue& other) const {
+        return key < other.key;
+    }
+    // 重载比较运算符 ">"
+     bool operator>(const KeyValue& other) const {
+        return key > other.key;
+    }
+    // 重载比较运算符 "=="
+    bool operator==(const KeyValue& other) const {
+        return key == other.key;
+    }
+    // 重载比较运算符 "!="
+    bool operator!=(const KeyValue& other) const {
+        return !(*this == other);
+    }
+    // 重载比较运算符 "<="
+    bool operator<=(const KeyValue& other) const {
+        return !(*this > other);
+    }
+    // 重载比较运算符 ">="
+    bool operator>=(const KeyValue& other) const {
+        return !(*this < other);
+    }
+};
+
+SkipList* list;
+std::vector<KeyValue> indexes;
+// std::multimap<QuarTurpleIPv6,u_int64_t> list;
+// IndexBuffer* buffer;
+// IndexBuffer* buffer2;
 PointerRingBuffer* ring;
-PointerRingBuffer* ring2;
+// PointerRingBuffer* ring2;
 
  
 void thread_run(u_int32_t cpu){
@@ -48,48 +80,65 @@ void thread_run(u_int32_t cpu){
         if(data==nullptr){
             break;
         }
+
+        auto key = std::string((char*)(data),sizeof(QuarTurpleIPv6));
+
+        // KeyValue id = {
+        //     .key = *(QuarTurpleIPv6*)data,
+        //     .value = 0,
+        // };
+
         auto start = std::chrono::high_resolution_clock::now();
         // list->insert(std::string((char*)(data),sizeof(u_int32_t)),0,std::numeric_limits<uint64_t>::max());
-        auto key = std::string((char*)(data),sizeof(u_int32_t));
-        buffer->insert(key,0,0,0,0);
+        
+        // buffer->insert(key,0,0,0,0);
+        // list.insert(std::pair<QuarTurpleIPv6,u_int64_t>(*(QuarTurpleIPv6*)data,0));
+        list->insert(key,0,std::numeric_limits<uint64_t>::max());
+        // indexes.push_back(id);
         auto end = std::chrono::high_resolution_clock::now();
         delete (u_int32_t*)data;
         duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     }
+
+    auto start = std::chrono::high_resolution_clock::now();
+    std::sort(indexes.begin(), indexes.end());
+    auto end = std::chrono::high_resolution_clock::now();
+    duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     printf("Thread %lu: thread quit, during %lu us.\n",thread,duration_time);
 }
 
-void thread_run2(){
+// void thread_run2(){
 
-    u_int64_t duration_time = 0;
+//     u_int64_t duration_time = 0;
 
-    while (true){
-        void* data = ring2->get();
-        if(data==nullptr){
-            break;
-        }
-        auto start = std::chrono::high_resolution_clock::now();
-        // list->insert(std::string((char*)(data),sizeof(u_int32_t)),0,std::numeric_limits<uint64_t>::max());
-        auto key = std::string((char*)(data),sizeof(u_int32_t));
-        buffer2->insert(key,0,0,0,0);
-        auto end = std::chrono::high_resolution_clock::now();
-        delete (u_int32_t*)data;
-        duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    }
-    printf("DPDK Reader log: thread quit, during %lu us.\n",duration_time);
-}
+//     while (true){
+//         void* data = ring2->get();
+//         if(data==nullptr){
+//             break;
+//         }
+//         auto start = std::chrono::high_resolution_clock::now();
+//         // list->insert(std::string((char*)(data),sizeof(u_int32_t)),0,std::numeric_limits<uint64_t>::max());
+//         auto key = std::string((char*)(data),sizeof(u_int32_t));
+//         buffer2->insert(key,0,0,0,0);
+//         auto end = std::chrono::high_resolution_clock::now();
+//         delete (u_int32_t*)data;
+//         duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+//     }
+//     printf("DPDK Reader log: thread quit, during %lu us.\n",duration_time);
+// }
 
 int main(){
 
-    SkipListMeta meta = {
-        .keyLen = sizeof(u_int32_t),
-        .valueLen = sizeof(u_int64_t),
-        .maxLvl = sizeof(u_int32_t)*8,
-    };
+    // SkipListMeta meta = {
+    //     .keyLen = sizeof(u_int32_t),
+    //     .valueLen = sizeof(u_int64_t),
+    //     .maxLvl = sizeof(u_int32_t)*8,
+    // };
 
-    buffer = new IndexBuffer(5,meta,std::numeric_limits<uint64_t>::max());
+    // buffer = new IndexBuffer(5,meta,std::numeric_limits<uint64_t>::max());
     // buffer2 = new IndexBuffer(5,meta,std::numeric_limits<uint64_t>::max());
-    // list = new SkipList(sizeof(u_int32_t)*8,sizeof(u_int32_t),sizeof(u_int64_t));
+    list = new SkipList(sizeof(QuarTurpleIPv6)*8,sizeof(QuarTurpleIPv6),sizeof(u_int64_t));
+    // list = new mutilmap<u_int16_t,u_int64_t>();
     ring = new PointerRingBuffer(1024*1024*1024);
     // ring2 = new PointerRingBuffer(1024*1024*1024);
 
@@ -101,7 +150,18 @@ int main(){
  
     // 生成随机数
     for(u_int64_t i=0;i<TEST_INDEX_NUM;++i){
-        u_int32_t* random_integer = new u_int32_t(distrib(gen));
+        QuarTurpleIPv6* random_integer = new QuarTurpleIPv6();
+        random_integer->srcip.high = (u_int64_t(distrib(gen)) << 32) + u_int64_t(distrib(gen));
+        random_integer->srcip.low = (u_int64_t(distrib(gen)) << 32) + u_int64_t(distrib(gen));
+        random_integer->dstip.high = (u_int64_t(distrib(gen)) << 32) + u_int64_t(distrib(gen));
+        random_integer->dstip.low = (u_int64_t(distrib(gen)) << 32) + u_int64_t(distrib(gen));
+        random_integer->srcport = u_int16_t(distrib(gen));
+        random_integer->dstport = u_int16_t(distrib(gen));
+
+        // u_int16_t* random_integer = new u_int16_t(distrib(gen));
+
+        // random_integer->high = (u_int64_t(distrib(gen)) << 32) + u_int64_t(distrib(gen));
+        // random_integer->low = (u_int64_t(distrib(gen)) << 32) + u_int64_t(distrib(gen));
         ring->put(random_integer);
     }
     // for(u_int64_t i=0;i<TEST_INDEX_NUM;++i){

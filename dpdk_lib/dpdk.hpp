@@ -193,7 +193,7 @@ public:
         this->mbuf_pool = NULL;
         this->cores = "";
         for(int i=0;i<=this->nb_rx_queue;++i){
-            this->cores += std::to_string(i);
+            this->cores += std::to_string(i*2);
             if(i!=this->nb_rx_queue){
                 this->cores += ",";
             }

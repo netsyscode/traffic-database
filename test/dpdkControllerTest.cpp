@@ -15,15 +15,19 @@ const u_int32_t storage_ring_capacity = 1024;
 const u_int32_t pcap_header_len = 24;
 const u_int32_t eth_header_len = 14;
 const u_int64_t file_capacity = 1024*1024*1024;
-const u_int16_t nb_rx = 1;
-const u_int32_t index_thread_num = 4;
-const u_int32_t direct_storage_thread_num = 1;
+u_int16_t nb_rx = 8;
+u_int32_t index_thread_num = 4;
+const u_int32_t direct_storage_thread_num = 2;
 const u_int32_t index_storage_thread_num = 1;
 const u_int32_t max_node = 1024*1024*4;
 const std::string bpf_prog_name = "./bpf/t2.o";
 
 int main(){
     Controller* controller = new Controller();
+
+    std::cin >> nb_rx;
+    std::cin >> index_thread_num;
+
     InitData init_data = {
        .index_ring_capacity = index_ring_capacity,
     //    .storage_ring_capacity = storage_ring_capacity,

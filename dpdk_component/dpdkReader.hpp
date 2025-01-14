@@ -64,6 +64,8 @@ class DPDKReader{
 
     u_int64_t duration_time;
 
+    u_int64_t byteLen;
+
     //read packet of offset from file;
     void readPacket(struct rte_mbuf *buf,u_int64_t ts,PacketMeta* meta);
     //write data to packet buffer (pay attention to aligning with file offset)
@@ -73,6 +75,7 @@ class DPDKReader{
     u_int64_t calValue(u_int64_t _offset);
 
     bool writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t ts);
+    void bindCore(u_int32_t cpu);
 
 public:
     DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, std::vector<PointerRingBuffer*>* rings, u_int16_t port_id, u_int16_t rx_id, u_int64_t capacity, MemoryBuffer* buffer):
@@ -80,6 +83,7 @@ public:
         this->offset = pcap_header_len;
         this->stop = true;
         this->duration_time = 0;
+        this->byteLen = 0;
         this->packetBuffer = buffer;
         this->fileName = "./data/input/" + std::to_string(port_id) + "-" + std::to_string(rx_id) + ".pcap";
         this->packetAggregator = new PacketAggregator(capacity, std::numeric_limits<uint64_t>::max());
