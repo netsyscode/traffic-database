@@ -187,15 +187,24 @@ class DPDK{
         return true;
     }
 public:
-    DPDK(u_int16_t nb_rx_queue, u_int16_t nb_tx_queue){
+    DPDK(u_int16_t nb_rx_queue, u_int16_t nb_tx_queue, bool bind_core, std::vector<u_int32_t> cores){
         this->nb_rx_queue = nb_rx_queue;
         this->nb_tx_queue = nb_tx_queue;
         this->mbuf_pool = NULL;
         this->cores = "";
-        for(int i=0;i<=this->nb_rx_queue;++i){
-            this->cores += std::to_string(i*2);
-            if(i!=this->nb_rx_queue){
+        if(bind_core){
+            this->cores += std::to_string(0);
+            for(auto core:cores){
                 this->cores += ",";
+                this->cores += std::to_string(core);
+            }
+        }
+        else{
+            for(int i=0;i<=this->nb_rx_queue;++i){
+                this->cores += std::to_string(i);
+                if(i!=this->nb_rx_queue){
+                    this->cores += ",";
+                }
             }
         }
         printf("DPDK log: work cores is %s.\n",this->cores.c_str());

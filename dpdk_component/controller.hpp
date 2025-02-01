@@ -25,6 +25,11 @@ struct InitData{
     u_int32_t max_node;
     std::string pcap_header;
     std::string bpf_prog_name;
+    bool bind_core;
+    u_int32_t controller_core_id;
+    std::vector<u_int32_t> dpdk_core_id_list;
+    std::vector<u_int32_t> packet_core_id_list;
+    std::vector<u_int32_t> indexing_core_id_list;
 };
 
 class Controller{

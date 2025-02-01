@@ -106,16 +106,5 @@ entry(void *pkt)
 
 	tag_pos++;
 
-	// struct Tag tag3 = {
-	// 	.id = 3,
-	// 	.agg = 5,
-	// 	.length = 16,
-	// 	.offset = (14 + hl * 4) * 8 + 14 * 8,
-	// };
-
-	// mb->dynfield1[tag_pos] = *(uint32_t*)&tag3;
-
-	// tag_pos++;
-
 	return 1;
 }

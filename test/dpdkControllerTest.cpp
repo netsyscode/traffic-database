@@ -20,29 +20,68 @@ u_int32_t index_thread_num = 4;
 const u_int32_t direct_storage_thread_num = 2;
 const u_int32_t index_storage_thread_num = 1;
 const u_int32_t max_node = 1024*1024*4;
-const std::string bpf_prog_name = "./bpf/t2.o";
+const std::string bpf_prog_name = "./bpf/tag.o";
 
 int main(){
-    Controller* controller = new Controller();
+   Controller* controller = new Controller();
 
-    std::cin >> nb_rx;
-    std::cin >> index_thread_num;
+   InitData init_data;
 
-    InitData init_data = {
-       .index_ring_capacity = index_ring_capacity,
-    //    .storage_ring_capacity = storage_ring_capacity,
-    //    .truncate_interval = truncate_interval,
-       .nb_rx = nb_rx,
-       .pcap_header_len = pcap_header_len,
-       .eth_header_len = eth_header_len,
-       .file_capacity = file_capacity,
-       .index_thread_num = index_thread_num,
-       .direct_storage_thread_num = direct_storage_thread_num,
-       .index_storage_thread_num = index_storage_thread_num,
-       .max_node = max_node,
-       .pcap_header = std::string((char*)pcap_head,pcap_header_len),
-       .bpf_prog_name = bpf_prog_name,
-    };
-    controller->init(init_data);
-    controller->run();
+   std::cout << "Do you want to bind to cores? (y/n)" << std::endl;
+   char bind;
+   std::cin >> bind;
+   if(bind == 'y'){
+      init_data.bind_core = true;
+      std::cout << "Enter the controller core number (0 is remained)" << std::endl;
+      std::cin >> init_data.controller_core_id;
+   }else{
+      init_data.bind_core = false;
+      init_data.controller_core_id = 0;
+   }
+
+   std::cout << "Enter number of DPDK packet capture threads" << std::endl;
+   std::cin >> nb_rx;
+   init_data.nb_rx = nb_rx;
+
+   if(init_data.bind_core){
+      std::cout << "Enter the core number for each DPDK packet capture threads (0 is remained)" << std::endl;
+      for(int i=0;i<nb_rx;++i){
+         u_int32_t core_id;
+         std::cin >> core_id;
+         init_data.dpdk_core_id_list.push_back(core_id);
+      }
+      std::cout << "Enter the core number for each packet processing threads (0 is remained)" << std::endl;
+      for(int i=0;i<nb_rx;++i){
+         u_int32_t core_id;
+         std::cin >> core_id;
+         init_data.packet_core_id_list.push_back(core_id);
+      }
+   }
+
+   std::cout << "Enter number of indexing thread" << std::endl;
+   std::cin >> index_thread_num;
+
+   init_data.index_thread_num = index_thread_num;
+
+   if(init_data.bind_core){
+      std::cout << "Enter the core number for each indexing threads (0 is remained)" << std::endl;
+      for(int i=0;i<index_thread_num;++i){
+         u_int32_t core_id;
+         std::cin >> core_id;
+         init_data.indexing_core_id_list.push_back(core_id);
+      }
+   }
+
+   init_data.index_ring_capacity = index_ring_capacity;
+   init_data.pcap_header_len = pcap_header_len;
+   init_data.eth_header_len = eth_header_len;
+   init_data.file_capacity = file_capacity;
+   init_data.direct_storage_thread_num = direct_storage_thread_num;
+   init_data.index_storage_thread_num = index_storage_thread_num;
+   init_data.max_node = max_node;
+   init_data.pcap_header = std::string((char*)pcap_head,pcap_header_len);
+   init_data.bpf_prog_name = bpf_prog_name;
+
+   controller->init(init_data);
+   controller->run();
 }

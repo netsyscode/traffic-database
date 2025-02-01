@@ -299,7 +299,10 @@ int DPDKReader::run(){
     
     this->packetBuffer->writePointer((char*)pcap_head,this->pcap_header_len);
 
-    this->bindCore(this->rx_id*2 + 72);
+    if(this->bind_core){
+        // this->bindCore(this->rx_id*2 + 72);
+        this->bindCore(this->core_id);
+    }
 
     std::cout << "DPDK reader log: thread run." << std::endl;
     this->stop = false;

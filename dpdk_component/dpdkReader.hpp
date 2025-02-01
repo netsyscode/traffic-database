@@ -79,6 +79,9 @@ class DPDKReader{
 
     u_int64_t tagIndexCount;
 
+    bool bind_core;
+    u_int32_t core_id;
+
     //read packet of offset from file;
     void readPacket(struct rte_mbuf *buf,u_int64_t ts,PacketMeta* meta);
     //write data to packet buffer (pay attention to aligning with file offset)
@@ -95,7 +98,7 @@ class DPDKReader{
     void bindCore(u_int32_t cpu);
 
 public:
-    DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, std::vector<PointerRingBuffer*>* rings, u_int16_t port_id, u_int16_t rx_id, u_int64_t capacity, MemoryBuffer* buffer):
+    DPDKReader(u_int32_t pcap_header_len, u_int32_t eth_header_len, DPDK* dpdk, std::vector<PointerRingBuffer*>* rings, u_int16_t port_id, u_int16_t rx_id, u_int64_t capacity, MemoryBuffer* buffer, bool bind_core, u_int32_t core_id):
     pcap_header_len(pcap_header_len),eth_header_len(eth_header_len),dpdk(dpdk),indexRings(rings),port_id(port_id),rx_id(rx_id),capacityUnit(capacity){
         this->offset = pcap_header_len;
         this->stop = true;
@@ -106,6 +109,8 @@ public:
         this->fileName = "./data/input/" + std::to_string(port_id) + "-" + std::to_string(rx_id) + ".pcap";
         this->packetAggregator = new PacketAggregator(capacity, std::numeric_limits<uint64_t>::max());
         this->tagAggregator = new TagAggregator(MAX_TAG_TYPE);
+        this->bind_core = bind_core;
+        this->core_id = core_id;
     }
     ~DPDKReader(){
         delete this->packetAggregator;

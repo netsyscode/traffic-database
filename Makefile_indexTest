@@ -6,8 +6,8 @@ CC := clang++
 COMPILE_OPT := -std=c++17
 INC = -I$(LIB_PATH)
 
-TARGET = zOrderTest
-TEST_SRCS = zOrderTest.cpp
+TARGET = indexTest
+TEST_SRCS = indexTest.cpp
 COMPONENT_SRCS = 
 SRCS = $(addprefix $(TEST_PATH), $(TEST_SRCS)) $(addprefix $(COMPONENT_PATH), $(COMPONENT_SRCS))
 # TEST_OBJS = $(TEST_SRCS:.cpp=.o)

@@ -215,7 +215,10 @@ void Controller::clear(){
 }
 
 void Controller::init(InitData init_data){
-    this->bindCore(24);
+    if(init_data.bind_core){
+        this->bindCore(init_data.controller_core_id);
+    }
+    // this->bindCore(24);
 
     // for(u_int32_t i=0;i<flowMetaEleLens.size();++i){
     //     PointerRingBuffer* ir =  new PointerRingBuffer(init_data.index_ring_capacity);
@@ -226,7 +229,7 @@ void Controller::init(InitData init_data){
     this->indexRings->push_back(ir);
 
 
-    this->dpdk = new DPDK(init_data.nb_rx,1);
+    this->dpdk = new DPDK(init_data.nb_rx,1,init_data.bind_core,init_data.dpdk_core_id_list);
     
     for(u_int32_t i=0;i<init_data.direct_storage_thread_num;++i){
         DirectStorage* directStorage = new DirectStorage(i);
@@ -269,7 +272,12 @@ void Controller::init(InitData init_data){
 
     for(u_int32_t i=0;i<init_data.index_thread_num;++i){
         // IndexGenerator* ig = new IndexGenerator((*(this->indexRings))[0],this->indexBuffers,(*(this->indexBuffers))[0]->getCacheCount(),i*2+42);
-        IndexGenerator* ig = new IndexGenerator((*(this->indexRings))[0],this->indexBuffers,(*(this->indexBuffers))[0]->getCacheCount(),i*2+42);
+        IndexGenerator* ig;
+        if (init_data.bind_core){
+            ig = new IndexGenerator((*(this->indexRings))[0],this->indexBuffers,(*(this->indexBuffers))[0]->getCacheCount(),i,init_data.bind_core,init_data.indexing_core_id_list[i]);
+        }else{
+            ig = new IndexGenerator((*(this->indexRings))[0],this->indexBuffers,(*(this->indexBuffers))[0]->getCacheCount(),i);
+        }
         this->indexGenerators.push_back(ig);
     }
 
@@ -278,7 +286,12 @@ void Controller::init(InitData init_data){
         MemoryBuffer* buffer = new MemoryBuffer(0,init_data.file_capacity,5,file_name);
         this->buffers.push_back(buffer);
         this->directStorages[i%init_data.direct_storage_thread_num]->addBuffer(buffer);
-        DPDKReader* reader = new DPDKReader(init_data.pcap_header_len,init_data.eth_header_len,dpdk,this->indexRings,0,i,init_data.file_capacity,buffer);
+        DPDKReader* reader;
+        if (init_data.bind_core){
+            reader = new DPDKReader(init_data.pcap_header_len,init_data.eth_header_len,dpdk,this->indexRings,0,i,init_data.file_capacity,buffer, init_data.bind_core, init_data.packet_core_id_list[i]);
+        }else{
+            reader = new DPDKReader(init_data.pcap_header_len,init_data.eth_header_len,dpdk,this->indexRings,0,i,init_data.file_capacity,buffer, init_data.bind_core, 0);
+        }
         this->readers.push_back(reader);
     }
 
