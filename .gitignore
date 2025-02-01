@@ -7,3 +7,6 @@ input_data/
 source_data/
 data/
 ui/backend/__pycache__
+*.o
+*.s
+*.ll

@@ -35,7 +35,17 @@ uint64_t swap_endianness(uint64_t value) {
 }
 
 void DPDKReader::readPacket(struct rte_mbuf *buf, u_int64_t ts, PacketMeta* meta){
-    // printf("tag:%03x\n",buf->dynfield1[0]);
+    meta->tag_num = 0;
+    for(u_int8_t i = 0; i< MAX_TAG_NUM; ++i){
+        Tag* tag = (Tag*)&(buf->dynfield1[i]);
+        if(tag->id == 0){
+            break;
+        }
+        meta->tag_num ++;
+    }
+
+    meta->tags = (Tag*)(buf->dynfield1);
+    
     meta->header->flow_next_diff = std::numeric_limits<uint32_t>::max();
     meta->header->caplen = rte_pktmbuf_data_len(buf) - this->eth_header_len;
     meta->header->ts_l = (u_int32_t)(ts & 0xFFFFFFFF);
@@ -190,6 +200,77 @@ bool DPDKReader::writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t 
     return true;
 }
 
+u_int64_t DPDKReader::getField(const char* data, u_int8_t offset, u_int8_t len){
+    u_int64_t value = 0;
+    switch (len)
+    {
+    case 0:
+        value = offset;
+        break;
+    case 8:
+        value = *(u_int8_t*)(data + offset/8);
+        break;
+    case 16:
+        value = *(u_int8_t*)(data + offset/8);
+        value <<= 8;
+        value |= *(u_int8_t*)(data + offset/8 + 1);
+        break;
+    default:
+        break;
+    }
+
+    return value;
+}
+
+bool DPDKReader::writeTagToRing(const char* data, Tag* tags, u_int8_t tag_num, FlowMetadata meta, u_int64_t ts, u_int64_t offset,u_int64_t last){
+    for(u_int8_t i = 0; i< tag_num; ++i){
+        // printf("tag id: %u, offset: %u\n",tags[i].id,tags[i].offset);
+        Tag* tag = tags + i;
+        Index* index = new Index();
+        u_int64_t field = this->getField(data,tag->offset,tag->length);
+        // printf("field: %llu\n",field);
+        auto value_pair = this->tagAggregator->addTag(meta,tag->id,tag->agg,field,offset,last);
+        if(value_pair.first == std::numeric_limits<uint64_t>::max()){
+            continue;
+        }
+
+        index->key = std::string((char*)&(value_pair.second),sizeof(value_pair.second));
+        u_int64_t value = this->calValue(value_pair.first);
+        index->value = value;
+        index->ts = ts;
+        index->id = tag->id + IndexType::TOTAL - 1;
+        index->len = sizeof(value_pair.second);
+        // printf("put before\n");
+        if(!(*(this->indexRings))[0]->put((void*)index)){
+            return false;
+        }
+        // printf("put after\n");
+        this->tagIndexCount++;
+    }
+    return true;
+}
+
+bool DPDKReader::writeAllTagsToRing(u_int64_t ts){
+    auto key_values = this->tagAggregator->getAll();
+    printf("tag count: %lu\n",key_values.size());
+    for(auto tur:key_values){
+        auto idx = tur.first;
+        auto k_v = tur.second;
+        Index* index = new Index();
+        index->key = std::string((char*)&(k_v.second),sizeof(k_v.second));
+        u_int64_t value = this->calValue(k_v.first);
+        index->value = value;
+        index->ts = ts;
+        index->id = idx + IndexType::TOTAL - 1;
+        index->len = sizeof(k_v.second);
+        if(!(*(this->indexRings))[0]->put((void*)index)){
+            return false;
+        }
+        this->tagIndexCount++;
+    }
+    return true;
+}
+
 void DPDKReader::bindCore(u_int32_t cpu){
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
@@ -261,6 +342,11 @@ int DPDKReader::run(){
                 break;
             }
 
+            // for(u_int8_t i = 0; i< meta.tag_num; ++i){
+                
+            // }
+            // printf("\n");
+
             u_int64_t _offset = this->writePacketToPacketBuffer(meta);
             if(_offset == std::numeric_limits<uint64_t>::max()){
                 std::cerr << "DPDK Reader error: packet buffer overflow!" << std::endl;
@@ -289,6 +375,10 @@ int DPDKReader::run(){
                 index_count++;
             }
 
+            if(!this->writeTagToRing(meta.data,meta.tags,meta.tag_num,flow_meta,ts,_offset,last)){
+                printf("DPDK Reader error: write tag to ring failed!\n");
+            }
+
             // printf("packet offset: %llu, l3 offset: %u, l4 offset: %u.\n",_offset,info->l3_offset,info->l4_offset);
             
             meta.data = nullptr;
@@ -303,10 +393,13 @@ int DPDKReader::run(){
             break;
         }
     }
+    if(!this->writeAllTagsToRing(ts)){
+        printf("DPDK Reader error: write all tags to ring failed!\n");
+    }
     auto end = std::chrono::high_resolution_clock::now();
 
     this->duration_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    printf("DPDK Reader log: thread quit, during %llu us with %llu packets, %llu Bytes, and %llu indexes.\n",this->duration_time,pkt_count,this->byteLen,index_count);
+    printf("DPDK Reader log: thread quit, during %llu us with %llu packets, %llu Bytes, %llu indexes, and %llu tag indexes.\n",this->duration_time,pkt_count,this->byteLen,index_count,this->tagIndexCount);
     return 0;
 }
 

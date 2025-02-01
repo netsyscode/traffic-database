@@ -8,6 +8,10 @@ u_int64_t min(u_int64_t x, u_int64_t y){
     return x < y ? x : y;
 }
 
+u_int64_t max(u_int64_t x, u_int64_t y){
+    return x > y ? x : y;
+}
+
 class IndexBlock{
     u_int32_t layerNum;
 

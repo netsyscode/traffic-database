@@ -12,6 +12,7 @@
 #include "../dpdk_lib/dpdk.hpp"
 #include "../dpdk_lib/pointerRingBuffer.hpp"
 #include "../dpdk_lib/packetAggregator.hpp"
+#include "../dpdk_lib/tagAggregator.hpp"
 
 #include <rte_eal.h>
 #include <rte_ethdev.h>
@@ -29,13 +30,22 @@
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 512
 #define BURST_SIZE 32
+#define MAX_TAG_NUM 9
+#define MAX_TAG_TYPE 16
 
-// struct 
+struct Tag{
+	u_int8_t id:4,
+       agg:4;
+	uint8_t length;
+	uint16_t offset;
+};
 
 struct PacketMeta{
     array_list_header* header;
     const char* data;
     u_int32_t len;
+    u_int8_t tag_num;
+    Tag* tags;
 };
 
 // read packet from pcap, equivalent like extractor, lower substitution of trace catcher
@@ -55,6 +65,7 @@ class DPDKReader{
     DPDK* dpdk;
 
     PacketAggregator* packetAggregator;
+    TagAggregator* tagAggregator;
 
     // write only
     std::vector<PointerRingBuffer*>* indexRings;
@@ -66,6 +77,8 @@ class DPDKReader{
 
     u_int64_t byteLen;
 
+    u_int64_t tagIndexCount;
+
     //read packet of offset from file;
     void readPacket(struct rte_mbuf *buf,u_int64_t ts,PacketMeta* meta);
     //write data to packet buffer (pay attention to aligning with file offset)
@@ -74,7 +87,11 @@ class DPDKReader{
 
     u_int64_t calValue(u_int64_t _offset);
 
+    u_int64_t getField(const char* data, u_int8_t offset, u_int8_t len);
+
     bool writeIndexToRing(u_int64_t value, FlowMetadata meta, u_int64_t ts);
+    bool writeTagToRing(const char* data, Tag* tags, u_int8_t tag_num, FlowMetadata meta, u_int64_t ts, u_int64_t offset, u_int64_t last);
+    bool writeAllTagsToRing(u_int64_t ts);
     void bindCore(u_int32_t cpu);
 
 public:
@@ -83,13 +100,16 @@ public:
         this->offset = pcap_header_len;
         this->stop = true;
         this->duration_time = 0;
+        this->tagIndexCount = 0;
         this->byteLen = 0;
         this->packetBuffer = buffer;
         this->fileName = "./data/input/" + std::to_string(port_id) + "-" + std::to_string(rx_id) + ".pcap";
         this->packetAggregator = new PacketAggregator(capacity, std::numeric_limits<uint64_t>::max());
+        this->tagAggregator = new TagAggregator(MAX_TAG_TYPE);
     }
     ~DPDKReader(){
         delete this->packetAggregator;
+        delete this->tagAggregator;
     }
     
     int run();

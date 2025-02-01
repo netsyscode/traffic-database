@@ -249,9 +249,21 @@ void Controller::init(InitData init_data){
         metas.push_back(meta);
     }
 
+    SkipListMeta tagMeta = {
+        .keyLen = sizeof(u_int64_t),
+        .valueLen = sizeof(u_int64_t),
+        .maxLvl = sizeof(u_int64_t)*8,
+    };
+
     for(u_int32_t i=0;i<flowMetaEleLens.size();++i){
         IndexBuffer* ib = new IndexBuffer(5,metas[i],init_data.max_node);
         this->indexStorages[i%init_data.index_storage_thread_num]->addBuffer(ib,i);
+        (*(this->indexBuffers)).push_back(ib);
+    }
+
+    for(u_int32_t i=0;i<MAX_TAG_TYPE;++i){
+        IndexBuffer* ib = new IndexBuffer(5,tagMeta,init_data.max_node);
+        this->indexStorages[(i + flowMetaEleLens.size()) %init_data.index_storage_thread_num]->addBuffer(ib,i + flowMetaEleLens.size());
         (*(this->indexBuffers)).push_back(ib);
     }
 
@@ -315,11 +327,11 @@ void Controller::run(){
 
     printf("wait.\n");
     
-    // for(u_int16_t i=0; i<this->readers.size(); ++i){
-    //     if(this->dpdk->loadBPF(0, i, this->bpf_prog_name)){
-    //         printf("Controller error: load bpf fail at %u\n",i);
-    //     }
-    // }
+    for(u_int16_t i=0; i<this->readers.size(); ++i){
+        if(this->dpdk->loadBPF(0, i, this->bpf_prog_name)){
+            printf("Controller error: load bpf fail at %u\n",i);
+        }
+    }
     // std::this_thread::sleep_for(std::chrono::seconds(4));
     // for(u_int16_t i=0; i<this->readers.size(); ++i){
     //     this->dpdk->unloadBPF(0, i);
